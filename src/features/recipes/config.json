@@ -1,0 +1,24 @@
+{
+    "recipes": [
+        {
+            "name": "Spaghetti",
+            "ingredients": [
+                { "amount": "1 lb", "name": "ground beef", "type": "" },
+                { "amount": "1", "name": "32 oz can of tomato sauce", "type": "" },
+                { "amount": "1", "name": "packet of zesty seasoning", "type": "" },
+                { "amount": "8 oz", "name": "angel hair spaghetti noodles", "type": "" }
+            ],
+            "instructions": "1. Boil water in pot and cook pasta\n2. Brown ground beef in large skillet on medium\n3. Heat tomato sauce on low heat in sauce pan\n4. Drain greese from beef and combine with tomato sauce\n5. Stir in zesty seasoning packet"
+        },
+        {
+          "name": "Spaghetti2",
+          "ingredients": [
+            { "amount": "2 lb", "name": "ground beef", "type": "" },
+            { "amount": "2", "name": "32 oz can of tomato sauce", "type": "" },
+            { "amount": "2", "name": "packet of zesty seasoning", "type": "" },
+            { "amount": "16 oz", "name": "angel hair spaghetti noodles", "type": "" }
+          ],
+          "instructions": "test"
+        }
+    ]
+}
