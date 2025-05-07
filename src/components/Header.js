@@ -17,7 +17,6 @@ function Header() {
   return (
     <div>
         <header className="bg-white p-6 rounded-lg shadow-md mb-4 flex justify-center space-x-8">
-            <img className="absolute left-[2em] h-[2em]" src="/images/logo_color_gradient.png" />
           <NavLink
             to="/"
             className={({ isActive }) =>

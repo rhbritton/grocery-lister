@@ -34,13 +34,27 @@ function RecipesList() {
     }
   }, []);
 
+  const handleDownload = (text, filename) => {
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename || 'download.txt'; // Default filename
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url); // Clean up the URL object
+  };
+
   const handleExport = () => {
     try {
       const storedRecipes = store('recipes');
       if (storedRecipes) {
         const jsonString = JSON.stringify(storedRecipes);
-        navigator.clipboard.writeText(jsonString);
-        alert('Recipes copied to clipboard!');
+        handleDownload(jsonString);
+
+        // navigator.clipboard.writeText(jsonString);
+        // alert('Recipes copied to clipboard!');
       } else {
         alert('No recipes to export.');
       }
