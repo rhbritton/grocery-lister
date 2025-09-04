@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
 
@@ -16,10 +16,33 @@ import { fetchRecipes, selectRecipes, searchRecipes } from '../slices/recipesSli
 function RecipesList() {
   const [exportRecipesToggle, setExportRecipesToggle] = useState(false);
   const [deleteModalID, setDeleteModalID] = useState(false);
-  const [importText, setImportText] = useState('');
+
+  const fileInputRef = useRef(null);
   
   const recipes = useSelector((state) => selectRecipes(state));
   const dispatch = useDispatch();
+
+  const handleImport2 = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const importedData = JSON.parse(e.target.result);
+          // Process importedData here (e.g., update component state, send to an API)
+          console.log('Successfully imported:', importedData);
+          handleImport(importedData);
+        } catch (error) {
+          console.error('Failed to parse JSON:', error);
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
 
   // initial load
   useEffect(() => {
@@ -64,14 +87,12 @@ function RecipesList() {
     }
   };
 
-  const handleImport = () => {
+  const handleImport = (parsedRecipes) => {
     try {
-      const parsedRecipes = JSON.parse(importText);
       if (Array.isArray(parsedRecipes)) {
         store('recipes', parsedRecipes);
         dispatch(fetchRecipes(parsedRecipes));
         alert('Recipes imported successfully!');
-        setImportText(''); // Clear import text after successful import
       } else {
         alert('Invalid data format.');
       }
@@ -86,9 +107,35 @@ function RecipesList() {
       <RecipeSearch />
       
       <div className="flex justify-between">
+        <div>
         <button onClick={(e) => { setExportRecipesToggle(!exportRecipesToggle) }} className="mb-4 px-4 py-2 rounded-md bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-800">
           <FontAwesomeIcon icon={faFileImport} /> | <FontAwesomeIcon icon={faFileExport} />
         </button>
+
+        {exportRecipesToggle && <span>
+          <button
+            className="Export text-left ml-2 mb-4 mr-2 px-4 py-2 rounded-md bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-800"
+            onClick={handleExport}
+          >
+            Export Recipes <FontAwesomeIcon icon={faFileExport} />
+          </button>
+
+          <input
+            type="file"
+            accept=".txt"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            onChange={handleFileChange}
+          />
+          <button
+            className="Import text-left px-4 py-2 rounded-md bg-red-500 text-white hover:bg-red-600 active:bg-red-800"
+            onClick={handleImport2}
+          >
+            Import Recipes <FontAwesomeIcon icon={faFileImport} />
+          </button>
+        </span>}
+        
+        </div>
 
         <NavLink to="/recipes/add">
           <button className="mb-4 px-4 py-2 rounded-md bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-800">
@@ -97,26 +144,7 @@ function RecipesList() {
         </NavLink>
       </div>
       
-      {exportRecipesToggle && <div className="mb-4">
-        <textarea
-          value={importText}
-          onChange={(e) => setImportText(e.target.value)}
-          placeholder="Paste exported recipes here to overwrite your recipe data..."
-          className="w-full h-32 p-2 border rounded"
-        />
-        <button
-          className="Export mb-4 mr-2 mt-2 px-4 py-2 rounded-md bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-800"
-          onClick={handleExport}
-        >
-          Export Recipes <FontAwesomeIcon icon={faFileExport} />
-        </button>
-        <button
-          className="Import px-4 py-2 rounded-md bg-red-500 text-white hover:bg-red-600 active:bg-red-800"
-          onClick={handleImport}
-        >
-          Import Recipes <FontAwesomeIcon icon={faFileImport} />
-        </button>
-      </div>}
+      
       
       <section className="RecipesList w-full space-y-4">
         {recipes.length === 0 ? (

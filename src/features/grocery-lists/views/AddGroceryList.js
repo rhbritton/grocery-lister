@@ -35,11 +35,10 @@ const AddGroceryList = () => {
   });
 
 
-  const [recipes, setRecipes] = useState([]); // { id: nano(), count: 1, recipe: {} }
+  const [recipes, setRecipes] = useState([]); // { id: nano(), recipe: {} }
   const [ingredients, setIngredients] = useState([]); // { amount: '', name: '', type: '', recipeId: '' }
 
   const handleAddIngredient = () => {
-    console.log('custom ing add')
     setIngredients([...ingredients, { amount: '', name: '', type: '' }]);
   };
 
@@ -122,7 +121,7 @@ const AddGroceryList = () => {
                     });
 
                     if (!alreadySaved) {
-                      updateSavedRecipes.push({ id: option.value, count: 1, recipe: allRecipesById[option.value] })
+                      updateSavedRecipes.push({ id: option.value, recipe: allRecipesById[option.value] })
                     }
                   });
 
@@ -137,7 +136,7 @@ const AddGroceryList = () => {
 
       <ul className="recipesList">
         {recipes.map((r, i) => (
-          <GroceryRecipeListItem key={r.recipe.id} recipe={r} setRecipes={setRecipes} recipes={recipes} />
+          <GroceryRecipeListItem key={r.recipe.id+i} recipe={r} setRecipes={setRecipes} recipes={recipes} />
         ))}
       </ul>
 

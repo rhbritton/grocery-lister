@@ -42,12 +42,18 @@ export const getAllRecipes = () => {
   return all_recipes;
 }
 
-const getRecipesBySearch = (state, searchTerm) => {
+const getRecipesBySearch = (state, searchTerm, searchType = 'name') => {
   let all_recipes = getAllRecipes();
 
-  state.recipes = all_recipes.filter(recipe =>
-    recipe.name.toLowerCase().includes(searchTerm)
-  );
+  state.recipes = all_recipes.filter((recipe) => {
+    if (searchType == 'name') {
+      return recipe.name.toLowerCase().includes(searchTerm);
+    } else if (searchType == 'ingredient') {
+      return recipe.ingredients.some(function(ing) {
+        return ing.name.toLowerCase().includes(searchTerm);
+      });
+    }
+  });
 }
 
 export const recipesSlice = createSlice({
@@ -101,8 +107,11 @@ export const recipesSlice = createSlice({
       }
     },
     searchRecipes: (state, action) => {
-      const searchTerm = action.payload.toLowerCase();
-      getRecipesBySearch(state, searchTerm);
+      const searchTerm = action.payload.searchString.toLowerCase();
+      const searchType = action.payload.searchType.toLowerCase();
+      console.log('searchTerm', searchTerm);
+      console.log('searchType', searchType);
+      getRecipesBySearch(state, searchTerm, searchType);
     }
   },
 });

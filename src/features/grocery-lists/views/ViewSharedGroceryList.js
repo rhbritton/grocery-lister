@@ -18,15 +18,55 @@ import GroceryListViewItem from '../components/GroceryListViewItem.js';
 
 const groceryListRecipeSeparator = ', ';
 
-const ViewGroceryList = () => {
-  const { groceryListId } = useParams();
+const ViewSharedGroceryList = () => {
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
   
-  const [groceryList, setGroceryList] = useState(undefined);
   const [originalAllIngredients, setOriginalAllIngredients] = useState([]);
   const [allIngredients, setAllIngredients] = useState([]);
+  const [allRecipes, setAllRecipes] = useState([]);
+
+    useEffect(() => {
+        if (!allIngredients.length) {
+            loadData();
+        }
+    }, []);
+
+    function shareURL() {
+        
+    }
+
+    function loadData() {
+        console.log('l')
+        
+            console.log(originalAllIngredients)
+            console.log(allIngredients)
+        const data = searchParams.get('data');
+        if (data) {
+            const originalString = atob(data);
+
+            let all_ing_strings = originalString.split('|');
+            let all_ings = [];
+            let all_recipes = [];
+            all_ing_strings.forEach(function(ing) {
+                let ing_parts = ing.split(':');
+                let ingredient = {};
+                ingredient.amount = ing_parts[0];
+                ingredient.name = ing_parts[1];
+                ingredient.type = ing_parts[2];
+                let recipe = ing_parts[3];
+
+                all_ings.push({
+                    ingredient
+                });
+                if (!all_recipes.includes(recipe))
+                    all_recipes.push(recipe);
+            });
+
+            setOriginalAllIngredients(all_ings);
+            setAllIngredients(all_ings);
+            setAllRecipes(all_recipes);
+        }
+    }
 
   function getAllIngredientsByType(all_ingredients) {
     let all_ingredients_by_type = {};
@@ -38,6 +78,7 @@ const ViewGroceryList = () => {
         if (!all_ingredients_by_type[type])
             all_ingredients_by_type[type] = [];
 
+        console.log(ing)
         all_ingredients_by_type[type].push(ing);
     });
 
@@ -59,50 +100,10 @@ const ViewGroceryList = () => {
     return all_ingredients_by_type;
   }
 
-  function getAllIngredients(gl) {
-    let all_ingredients = [];
-    gl && gl.recipes && gl.recipes.forEach(function(r, i) {
-        r.recipe.ingredients.forEach(function(ing, i) {
-            all_ingredients.push({ ingredient: ing, recipe: r.recipe, index: i, crossed: ing.crossed });
-        });
-    });
-
-    gl && gl.ingredients.forEach(function(ing, i) {
-        all_ingredients.push({ ingredient: ing, index: i, crossed: ing.crossed });
-    });
-
-    return all_ingredients
-  }
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        let gl = (await dispatch(fetchGroceryListById(groceryListId))).payload;
-
-        if (gl) {
-            setGroceryList(gl);
-
-            let all_ingredients = getAllIngredients(gl);
-            setOriginalAllIngredients(all_ingredients);
-        }
-      } catch (error) {
-        console.error("Error fetching grocery list:", error);
-      }
-    }
-
-    fetchData();
-  }, [dispatch, groceryListId]);
-
-  useEffect(() => {
-    let all_ingredients = getAllIngredients(groceryList);
-    setAllIngredients(all_ingredients);
-  }, [groceryList]);
-
   const isSaveDisabled = (!originalAllIngredients.length || !allIngredients.length) || originalAllIngredients.every((ing, i) => !!originalAllIngredients[i].crossed === !!allIngredients[i].crossed);
   const handleSave = (e) => {
     if (!isSaveDisabled) {
-        dispatch(editGroceryList({ groceryListId: groceryList.id, recipes: groceryList.recipes, ingredients: groceryList.ingredients }));
-        setOriginalAllIngredients(getAllIngredients(groceryList));
+        
     }
   }
 
@@ -118,19 +119,18 @@ const ViewGroceryList = () => {
                 >
                     <FontAwesomeIcon icon={faArrowLeft} />
                 </NavLink>
-                {groceryList && (formatDate(new Date(groceryList.timestamp)) + ' - ' + formatTime(new Date(groceryList.timestamp)))}
             </h2>
             <div className="text-right w-1/2">
-                {/* <button
+                <button
                     onClick={shareURL}
                     className="text-right mb-4 px-4 py-2 rounded-md bg-green-500 text-white hover:bg-green-600 active:bg-yellow-800"
                 >
                     Share
-                </button> */}
-                <NavLink 
+                </button>
+                {/* <NavLink 
                     to={`/grocery-lists/edit/${groceryListId}`}
                     className="text-right mb-4 px-4 py-2 rounded-md bg-yellow-500 text-white hover:bg-yellow-600 active:bg-yellow-800"
-                >Edit</NavLink>
+                >Edit</NavLink> */}
             </div>
         </div>
 
@@ -138,9 +138,9 @@ const ViewGroceryList = () => {
             <div className="overflow-y-auto">
                 <div className="mb-4">
                     <label className="block text-left font-medium text-gray-700">Recipes:</label>
-                    {groceryList && groceryList.recipes && groceryList.recipes.map((r, i) => (
-                        <span key={r.id}>
-                            {r.recipe.name} (x{r.recipe.duplicateCount}){i+1 < groceryList.recipes.length && groceryListRecipeSeparator}
+                    {allRecipes.map((r, i) => (
+                        <span key={r+i}>
+                            {r}{i+2 < allRecipes.length && groceryListRecipeSeparator}
                         </span>
                     ))}
                 </div>
@@ -163,9 +163,7 @@ const ViewGroceryList = () => {
                                     allIngredientsIndex={i} 
                                     setAllIngredients={setAllIngredients} 
                                     ingredient={ing} 
-                                    recipe={ing.recipe} 
-                                    setGroceryList={setGroceryList}
-                                    groceryList={groceryList} 
+                                    recipe={ing.recipe}
                                 />
                             ))}
                         </ul>
@@ -185,9 +183,7 @@ const ViewGroceryList = () => {
                                     allIngredientsIndex={i} 
                                     setAllIngredients={setAllIngredients} 
                                     ingredient={ing} 
-                                    recipe={ing.recipe} 
-                                    setGroceryList={setGroceryList}
-                                    groceryList={groceryList} 
+                                    recipe={ing.recipe}
                                 />
                             ))}
                         </ul>
@@ -207,9 +203,7 @@ const ViewGroceryList = () => {
                                     allIngredientsIndex={i} 
                                     setAllIngredients={setAllIngredients} 
                                     ingredient={ing} 
-                                    recipe={ing.recipe} 
-                                    setGroceryList={setGroceryList}
-                                    groceryList={groceryList} 
+                                    recipe={ing.recipe}
                                 />
                             ))}
                         </ul>
@@ -229,9 +223,7 @@ const ViewGroceryList = () => {
                                     allIngredientsIndex={i} 
                                     setAllIngredients={setAllIngredients} 
                                     ingredient={ing} 
-                                    recipe={ing.recipe} 
-                                    setGroceryList={setGroceryList}
-                                    groceryList={groceryList} 
+                                    recipe={ing.recipe}
                                 />
                             ))}
                         </ul>
@@ -252,29 +244,14 @@ const ViewGroceryList = () => {
                                     setAllIngredients={setAllIngredients} 
                                     ingredient={ing} 
                                     recipe={ing.recipe} 
-                                    setGroceryList={setGroceryList}
-                                    groceryList={groceryList} 
                                 />
                             ))}
                         </ul>
                     </div>
                 </div>
             }
-
-        {
-            !isSaveDisabled && 
-            <div className="flex justify-end space-x-4 sticky bottom-0 bg-white p-6 rounded-b-lg shadow-md">
-                <button
-                    onClick={handleSave}
-                    disabled={isSaveDisabled}
-                    className={`px-4 py-2 rounded-md bg-green-500 text-white hover:bg-green-600 ${isSaveDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                >
-                    Save
-                </button>
-            </div>
-        }
     </div>
   );
 };
 
-export default ViewGroceryList;
+export default ViewSharedGroceryList;

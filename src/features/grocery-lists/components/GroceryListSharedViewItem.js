@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrash, faSquare, faSquareCheck, faShoppingCart } from '@fortawesome/free-solid-svg-icons';
+import { faTrash, faSquare, faSquareCheck } from '@fortawesome/free-solid-svg-icons';
 
 import { findSelectedOption } from '../../recipes/slices/recipeSlice.ts';
 
-function GroceryListViewItem(props) {
+function GroceryListSharedViewItem(props) {
     const allIngredientsIndex = props.allIngredientsIndex;
     const allIngredients = props.allIngredients;
 
@@ -24,36 +24,34 @@ function GroceryListViewItem(props) {
         });
         props.setAllIngredients(updatedIngredients);
 
-        if (groceryList) {
-            if (props.ingredient.recipe) {
-                let updateRecipes = [];
-                groceryList.recipes.forEach(function(r, i) {
-                    if (r.id == props.ingredient.recipe.id) {
-                        let newRecipe = { ...r };
-                        newRecipe.recipe.ingredients[ingredientIndex].crossed = cross;
-                        updateRecipes.push(newRecipe);
-                    } else {
-                        updateRecipes.push(r)
-                    }
-                });
+        if (props.ingredient.recipe) {
+            let updateRecipes = [];
+            groceryList.recipes.forEach(function(r, i) {
+                if (r.id == props.ingredient.recipe.id) {
+                    let newRecipe = { ...r };
+                    newRecipe.recipe.ingredients[ingredientIndex].crossed = cross;
+                    updateRecipes.push(newRecipe);
+                } else {
+                    updateRecipes.push(r)
+                }
+            });
 
-                let newGroceryList = {...props.groceryList};
-                newGroceryList.recipes = updateRecipes;
-                props.setGroceryList(newGroceryList);
-            } else {
-                let updateIngredients = [];
-                groceryList.ingredients.forEach(function(ing, i) {
-                    if (i == ingredientIndex) {
-                        updateIngredients.push({ ...ing, crossed: cross })
-                    } else {
-                        updateIngredients.push(ing)
-                    }
-                });
-                
-                let newGroceryList = {...props.groceryList};
-                newGroceryList.ingredients = updateIngredients;
-                props.setGroceryList(newGroceryList);
-            }
+            let newGroceryList = {...props.groceryList};
+            newGroceryList.recipes = updateRecipes;
+            props.setGroceryList(newGroceryList);
+        } else {
+            let updateIngredients = [];
+            groceryList.ingredients.forEach(function(ing, i) {
+                if (i == ingredientIndex) {
+                    updateIngredients.push({ ...ing, crossed: cross })
+                } else {
+                    updateIngredients.push(ing)
+                }
+            });
+            
+            let newGroceryList = {...props.groceryList};
+            newGroceryList.ingredients = updateIngredients;
+            props.setGroceryList(newGroceryList);
         }
     }
 
@@ -62,21 +60,8 @@ function GroceryListViewItem(props) {
         opacity: 0.4
     };
 
-    const openWalmartTab = (ingredient) => {
-        window.open(encodeURI(`https://www.walmart.com/search?q=${ingredient.ingredient.name}&sort=price_low`), "_blank")
-    }
-
     return (
-        <div className="GroceryListViewItem flex space-x-2 mb-2">
-            
-            <button
-                type="button"
-                onClick={() => openWalmartTab(props.ingredient)}
-                className="px-3 rounded-md bg-green-500 text-white hover:bg-green-600"
-            >
-                <FontAwesomeIcon icon={faShoppingCart} />
-            </button>
-            
+        <div className="GroceryListSharedViewItem flex space-x-2 mb-2">
             <span style={props.ingredient.crossed ? ingredientTextCrossedStyle : {}}
                 className="IngredientAmount text-left w-24 border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 {ingredient.amount}
@@ -84,7 +69,7 @@ function GroceryListViewItem(props) {
 
             <span style={props.ingredient.crossed ? ingredientTextCrossedStyle : {}}
                 className="IngredientName text-left flex-grow border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                {ingredient.name} {recipe && <span>({recipe.name})</span>}
+                {ingredient.name}
             </span>
 
             {/* <span style={props.ingredient.crossed ? ingredientTextCrossedStyle : {}}
@@ -108,4 +93,4 @@ function GroceryListViewItem(props) {
     );
 }
 
-export default GroceryListViewItem;
+export default GroceryListSharedViewItem;

@@ -5,7 +5,7 @@ import { faTrash, faSquare, faSquareCheck, faShoppingCart } from '@fortawesome/f
 
 import { findSelectedOption } from '../../recipes/slices/recipeSlice.ts';
 
-function GroceryListViewItem(props) {
+function GroceryListEditItem(props) {
     const allIngredientsIndex = props.allIngredientsIndex;
     const allIngredients = props.allIngredients;
 
@@ -62,21 +62,8 @@ function GroceryListViewItem(props) {
         opacity: 0.4
     };
 
-    const openWalmartTab = (ingredient) => {
-        window.open(encodeURI(`https://www.walmart.com/search?q=${ingredient.ingredient.name}&sort=price_low`), "_blank")
-    }
-
     return (
-        <div className="GroceryListViewItem flex space-x-2 mb-2">
-            
-            <button
-                type="button"
-                onClick={() => openWalmartTab(props.ingredient)}
-                className="px-3 rounded-md bg-green-500 text-white hover:bg-green-600"
-            >
-                <FontAwesomeIcon icon={faShoppingCart} />
-            </button>
-            
+        <div className="GroceryListEditItem flex space-x-2 mb-2">
             <span style={props.ingredient.crossed ? ingredientTextCrossedStyle : {}}
                 className="IngredientAmount text-left w-24 border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 {ingredient.amount}
@@ -108,4 +95,4 @@ function GroceryListViewItem(props) {
     );
 }
 
-export default GroceryListViewItem;
+export default GroceryListEditItem;

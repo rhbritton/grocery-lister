@@ -1,20 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate, NavLink, useSearchParams } from 'react-router-dom';
+import Select from 'react-select';
 
 import pako from 'pako';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faTrash } from '@fortawesome/free-solid-svg-icons';
 
 import { fetchGroceryListById } from '../slices/groceryListSlice.ts';
 import { editGroceryList } from '../slices/groceryListsSlice.ts';
 
 import { formatDate, formatTime } from '../../../services/date.js';
 
-import { typeOptions } from '../../recipes/slices/recipesSlice.ts';
-
-import GroceryListViewItem from '../components/GroceryListViewItem.js';
+import GroceryListEditItem from '../components/GroceryListEditItem.js';
 
 const groceryListRecipeSeparator = ', ';
 
@@ -27,6 +26,32 @@ const ViewGroceryList = () => {
   const [groceryList, setGroceryList] = useState(undefined);
   const [originalAllIngredients, setOriginalAllIngredients] = useState([]);
   const [allIngredients, setAllIngredients] = useState([]);
+
+  const [ingredients, setIngredients] = useState([]); // { amount: '', name: '', type: '', recipeId: '' }
+  
+    const typeOptions = [
+        { value: '', label: 'Other' },
+        { value: 'dairy', label: 'Dairy' },
+        { value: 'freezer', label: 'Freezer' },
+        { value: 'meat', label: 'Meat' },
+        { value: 'produce', label: 'Produce' },
+    ]
+
+    const handleAddIngredient = () => {
+        setIngredients([...ingredients, { amount: '', name: '', type: '' }]);
+    };
+
+    const handleRemoveIngredient = (index) => {
+        const newIngredients = [...ingredients];
+        newIngredients.splice(index, 1);
+        setIngredients(newIngredients);
+    };
+
+    const handleIngredientChange = (index, field, value) => {
+        const newIngredients = [...ingredients];
+        newIngredients[index][field] = value;
+        setIngredients(newIngredients);
+    };
 
   function getAllIngredientsByType(all_ingredients) {
     let all_ingredients_by_type = {};
@@ -98,11 +123,20 @@ const ViewGroceryList = () => {
     setAllIngredients(all_ingredients);
   }, [groceryList]);
 
-  const isSaveDisabled = (!originalAllIngredients.length || !allIngredients.length) || originalAllIngredients.every((ing, i) => !!originalAllIngredients[i].crossed === !!allIngredients[i].crossed);
+  const isSaveDisabled = (!originalAllIngredients.length || !allIngredients.length) || originalAllIngredients.every((ing, i) => !!originalAllIngredients[i].crossed === !!allIngredients[i].crossed) && (!ingredients.length || ingredients.every((ing, i) => !ing.amount || !ing.name));
   const handleSave = (e) => {
     if (!isSaveDisabled) {
-        dispatch(editGroceryList({ groceryListId: groceryList.id, recipes: groceryList.recipes, ingredients: groceryList.ingredients }));
-        setOriginalAllIngredients(getAllIngredients(groceryList));
+        let newIngredients = [];
+        groceryList.ingredients.forEach(function(ing) {
+            newIngredients.push(ing);
+        });
+        ingredients.forEach(function(ing) {
+            newIngredients.push(ing);
+        });
+
+        dispatch(editGroceryList({ groceryListId: groceryList.id, recipes: groceryList.recipes, ingredients: newIngredients }));
+        
+        navigate('/grocery-lists');
     }
   }
 
@@ -127,10 +161,10 @@ const ViewGroceryList = () => {
                 >
                     Share
                 </button> */}
-                <NavLink 
+                {/* <NavLink 
                     to={`/grocery-lists/edit/${groceryListId}`}
                     className="text-right mb-4 px-4 py-2 rounded-md bg-yellow-500 text-white hover:bg-yellow-600 active:bg-yellow-800"
-                >Edit</NavLink>
+                >Edit</NavLink> */}
             </div>
         </div>
 
@@ -140,7 +174,7 @@ const ViewGroceryList = () => {
                     <label className="block text-left font-medium text-gray-700">Recipes:</label>
                     {groceryList && groceryList.recipes && groceryList.recipes.map((r, i) => (
                         <span key={r.id}>
-                            {r.recipe.name} (x{r.recipe.duplicateCount}){i+1 < groceryList.recipes.length && groceryListRecipeSeparator}
+                            {r.recipe.name}{i+1 < groceryList.recipes.length && groceryListRecipeSeparator}
                         </span>
                     ))}
                 </div>
@@ -157,7 +191,7 @@ const ViewGroceryList = () => {
                     <div className="flex">
                         <ul className="text-left w-full rounded-md mt-2"> 
                             {all_ingredients_by_type["produce"].map((ing, i) => (
-                                <GroceryListViewItem 
+                                <GroceryListEditItem 
                                     key={ing.recipe ? ing.recipe.id+i : i} 
                                     allIngredients={allIngredients} 
                                     allIngredientsIndex={i} 
@@ -179,7 +213,7 @@ const ViewGroceryList = () => {
                     <div className="flex">
                         <ul className="text-left w-full rounded-md mt-2"> 
                             {all_ingredients_by_type["meat"].map((ing, i) => (
-                                <GroceryListViewItem 
+                                <GroceryListEditItem 
                                     key={ing.recipe ? ing.recipe.id+i : i} 
                                     allIngredients={allIngredients} 
                                     allIngredientsIndex={i} 
@@ -201,7 +235,7 @@ const ViewGroceryList = () => {
                     <div className="flex">
                         <ul className="text-left w-full rounded-md mt-2"> 
                             {all_ingredients_by_type["dairy"].map((ing, i) => (
-                                <GroceryListViewItem 
+                                <GroceryListEditItem 
                                     key={ing.recipe ? ing.recipe.id+i : i} 
                                     allIngredients={allIngredients} 
                                     allIngredientsIndex={i} 
@@ -223,7 +257,7 @@ const ViewGroceryList = () => {
                     <div className="flex">
                         <ul className="text-left w-full rounded-md mt-2"> 
                             {all_ingredients_by_type["freezer"].map((ing, i) => (
-                                <GroceryListViewItem 
+                                <GroceryListEditItem 
                                     key={ing.recipe ? ing.recipe.id+i : i} 
                                     allIngredients={allIngredients} 
                                     allIngredientsIndex={i} 
@@ -245,7 +279,7 @@ const ViewGroceryList = () => {
                     <div className="flex">
                         <ul className="text-left w-full rounded-md mt-2"> 
                             {all_ingredients_by_type[""].map((ing, i) => (
-                                <GroceryListViewItem 
+                                <GroceryListEditItem 
                                     key={ing.recipe ? ing.recipe.id+i : i} 
                                     allIngredients={allIngredients} 
                                     allIngredientsIndex={i} 
@@ -260,6 +294,49 @@ const ViewGroceryList = () => {
                     </div>
                 </div>
             }
+
+            <div className="mb-4">
+        <label className="block font-medium text-gray-700">Custom List Items:</label>
+        {ingredients.map((ingredient, index) => (
+          <div key={index} className="flex space-x-2 mb-2">
+            <input
+              type="text"
+              placeholder="Amount"
+              className="w-24 border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={ingredient.amount}
+              onChange={(e) => handleIngredientChange(index, 'amount', e.target.value)}
+            />
+            <input
+              type="text"
+              placeholder="Ingredient"
+              className="flex-grow border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={ingredient.name}
+              onChange={(e) => handleIngredientChange(index, 'name', e.target.value)}
+            />
+            <Select
+              className="w-24 border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 w-40"
+              options={typeOptions}
+              onChange={(selectedOption) => {
+                handleIngredientChange(index, 'type', selectedOption.value);
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => handleRemoveIngredient(index)}
+              className="px-3 py-1 rounded-md bg-red-500 text-white hover:bg-red-600"
+            >
+              <FontAwesomeIcon icon={faTrash} />
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={handleAddIngredient}
+          className="px-4 py-2 rounded-md bg-blue-500 text-white hover:bg-blue-600"
+        >
+          Add Ingredient
+        </button>
+      </div>
 
         {
             !isSaveDisabled && 

@@ -45,10 +45,12 @@ export const groceryListsSlice = createSlice({
           indexToChange = i;
           all_grocery_lists[i] = {
             id: groceryList.id,
-            ingredients: action.payload.ingredients,
-            recipes: action.payload.recipes,
+            ingredients: action.payload.ingredients || groceryList.ingredients,
+            recipes: action.payload.recipes || groceryList.recipes,
             timestamp: groceryList.timestamp,
           };
+
+          return true;
         }
       });
 

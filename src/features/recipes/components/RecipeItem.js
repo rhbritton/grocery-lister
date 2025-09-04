@@ -40,10 +40,6 @@ function RecipeItem(props) {
         </div>
 
         <RecipeItemIngredients ingredients={props.recipe.ingredients} />
-
-        <div className="Instructions text-left">
-            Boil water, cook noodles...
-        </div>
     </div>
   );
 }
