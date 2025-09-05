@@ -96,7 +96,7 @@ const EditRecipe = () => {
   };
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md">
+    <div className="App-body p-6 bg-white rounded-lg shadow-md">
       <div className="mb-4">
         <label htmlFor="recipeName" className="block font-medium text-gray-700">
           Recipe Name:

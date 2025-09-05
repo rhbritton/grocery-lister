@@ -68,7 +68,7 @@ const AddRecipe = () => {
   ]
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md">
+    <div className="App-body p-6 bg-white rounded-lg shadow-md">
       <h2 className="text-xl font-semibold text-gray-700 mb-4">Add Recipe</h2>
       
       <div className="mb-4">
@@ -110,36 +110,49 @@ const AddRecipe = () => {
       <div className="mb-4">
         <label className="block font-medium text-gray-700">Ingredients:</label>
         {ingredients.map((ingredient, index) => (
-          <div key={index} className="flex space-x-2 mb-2">
-            <input
-              type="text"
-              placeholder="Amount"
-              className="w-24 border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={ingredient.amount}
-              onChange={(e) => handleIngredientChange(index, 'amount', e.target.value)}
-            />
-            <input
-              type="text"
-              placeholder="Ingredient"
-              className="flex-grow border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={ingredient.name}
-              onChange={(e) => handleIngredientChange(index, 'name', e.target.value)}
-            />
-            <Select
-              className="w-24 border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 w-40"
-              options={typeOptions}
-              onChange={(selectedOption) => {
-                handleIngredientChange(index, 'type', selectedOption.value);
-              }}
-            />
+          <div key={index} className="flex items-center space-x-2 mb-8">
+            {/* Left section containing all inputs */}
+            <div className="flex-grow flex flex-col space-y-2">
+              {/* Top row for Amount and Type */}
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  placeholder="Amount"
+                  className="w-24 border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={ingredient.amount}
+                  onChange={(e) => handleIngredientChange(index, 'amount', e.target.value)}
+                />
+                <Select
+                  className="w-50 border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 w-40"
+                  options={typeOptions}
+                  onChange={(selectedOption) => {
+                    handleIngredientChange(index, 'type', selectedOption.value);
+                  }}
+                />
+              </div>
 
-            <button
-              type="button"
-              onClick={() => handleRemoveIngredient(index)}
-              className="px-3 py-1 rounded-md bg-red-500 text-white hover:bg-red-600"
-            >
-              <FontAwesomeIcon icon={faTrash} />
-            </button>
+              {/* Bottom row for Ingredient */}
+              <div>
+                <input
+                  type="text"
+                  placeholder="Ingredient"
+                  className="w-full border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={ingredient.name}
+                  onChange={(e) => handleIngredientChange(index, 'name', e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Right section for the button */}
+            <div>
+              <button
+                type="button"
+                onClick={() => handleRemoveIngredient(index)}
+                className="px-3 py-1 rounded-md bg-red-500 text-white hover:bg-red-600"
+              >
+                <FontAwesomeIcon icon={faTrash} />
+              </button>
+            </div>
           </div>
         ))}
         <button

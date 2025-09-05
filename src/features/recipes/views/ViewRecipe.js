@@ -7,6 +7,8 @@ import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 
 import { fetchRecipeById } from '../slices/recipeSlice.ts';
 
+import '../styles/ViewRecipe.css';
+
 const ViewRecipe = () => {
   const { recipeId } = useParams();
   const navigate = useNavigate();
@@ -50,7 +52,7 @@ const ViewRecipe = () => {
   `;
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md">
+    <div className="ViewRecipe p-6 bg-white rounded-lg shadow-md">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-semibold text-gray-700">
           <NavLink 
@@ -69,12 +71,11 @@ const ViewRecipe = () => {
         </NavLink>
       </div>
 
-      <div className="flex space-x-4 h-[calc(100vh-200px)]">
-        {/* Ingredients Column */}
+      <div className="App-body flex space-x-4 h-[calc(100vh-200px)]">
         <div 
           onClick={() => handleColumnClick('ingredients')}
           className={ingredientColumnClasses}
-          style={{ overflowY: focusedColumn === 'ingredients' ? 'auto' : 'hidden' }}
+          style={{ overflowY: 'auto' }}
         >
           <div className="mb-4">
             <label className="block text-left font-medium text-gray-700">
@@ -97,11 +98,10 @@ const ViewRecipe = () => {
           </div>
         </div>
 
-        {/* Instructions Column */}
         <div 
           onClick={() => handleColumnClick('instructions')}
           className={instructionColumnClasses}
-          style={{ overflowY: focusedColumn === 'instructions' ? 'auto' : 'hidden' }}
+          style={{ overflowY: 'auto' }}
         >
           <div className="mb-4">
             <label htmlFor="instructions" className="block text-left font-medium text-gray-700">

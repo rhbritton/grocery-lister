@@ -41,7 +41,7 @@ function GroceryLists() {
         </button>
       </NavLink>
 
-      <section className="GroceryLists w-full space-y-4">
+      <section className="App-body GroceryLists w-full space-y-4">
         {groceryLists.length === 0 ? (
           <div>No grocery lists found.</div>
         ) : (

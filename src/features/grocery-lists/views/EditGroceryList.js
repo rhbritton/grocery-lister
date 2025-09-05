@@ -123,7 +123,7 @@ const ViewGroceryList = () => {
     setAllIngredients(all_ingredients);
   }, [groceryList]);
 
-  const isSaveDisabled = (!originalAllIngredients.length || !allIngredients.length) || originalAllIngredients.every((ing, i) => !!originalAllIngredients[i].crossed === !!allIngredients[i].crossed) && (!ingredients.length || ingredients.every((ing, i) => !ing.amount || !ing.name));
+  const isSaveDisabled = (!originalAllIngredients.length || !allIngredients.length) || (originalAllIngredients.every((ing, i) => !!originalAllIngredients[i].crossed === !!allIngredients[i].crossed)) && (!ingredients.length || ingredients.every((ing, i) => !ing.amount || !ing.name));
   const handleSave = (e) => {
     if (!isSaveDisabled) {
         let newIngredients = [];
@@ -143,7 +143,7 @@ const ViewGroceryList = () => {
   let all_ingredients_by_type = getAllIngredientsByType(allIngredients);
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md">
+    <div className="App-body p-6 bg-white rounded-lg shadow-md">
         <div className="flex">
             <h2 className="text-left w-1/2 text-xl font-semibold text-gray-700 mb-4">
                 <NavLink 
@@ -298,36 +298,50 @@ const ViewGroceryList = () => {
             <div className="mb-4">
         <label className="block font-medium text-gray-700">Custom List Items:</label>
         {ingredients.map((ingredient, index) => (
-          <div key={index} className="flex space-x-2 mb-2">
-            <input
-              type="text"
-              placeholder="Amount"
-              className="w-24 border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={ingredient.amount}
-              onChange={(e) => handleIngredientChange(index, 'amount', e.target.value)}
-            />
-            <input
-              type="text"
-              placeholder="Ingredient"
-              className="flex-grow border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={ingredient.name}
-              onChange={(e) => handleIngredientChange(index, 'name', e.target.value)}
-            />
-            <Select
-              className="w-24 border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 w-40"
-              options={typeOptions}
-              onChange={(selectedOption) => {
-                handleIngredientChange(index, 'type', selectedOption.value);
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => handleRemoveIngredient(index)}
-              className="px-3 py-1 rounded-md bg-red-500 text-white hover:bg-red-600"
-            >
-              <FontAwesomeIcon icon={faTrash} />
-            </button>
-          </div>
+            <div key={index} className="flex items-center space-x-2 mb-8">
+                {/* Left container takes up most of the space */}
+                <div className="flex-grow flex flex-col space-y-2">
+                    {/* Top container with Amount and Select inputs */}
+                    <div className="flex space-x-2">
+                    <input
+                        type="text"
+                        placeholder="Amount"
+                        className="w-24 border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={ingredient.amount}
+                        onChange={(e) => handleIngredientChange(index, 'amount', e.target.value)}
+                    />
+                    <Select
+                        className="w-40 border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        options={typeOptions}
+                        onChange={(selectedOption) => {
+                        handleIngredientChange(index, 'type', selectedOption.value);
+                        }}
+                    />
+                    </div>
+                    
+                    {/* Bottom container with Ingredient input */}
+                    <div className="flex">
+                    <input
+                        type="text"
+                        placeholder="Ingredient"
+                        className="flex-grow border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={ingredient.name}
+                        onChange={(e) => handleIngredientChange(index, 'name', e.target.value)}
+                    />
+                    </div>
+                </div>
+
+                {/* Right container with the delete button, vertically centered */}
+                <div>
+                    <button
+                    type="button"
+                    onClick={() => handleRemoveIngredient(index)}
+                    className="px-3 py-1 rounded-md bg-red-500 text-white hover:bg-red-600"
+                    >
+                    <FontAwesomeIcon icon={faTrash} />
+                    </button>
+                </div>
+            </div>
         ))}
         <button
           type="button"

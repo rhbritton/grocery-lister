@@ -146,7 +146,7 @@ function RecipesList() {
       
       
       
-      <section className="RecipesList w-full space-y-4">
+      <section className="App-body RecipesList w-full space-y-4">
         {recipes.length === 0 ? (
           <div>No recipes found.</div>
         ) : (

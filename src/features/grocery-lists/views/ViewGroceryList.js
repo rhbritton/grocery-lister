@@ -109,7 +109,7 @@ const ViewGroceryList = () => {
   let all_ingredients_by_type = getAllIngredientsByType(allIngredients);
 
   return (
-    <div className="p-6 bg-white rounded-lg shadow-md">
+    <div className="App-body p-6 bg-white rounded-lg shadow-md">
         <div className="flex">
             <h2 className="text-left w-1/2 text-xl font-semibold text-gray-700 mb-4">
                 <NavLink 
