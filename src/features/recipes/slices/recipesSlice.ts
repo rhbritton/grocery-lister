@@ -111,12 +111,9 @@ export const editRecipeFromFirestore = createAsyncThunk(
 export const deleteRecipeFromFirestore = createAsyncThunk(
   'recipes/deleteRecipe',
   async (fbid, { rejectWithValue }) => {
-    console.log(1)
-    console.log(fbid)
     try {
       // Create a reference to the specific document using its Firebase ID (fbid)
       const docRef = doc(db, 'recipes', fbid);
-      console.log(2)
 
       // Use deleteDoc to remove the document from the database
       await deleteDoc(docRef);
@@ -200,8 +197,7 @@ export const recipesSlice = createSlice({
         
       })
       .addCase(addRecipeToFirestore.fulfilled, (state, action) => {
-        console.log(state.recipes)
-        // state.recipes.push(action.payload); // Add the new recipe to the state
+        state.recipes.push(action.payload);
       })
       .addCase(addRecipeToFirestore.rejected, (state, action) => {
       
@@ -210,7 +206,10 @@ export const recipesSlice = createSlice({
         
       })
       .addCase(editRecipeFromFirestore.fulfilled, (state, action) => {
-        // state.recipes.push(action.payload); // Add the new recipe to the state
+        const updatedRecipe = action.payload;
+        state.recipes = state.recipes.map(recipe =>
+          recipe.fbid === updatedRecipe.fbid ? updatedRecipe : recipe
+        );
       })
       .addCase(editRecipeFromFirestore.rejected, (state, action) => {
       
@@ -219,12 +218,10 @@ export const recipesSlice = createSlice({
         
       })
       .addCase(deleteRecipeFromFirestore.fulfilled, (state, action) => {
-        
-        console.log(state.recipes)
-        // state.recipes.push(action.payload); // Add the new recipe to the state
+        state.recipes = state.recipes.filter(recipe => recipe.fbid !== action.payload);
       })
       .addCase(deleteRecipeFromFirestore.rejected, (state, action) => {
-      
+        
       });
       
   },

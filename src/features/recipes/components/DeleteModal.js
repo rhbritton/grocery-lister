@@ -1,10 +1,13 @@
 import React from 'react';
 import { useDispatch } from 'react-redux';
 
+import { useNavigate } from 'react-router-dom';
+
 import { deleteRecipe, deleteRecipeFromFirestore } from '../slices/recipesSlice.ts';
 
 function DeleteModal(props) {
     const dispatch = useDispatch();
+    const navigate = useNavigate();
 
   return (
     <div 
