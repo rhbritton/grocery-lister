@@ -7,7 +7,7 @@ import store from 'store2';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faPenToSquare, faTrash } from '@fortawesome/free-solid-svg-icons';
 
-import { selectGroceryLists, fetchGroceryLists } from './slices/groceryListsSlice.ts';
+import { selectGroceryLists, fetchGroceryLists, getGroceryListsFromFirestore } from './slices/groceryListsSlice.ts';
 
 import GroceryListItem from './components/GroceryListItem';
 import DeleteModal from './components/DeleteModal.js';
@@ -15,20 +15,25 @@ import DeleteModal from './components/DeleteModal.js';
 function GroceryLists() {
   const [deleteModalID, setDeleteModalID] = useState(false);
 
-  const groceryLists = useSelector((state) => selectGroceryLists(state));
+  const { groceryLists } = useSelector(state => state.groceryLists);
+  // const groceryLists = useSelector((state) => selectGroceryLists(state));
   const dispatch = useDispatch();
 
   // initial load
   useEffect(() => {
-    if (groceryLists.length === 0) {
-      const storedGroceryLists = store('grocery-lists');
+    console.log('groceryLists', groceryLists)
+      dispatch(getGroceryListsFromFirestore());
+    console.log('groceryLists3', groceryLists)
+      
+    // if (groceryLists.length === 0) {
+      // const storedGroceryLists = store('grocery-lists');
 
-      if (storedGroceryLists) {
-        dispatch(fetchGroceryLists(storedGroceryLists));
-      } else {
-        dispatch(fetchGroceryLists([]));
-      }
-    }
+      // if (storedGroceryLists) {
+      //   dispatch(fetchGroceryLists(storedGroceryLists));
+      // } else {
+      //   dispatch(fetchGroceryLists([]));
+      // }
+    // }
   }, []);
 
   return (

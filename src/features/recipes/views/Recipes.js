@@ -47,8 +47,8 @@ function RecipesList() {
 
   // initial load
   useEffect(() => {
-    if (recipes.length === 0) {
       dispatch(getRecipesFromFirestore());
+    // if (recipes.length === 0) {
       // const storedRecipes = store('recipes');
 
       // if (storedRecipes) {
@@ -56,7 +56,7 @@ function RecipesList() {
       // } else {
       //   dispatch(fetchRecipes([]));
       // }
-    }
+    // }
   }, []);
 
   const handleDownload = (text, filename) => {

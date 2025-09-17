@@ -1,13 +1,11 @@
-import { createSlice, nanoid } from '@reduxjs/toolkit';
+import { createSlice, nanoid, createAsyncThunk } from '@reduxjs/toolkit';
 import { RootState } from '../../../app/store.ts';
 import { Recipe, Ingredient } from './recipeSlice.ts';
-
-import { createAsyncThunk } from '@reduxjs/toolkit';
 
 import recipesConfig from '../config.json';
 
 import store from 'store2';
-import { db, auth } from '../../../auth/firebaseConfig'; // Assuming you have a file with your Firebase initialization
+import { db, auth } from '../../../auth/firebaseConfig';
 import { collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 interface RecipesState {

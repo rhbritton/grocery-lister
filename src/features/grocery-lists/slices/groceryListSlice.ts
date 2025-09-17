@@ -7,6 +7,7 @@ import { GroceryListService } from '../data/groceryListService.ts';
 import store from 'store2';
 
 export interface GroceryList {
+    fbid: string | undefined;
     id: string;
     recipes: Recipe[] | [];
     ingredients: Ingredient[] | [];

@@ -1,6 +1,9 @@
-import { createSlice, nanoid } from '@reduxjs/toolkit';
+import { createSlice, nanoid, createAsyncThunk } from '@reduxjs/toolkit';
 import { RootState } from '../../../app/store.ts';
 import { GroceryList } from './groceryListSlice.ts';
+
+import { db, auth } from '../../../auth/firebaseConfig';
+import { collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 import store from 'store2';
 
@@ -22,6 +25,40 @@ const getGroceryListsBySearch = (state, searchTerm) => {
   let all_grocery_lists = getAllGroceryLists();
   state.groceryLists = all_grocery_lists;
 }
+
+export const getGroceryListsFromFirestore = createAsyncThunk(
+  'groceryLists/fetchGroceryLists',
+  async (_, { rejectWithValue }) => {
+    try {
+      const groceryListsCollectionRef = collection(db, 'grocery-lists');
+      let q = groceryListsCollectionRef;
+      
+      const querySnapshot = await getDocs(q);
+      console.log('querySnapshot.docs', querySnapshot.docs)
+      let groceryLists = querySnapshot.docs.map(doc => ({
+        fbid: doc.id,
+        ...doc.data()
+      }));
+
+
+      // TODO: ElasticSearch should probably be used instead
+      // groceryLists = groceryLists.filter((recipe) => {
+      //   if (!searchType || searchType == 'name') {
+      //     return recipe.name.toLowerCase().includes(searchTerm);
+      //   } else if (searchType == 'ingredient') {
+      //     return recipe.ingredients.some(function(ing) {
+      //       return ing.name.toLowerCase().includes(searchTerm);
+      //     });
+      //   }
+      // });
+
+      return groceryLists;
+      // return [];
+    } catch (error) {
+      return null; // rejectWithValue(error.message);
+    }
+  }
+);
 
 export const groceryListsSlice = createSlice({
   name: 'groceryLists',
@@ -79,6 +116,20 @@ export const groceryListsSlice = createSlice({
     //   const searchTerm = action.payload.toLowerCase();
     //   getRecipesBySearch(state, searchTerm);
     // }
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(getGroceryListsFromFirestore.pending, (state, action) => {
+        // console.log('test1', action.payload)
+      })
+      .addCase(getGroceryListsFromFirestore.fulfilled, (state, action) => {
+        console.log('test', action)
+        // state.groceryLists = action.payload;
+      })
+      .addCase(getGroceryListsFromFirestore.rejected, (state, action) => {
+        console.log(action.error)
+        console.log('test2', action.payload)
+      })
   },
 });
 
