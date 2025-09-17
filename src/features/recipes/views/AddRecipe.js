@@ -3,7 +3,7 @@ import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 
-import { addRecipe } from '../slices/recipesSlice.ts';
+import { addRecipe, addRecipeToFirestore } from '../slices/recipesSlice.ts';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash } from '@fortawesome/free-solid-svg-icons';
@@ -35,7 +35,8 @@ const AddRecipe = () => {
 
   const handleSave = () => {
     if (name.trim() !== '' && ingredients.length > 0 && ingredients.every(ingredient => ingredient.amount !== "" && ingredient.name.trim() !== "")) {
-      dispatch(addRecipe({ name, ingredients, instructions }));
+      // dispatch(addRecipe({ name, ingredients, instructions }));
+      dispatch(addRecipeToFirestore({ name, ingredients, instructions }));
       setName('');
       setIngredients([{ amount: '', name: '', type: '' }]);
       setInstructions('');

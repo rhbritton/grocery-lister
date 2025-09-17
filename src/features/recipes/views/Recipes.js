@@ -11,7 +11,7 @@ import RecipeSearch from '../components/RecipeSearch.js';
 import RecipeItem from '../components/RecipeItem.js';
 import DeleteModal from '../components/DeleteModal.js';
 
-import { fetchRecipes, selectRecipes, searchRecipes } from '../slices/recipesSlice.ts';
+import { fetchRecipes, selectRecipes, searchRecipes, getRecipesFromFirestore } from '../slices/recipesSlice.ts';
 
 function RecipesList() {
   const [exportRecipesToggle, setExportRecipesToggle] = useState(false);
@@ -19,7 +19,8 @@ function RecipesList() {
 
   const fileInputRef = useRef(null);
   
-  const recipes = useSelector((state) => selectRecipes(state));
+  const { recipes } = useSelector(state => state.recipes);
+  // const recipes = useSelector((state) => selectRecipes(state));
   const dispatch = useDispatch();
 
   const handleImport2 = () => {
@@ -47,13 +48,14 @@ function RecipesList() {
   // initial load
   useEffect(() => {
     if (recipes.length === 0) {
-      const storedRecipes = store('recipes');
+      dispatch(getRecipesFromFirestore());
+      // const storedRecipes = store('recipes');
 
-      if (storedRecipes) {
-        dispatch(fetchRecipes(storedRecipes));
-      } else {
-        dispatch(fetchRecipes([]));
-      }
+      // if (storedRecipes) {
+      //   dispatch(fetchRecipes(storedRecipes));
+      // } else {
+      //   dispatch(fetchRecipes([]));
+      // }
     }
   }, []);
 
@@ -101,6 +103,8 @@ function RecipesList() {
       alert('Failed to import recipes.');
     }
   };
+
+  console.log('recipes', recipes)
 
   return (
     <div>
@@ -151,7 +155,7 @@ function RecipesList() {
           <div>No recipes found.</div>
         ) : (
           recipes.map((recipe) => (
-            <RecipeItem key={recipe.id} recipe={recipe} setDeleteModalID={setDeleteModalID} />
+            <RecipeItem key={recipe.fbid} recipe={recipe} setDeleteModalID={setDeleteModalID} />
           ))
         )}
       </section>

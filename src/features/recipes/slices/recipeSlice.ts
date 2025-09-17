@@ -32,6 +32,7 @@ export interface Ingredient {
 };
 
 export interface Recipe {
+  fbid: string | undefined;
   id: string;
   name: string;
   ingredients: Ingredient[];
@@ -51,7 +52,8 @@ export const fetchRecipeById = createAsyncThunk<
   string 
 >('recipes/fetchRecipeById', async (id) => {
   try {
-    const recipe = await RecipeService.getRecipeById(id);
+    // const recipe = await RecipeService.getRecipeById(id);
+    const recipe = await RecipeService.getRecipeByFirebaseId(id);
     return recipe;
   } catch (error) {
     // Handle errors appropriately (e.g., log, display error messages)

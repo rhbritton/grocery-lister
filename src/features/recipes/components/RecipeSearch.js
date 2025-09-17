@@ -4,7 +4,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMagnifyingGlass, faChevronDown } from '@fortawesome/free-solid-svg-icons';
 
-import { fetchRecipes, selectRecipes, searchRecipes } from '../slices/recipesSlice.ts';
+import { fetchRecipes, selectRecipes, searchRecipes, getRecipesFromFirestore } from '../slices/recipesSlice.ts';
 
 function RecipeSearch(props) {
     const [searchTerm, setSearchTerm] = useState('');
@@ -19,7 +19,8 @@ function RecipeSearch(props) {
         const debouncedSearch = setTimeout(() => {
             // dispatch(searchRecipes(searchTerm));
             console.log(searchTerm);
-            dispatch(searchRecipes({ searchString: searchTerm, searchType: searchType }));
+            // dispatch(searchRecipes({ searchString: searchTerm, searchType: searchType }));
+            dispatch(getRecipesFromFirestore({ searchTerm: searchTerm, searchType: searchType }));
         }, 250);
 
         return () => clearTimeout(debouncedSearch);

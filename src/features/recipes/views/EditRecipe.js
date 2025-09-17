@@ -5,7 +5,7 @@ import { useParams, useNavigate, NavLink } from 'react-router-dom';
 import EditIngredient from '../components/EditIngredient';
 
 import { fetchRecipeById } from '../slices/recipeSlice.ts';
-import { editRecipe } from '../slices/recipesSlice.ts';
+import { editRecipe, editRecipeFromFirestore } from '../slices/recipesSlice.ts';
 
 const EditRecipe = () => {
   const { recipeId } = useParams();
@@ -56,7 +56,8 @@ const EditRecipe = () => {
 
   const handleSave = () => {
     if (name.trim() !== '' && ingredients.length > 0 && ingredients.every(ingredient => ingredient.amount !== "" && ingredient.name.trim() !== "")) {
-      dispatch(editRecipe({ recipeId, name, ingredients, instructions }));
+      // dispatch(editRecipe({ recipeId, name, ingredients, instructions }));
+      dispatch(editRecipeFromFirestore({ fbid: recipeId, name, ingredients, instructions }));
       setName('');
       setIngredients([{ amount: '', name: '', type: '' }]);
       setInstructions('');

@@ -10,7 +10,7 @@ import '../styles/RecipeItem.css';
 
 function RecipeItem(props) {
     const navigate = useNavigate();
-    const handleClick = useLinkClickHandler(`/recipes/view/${props.recipe.id}`);
+    const handleClick = useLinkClickHandler(`/recipes/view/${props.recipe.fbid}`);
 
   return (
     <div onClick={handleClick} className="RecipeItem w-full bg-white p-6 rounded-lg shadow-md hover:bg-gray-50 active:bg-gray-100">
@@ -23,7 +23,7 @@ function RecipeItem(props) {
                     e.preventDefault();
                     e.stopPropagation();
 
-                    navigate('/recipes/edit/'+props.recipe.id);
+                    navigate('/recipes/edit/'+props.recipe.fbid);
                 }} className="py-2 px-4 rounded-md hover:text-white hover:bg-yellow-500 active:bg-yellow-600">
                     <FontAwesomeIcon icon={faPenToSquare} />
                 </button>
@@ -32,7 +32,7 @@ function RecipeItem(props) {
                     e.preventDefault();
                     e.stopPropagation();
 
-                    props.setDeleteModalID(props.recipe.id);
+                    props.setDeleteModalID(props.recipe.fbid);
                 }} className="py-2 px-4 rounded-md hover:text-white hover:bg-red-500 active:bg-red-600">
                     <FontAwesomeIcon icon={faTrash} />
                 </button>

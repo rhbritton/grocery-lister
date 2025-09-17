@@ -2,41 +2,23 @@ import { createSlice, nanoid } from '@reduxjs/toolkit';
 import { RootState } from '../../../app/store.ts';
 import { Recipe, Ingredient } from './recipeSlice.ts';
 
+import { createAsyncThunk } from '@reduxjs/toolkit';
+
 import recipesConfig from '../config.json';
 
 import store from 'store2';
+import { db, auth } from '../../../auth/firebaseConfig'; // Assuming you have a file with your Firebase initialization
+import { collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
 interface RecipesState {
   recipes: Recipe[];
 };
 
-
-const existingUser = store('existingUser');
-if (!existingUser) {
-  store('existingUser', true);
-
-  let recipes = recipesConfig.recipes.map((recipeData) => ({
-    ...recipeData, // Spread operator to include all properties from recipeData
-    id: nanoid(), // Generate a unique ID for each recipe
-  }));
-
-  store('recipes', recipes);
-} else {
-  // recipes = store('recipes');
-  // console.log('r2', recipes)
-
-  // set state
-
-
-}
-
-
-
 const initialState: RecipesState = {
   recipes: []
 };
 
-export const getAllRecipes = () => {
+export const getAllRecipes = async () => {
   let all_recipes = store('recipes');
 
   return all_recipes;
@@ -55,6 +37,97 @@ const getRecipesBySearch = (state, searchTerm, searchType = 'name') => {
     }
   });
 }
+
+export const getRecipesFromFirestore = createAsyncThunk(
+  'recipes/fetchRecipes',
+  async ({ searchTerm, searchType }, { rejectWithValue }) => {
+    if (searchType)
+      searchType = searchType.toLowerCase();
+
+    try {
+      let q;
+      const recipesCollectionRef = collection(db, 'recipes');
+      q = recipesCollectionRef;
+      
+      const querySnapshot = await getDocs(q);
+      let recipes = querySnapshot.docs.map(doc => ({
+        fbid: doc.id,
+        ...doc.data()
+      }));
+
+      // TODO: ElasticSearch should probably be used instead
+      recipes = recipes.filter((recipe) => {
+        if (!searchType || searchType == 'name') {
+          return recipe.name.toLowerCase().includes(searchTerm);
+        } else if (searchType == 'ingredient') {
+          return recipe.ingredients.some(function(ing) {
+            return ing.name.toLowerCase().includes(searchTerm);
+          });
+        }
+      });
+
+      return recipes;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const addRecipeToFirestore = createAsyncThunk(
+  'recipes/addRecipe',
+  async (recipeData, { rejectWithValue }) => {
+    try {
+      const newRecipe = { id: nanoid(), ...recipeData };
+      const docRef = await addDoc(collection(db, 'recipes'), newRecipe);
+      return { fbid: docRef.id, ...newRecipe };
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const editRecipeFromFirestore = createAsyncThunk(
+  'recipes/editRecipe',
+  async (recipeData, { rejectWithValue }) => {
+    try {
+      // Create a reference to the specific document using its Firebase ID (fbid)
+      const docRef = doc(db, 'recipes', recipeData.fbid);
+
+      // Use updateDoc to update the fields in that document
+      // Note: We're using a copy of the data without the fbid itself for the update
+      const updatedData = { ...recipeData };
+      delete updatedData.fbid;
+
+      await updateDoc(docRef, updatedData);
+
+      // Return the updated recipe to be used in the reducer
+      return recipeData;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const deleteRecipeFromFirestore = createAsyncThunk(
+  'recipes/deleteRecipe',
+  async (fbid, { rejectWithValue }) => {
+    console.log(1)
+    console.log(fbid)
+    try {
+      // Create a reference to the specific document using its Firebase ID (fbid)
+      const docRef = doc(db, 'recipes', fbid);
+      console.log(2)
+
+      // Use deleteDoc to remove the document from the database
+      await deleteDoc(docRef);
+
+      // Return the fbid so the reducer can remove the item from the state
+      return fbid;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
 
 export const recipesSlice = createSlice({
   name: 'recipes',
@@ -109,10 +182,51 @@ export const recipesSlice = createSlice({
     searchRecipes: (state, action) => {
       const searchTerm = action.payload.searchString.toLowerCase();
       const searchType = action.payload.searchType.toLowerCase();
-      console.log('searchTerm', searchTerm);
-      console.log('searchType', searchType);
       getRecipesBySearch(state, searchTerm, searchType);
     }
+  },
+  extraReducers: (builder) => {
+    builder
+      .addCase(getRecipesFromFirestore.pending, (state) => {
+        
+      })
+      .addCase(getRecipesFromFirestore.fulfilled, (state, action) => {
+        state.recipes = action.payload; // Set the recipes with the fetched data
+      })
+      .addCase(getRecipesFromFirestore.rejected, (state, action) => {
+        
+      })
+      .addCase(addRecipeToFirestore.pending, (state) => {
+        
+      })
+      .addCase(addRecipeToFirestore.fulfilled, (state, action) => {
+        console.log(state.recipes)
+        // state.recipes.push(action.payload); // Add the new recipe to the state
+      })
+      .addCase(addRecipeToFirestore.rejected, (state, action) => {
+      
+      })
+      .addCase(editRecipeFromFirestore.pending, (state) => {
+        
+      })
+      .addCase(editRecipeFromFirestore.fulfilled, (state, action) => {
+        // state.recipes.push(action.payload); // Add the new recipe to the state
+      })
+      .addCase(editRecipeFromFirestore.rejected, (state, action) => {
+      
+      })
+      .addCase(deleteRecipeFromFirestore.pending, (state) => {
+        
+      })
+      .addCase(deleteRecipeFromFirestore.fulfilled, (state, action) => {
+        
+        console.log(state.recipes)
+        // state.recipes.push(action.payload); // Add the new recipe to the state
+      })
+      .addCase(deleteRecipeFromFirestore.rejected, (state, action) => {
+      
+      });
+      
   },
 });
 
