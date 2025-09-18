@@ -55,7 +55,7 @@ export const getGroceryListsFromFirestore = createAsyncThunk(
       return groceryLists;
       // return [];
     } catch (error) {
-      return null; // rejectWithValue(error.message);
+      return rejectWithValue(error.message);
     }
   }
 );
@@ -123,12 +123,10 @@ export const groceryListsSlice = createSlice({
         // console.log('test1', action.payload)
       })
       .addCase(getGroceryListsFromFirestore.fulfilled, (state, action) => {
-        console.log('test', action)
-        // state.groceryLists = action.payload;
+        state.groceryLists = action.payload;
       })
       .addCase(getGroceryListsFromFirestore.rejected, (state, action) => {
-        console.log(action.error)
-        console.log('test2', action.payload)
+        
       })
   },
 });
