@@ -11,7 +11,7 @@ import store from 'store2';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrash } from '@fortawesome/free-solid-svg-icons';
 
-import { fetchRecipes, selectRecipes, searchRecipes, getAllRecipes } from '../../recipes/slices/recipesSlice.ts';
+import { fetchRecipes, selectRecipes, searchRecipes, getAllRecipes, getAllRecipesFromFirestore } from '../../recipes/slices/recipesSlice.ts';
 
 import recipesConfig from '../../recipes/config.json';
 
@@ -21,14 +21,21 @@ const AddGroceryList = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   
-  const allRecipes = getAllRecipes();
-  const recipeOptions = allRecipes.map((recipe) => ({
+  // const allRecipes = getAllRecipes();
+  const { allRecipes } = useSelector(state => state.recipes);
+  const recipeOptions = allRecipes && allRecipes.map((recipe) => ({
     value: recipe.id,
     label: recipe.name,
   }));
 
+  useEffect(() => {
+    if (!allRecipes || allRecipes.length === 0) {
+        dispatch(getAllRecipesFromFirestore());
+    }
+  }, [dispatch, allRecipes]);
+
   let allRecipesById = {};
-  allRecipes.forEach(function(r) {
+  allRecipes && allRecipes.forEach(function(r) {
     allRecipesById[r.id] = r;
   });
 

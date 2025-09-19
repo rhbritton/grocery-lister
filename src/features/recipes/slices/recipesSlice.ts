@@ -36,6 +36,27 @@ const getRecipesBySearch = (state, searchTerm, searchType = 'name') => {
   });
 }
 
+export const getAllRecipesFromFirestore = createAsyncThunk(
+  'recipes/fetchAllRecipes',
+  async (_, { rejectWithValue }) => {
+    try {
+      let q;
+      const recipesCollectionRef = collection(db, 'recipes');
+      q = recipesCollectionRef;
+      
+      const querySnapshot = await getDocs(q);
+      let recipes = querySnapshot.docs.map(doc => ({
+        fbid: doc.id,
+        ...doc.data()
+      }));
+
+      return recipes;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 export const getRecipesFromFirestore = createAsyncThunk(
   'recipes/fetchRecipes',
   async ({ searchTerm, searchType }, { rejectWithValue }) => {
@@ -182,11 +203,21 @@ export const recipesSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      .addCase(getAllRecipesFromFirestore.pending, (state) => {
+        
+      })
+      .addCase(getAllRecipesFromFirestore.fulfilled, (state, action) => {
+        console.log('a', action.payload);
+        state.allRecipes = action.payload || [];
+      })
+      .addCase(getAllRecipesFromFirestore.rejected, (state, action) => {
+        
+      })
       .addCase(getRecipesFromFirestore.pending, (state) => {
         
       })
       .addCase(getRecipesFromFirestore.fulfilled, (state, action) => {
-        state.recipes = action.payload; // Set the recipes with the fetched data
+        state.recipes = action.payload || []; // Set the recipes with the fetched data
       })
       .addCase(getRecipesFromFirestore.rejected, (state, action) => {
         
@@ -195,6 +226,9 @@ export const recipesSlice = createSlice({
         
       })
       .addCase(addRecipeToFirestore.fulfilled, (state, action) => {
+        if (!state.recipes)
+          state.recipes = [];
+
         state.recipes.push(action.payload);
       })
       .addCase(addRecipeToFirestore.rejected, (state, action) => {
@@ -204,7 +238,10 @@ export const recipesSlice = createSlice({
         
       })
       .addCase(editRecipeFromFirestore.fulfilled, (state, action) => {
-        const updatedRecipe = action.payload;
+        const updatedRecipe = action.payload || [];
+        if (!state.recipes)
+          state.recipes = [];
+
         state.recipes = state.recipes.map(recipe =>
           recipe.fbid === updatedRecipe.fbid ? updatedRecipe : recipe
         );
