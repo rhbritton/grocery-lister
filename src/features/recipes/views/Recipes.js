@@ -11,7 +11,7 @@ import RecipeSearch from '../components/RecipeSearch.js';
 import RecipeItem from '../components/RecipeItem.js';
 import DeleteModal from '../components/DeleteModal.js';
 
-import { fetchRecipes, selectRecipes, searchRecipes, getRecipesFromFirestore } from '../slices/recipesSlice.ts';
+import { setRecipes, fetchRecipes, selectRecipes, searchRecipes, getRecipesFromFirestore } from '../slices/recipesSlice.ts';
 
 function RecipesList() {
   const [exportRecipesToggle, setExportRecipesToggle] = useState(false);
@@ -93,7 +93,8 @@ function RecipesList() {
     try {
       if (Array.isArray(parsedRecipes)) {
         store('recipes', parsedRecipes);
-        dispatch(fetchRecipes(parsedRecipes));
+        dispatch(setRecipes(parsedRecipes));
+        // dispatch(fetchRecipes(parsedRecipes));
         alert('Recipes imported successfully!');
       } else {
         alert('Invalid data format.');

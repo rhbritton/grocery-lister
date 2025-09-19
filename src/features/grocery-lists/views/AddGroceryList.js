@@ -21,8 +21,6 @@ const AddGroceryList = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   
-
-  // double check this to make sure it stays up to date, possibly use useEffect?
   const allRecipes = getAllRecipes();
   const recipeOptions = allRecipes.map((recipe) => ({
     value: recipe.id,
