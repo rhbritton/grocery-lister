@@ -207,7 +207,6 @@ export const recipesSlice = createSlice({
         
       })
       .addCase(getAllRecipesFromFirestore.fulfilled, (state, action) => {
-        console.log('a', action.payload);
         state.allRecipes = action.payload || [];
       })
       .addCase(getAllRecipesFromFirestore.rejected, (state, action) => {

@@ -8,45 +8,74 @@ function GroceryRecipeListItem(props) {
     const recipes = props.recipes;
     const setRecipes = props.setRecipes;
 
-    // const [recipeDuplicateCount, setRecipeDuplicateCount] = useState(recipe.recipe.quantity || 1);
-
     const toggleIngredient = (ingredientIndex, cross) => {
-        let updateRecipes = [];
-        recipes.forEach(function(r, i) {
-            let newR = r;
-            if (r.id === recipe.id)
-                newR.recipe.ingredients[ingredientIndex].crossed = cross;
-
-            updateRecipes.push(newR)
+        const updatedRecipes = recipes.map((r) => {
+            if (r.id === recipe.id) {
+                return {
+                    ...r,
+                    recipe: {
+                        ...r.recipe,
+                        ingredients: r.recipe.ingredients.map((ingredient, i) => {
+                            if (i === ingredientIndex) {
+                                return {
+                                    ...ingredient,
+                                    crossed: cross,
+                                };
+                            }
+                            return ingredient;
+                        }),
+                    },
+                };
+            }
+            
+            return r;
         });
 
-        setRecipes(updateRecipes);
+        setRecipes(updatedRecipes);
+    };
+
+    const updateRecipeIngredients = (recipesToUpdate, recipe_id, ingredients) => {
+        let updateRecipes = [];
+        recipesToUpdate.forEach(function(r, i) {
+            let newR = r;
+            if (r.id === recipe_id) {
+                const newIngredients = ingredients.map((ingredient, i) => {
+                    return ingredient;
+                });
+
+                newR = {
+                    ...r,
+                    recipe: {
+                        ...r.recipe,
+                        ingredients: newIngredients,
+                    }
+                }
+            }
+
+            updateRecipes.push(newR);
+        });
+
+        return updateRecipes;
     }
 
-    const updateRecipeIngredients = (recipe_id, ingredients) => {
+    const updateRecipeDuplicateCount = (recipesToUpdate, recipe_id, duplicateCount) => {
         let updateRecipes = [];
-        recipes.forEach(function(r, i) {
+        recipesToUpdate.forEach(function(r, i) {
             let newR = r;
-            if (r.id === recipe_id)
-                newR.recipe.ingredients = ingredients;
+            if (r.id === recipe_id) {
+                newR = {
+                    ...r,
+                    recipe: {
+                        ...r.recipe,
+                        duplicateCount: duplicateCount,
+                    }
+                }
+            }
 
-            updateRecipes.push(newR)
+            updateRecipes.push(newR);
         });
 
-        setRecipes(updateRecipes);
-    }
-
-    const updateRecipeDuplicateCount = (recipe_id, duplicateCount) => {
-        let updateRecipes = [];
-        recipes.forEach(function(r, i) {
-            let newR = r;
-            if (r.id === recipe_id)
-                newR.recipe.duplicateCount = duplicateCount;
-
-            updateRecipes.push(newR)
-        });
-
-        setRecipes(updateRecipes);
+        return updateRecipes;
     }
 
     const getOrigIngredients = (duplicate) => {
@@ -62,15 +91,15 @@ function GroceryRecipeListItem(props) {
     const handleDuplication = (recipe, diff) => {
         if (diff == 1) {
             let originalIngredients = getOrigIngredients((recipe.duplicateCount || 1)+1);
-            // setRecipeDuplicateCount(recipeDuplicateCount+1);
             let newIngredients = [];
             recipe.ingredients.forEach(function(ingredient) {
                 newIngredients.push(ingredient)
             });
             newIngredients = newIngredients.concat(originalIngredients);
 
-            updateRecipeIngredients(recipe.id, newIngredients);
-            updateRecipeDuplicateCount(recipe.id, (recipe.duplicateCount || 1)+1);
+            let updatedRecipes = updateRecipeIngredients(recipes, recipe.id, newIngredients);
+            updatedRecipes = updateRecipeDuplicateCount(updatedRecipes, recipe.id, (recipe.duplicateCount || 1)+1);
+            setRecipes(updatedRecipes);
         }
 
         if (diff == -1 && recipe.duplicateCount > 1) {
@@ -80,8 +109,9 @@ function GroceryRecipeListItem(props) {
                     newIngredients.push(ingredient)
             });
 
-            updateRecipeIngredients(recipe.id, newIngredients);
-            updateRecipeDuplicateCount(recipe.id, (recipe.duplicateCount || 1)-1);
+            let updatedRecipes = updateRecipeIngredients(recipes, recipe.id, newIngredients);
+            updatedRecipes = updateRecipeDuplicateCount(updatedRecipes, recipe.id, (recipe.duplicateCount || 1)-1);
+            setRecipes(updatedRecipes);
         }
     }
 

@@ -39,7 +39,6 @@ const AddGroceryList = () => {
     allRecipesById[r.id] = r;
   });
 
-
   const [recipes, setRecipes] = useState([]); // { id: nano(), recipe: {} }
   const [ingredients, setIngredients] = useState([]); // { amount: '', name: '', type: '', recipeId: '' }
 
@@ -141,7 +140,7 @@ const AddGroceryList = () => {
 
       <ul className="recipesList">
         {recipes.map((r, i) => (
-          <GroceryRecipeListItem key={r.recipe.id+i} recipe={r} setRecipes={setRecipes} recipes={recipes} />
+          <GroceryRecipeListItem key={r.recipe.fbid+r.recipe.id+i} recipe={r} setRecipes={setRecipes} recipes={recipes} />
         ))}
       </ul>
 
