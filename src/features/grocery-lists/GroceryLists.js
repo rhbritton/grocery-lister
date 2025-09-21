@@ -21,9 +21,7 @@ function GroceryLists() {
 
   // initial load
   useEffect(() => {
-    console.log('groceryLists', groceryLists)
       dispatch(getGroceryListsFromFirestore());
-    console.log('groceryLists3', groceryLists)
       
     // if (groceryLists.length === 0) {
       // const storedGroceryLists = store('grocery-lists');

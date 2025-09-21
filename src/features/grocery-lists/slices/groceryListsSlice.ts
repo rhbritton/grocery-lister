@@ -40,20 +40,22 @@ export const getGroceryListsFromFirestore = createAsyncThunk(
         ...doc.data()
       }));
 
-
-      // TODO: ElasticSearch should probably be used instead
-      // groceryLists = groceryLists.filter((recipe) => {
-      //   if (!searchType || searchType == 'name') {
-      //     return recipe.name.toLowerCase().includes(searchTerm);
-      //   } else if (searchType == 'ingredient') {
-      //     return recipe.ingredients.some(function(ing) {
-      //       return ing.name.toLowerCase().includes(searchTerm);
-      //     });
-      //   }
-      // });
-
       return groceryLists;
       // return [];
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const addGroceryListToFirestore = createAsyncThunk(
+  'recipes/addGroceryList',
+  async (groceryListData, { rejectWithValue }) => {
+    try {
+      const newGroceryList = { id: nanoid(), ...groceryListData };
+      const docRef = await addDoc(collection(db, 'grocery-lists'), newGroceryList);
+      console.log({ fbid: docRef.id, ...newGroceryList })
+      return { fbid: docRef.id, ...newGroceryList };
     } catch (error) {
       return rejectWithValue(error.message);
     }
@@ -127,6 +129,20 @@ export const groceryListsSlice = createSlice({
       })
       .addCase(getGroceryListsFromFirestore.rejected, (state, action) => {
         
+      })
+      .addCase(addGroceryListToFirestore.pending, (state) => {
+        console.log('pending')
+      })
+      .addCase(addGroceryListToFirestore.fulfilled, (state, action) => {
+        console.log('fulfilled')
+        if (!state.groceryLists)
+          state.groceryLists = [];
+
+        state.groceryLists.push(action.payload);
+      })
+      .addCase(addGroceryListToFirestore.rejected, (state, action) => {
+        console.log('rejected', action)
+      
       })
   },
 });

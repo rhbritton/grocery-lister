@@ -4,7 +4,7 @@ import { nanoid } from '@reduxjs/toolkit';
 import { useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 
-import { addGroceryList } from '../slices/groceryListsSlice.ts';
+import { addGroceryList, addGroceryListToFirestore } from '../slices/groceryListsSlice.ts';
 
 import store from 'store2';
 
@@ -80,7 +80,8 @@ const AddGroceryList = () => {
   
   const handleSave = () => {
     if (!isSaveDisabled) {
-      dispatch(addGroceryList({ id: nanoid(), recipes, ingredients, timestamp: (new Date()).getTime() }));
+      // dispatch(addGroceryList({ id: nanoid(), recipes, ingredients, timestamp: (new Date()).getTime() }));
+      dispatch(addGroceryListToFirestore({ id: nanoid(), recipes, ingredients, timestamp: (new Date()).getTime() }));
       setRecipes([]);
       setIngredients([]);
       
