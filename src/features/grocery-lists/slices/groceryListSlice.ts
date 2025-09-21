@@ -28,7 +28,8 @@ export const fetchGroceryListById = createAsyncThunk<
   string 
 >('groceryLists/fetchGroceryListById', async (id) => {
   try {
-    const groceryList = await GroceryListService.getGroceryListById(id);
+    // const groceryList = await GroceryListService.getGroceryListById(id);
+    const groceryList = await GroceryListService.getGroceryListByFirebaseId(id);
     return groceryList;
   } catch (error) {
     // Handle errors appropriately (e.g., log, display error messages)

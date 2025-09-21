@@ -22,7 +22,7 @@ const groceryListRecipeSeparator = ', ';
 
 function GroceryListItem(props) {
     const navigate = useNavigate();
-    const handleClick = useLinkClickHandler(`/grocery-lists/view/${props.gl.id}`);
+    const handleClick = useLinkClickHandler(`/grocery-lists/view/${props.gl.fbid}`);
 
     return (
         <div onClick={handleClick} className="GroceryListItem w-full bg-white p-6 rounded-lg shadow-md hover:bg-gray-50 active:bg-gray-100">
@@ -45,7 +45,7 @@ function GroceryListItem(props) {
                         e.preventDefault();
                         e.stopPropagation();
 
-                        props.setDeleteModalID(props.gl.id);
+                        props.setDeleteModalID(props.gl.fbid);
                     }} className="py-2 px-4 rounded-md hover:text-white hover:bg-red-500 active:bg-red-600">
                         <FontAwesomeIcon icon={faTrash} />
                     </button>
@@ -54,7 +54,7 @@ function GroceryListItem(props) {
 
             <div className="GroceryListRecipes text-left">
                 {props.gl.recipes.map((r, i) => {
-                    return <span key={r.recipe.id} className="GroceryListRecipe">
+                    return <span key={r.recipe.fbid} className="GroceryListRecipe">
                         {r.recipe.name}
                         {i+1 < props.gl.recipes.length && groceryListRecipeSeparator}
                     </span>;

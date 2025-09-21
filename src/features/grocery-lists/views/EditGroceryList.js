@@ -9,7 +9,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft, faTrash } from '@fortawesome/free-solid-svg-icons';
 
 import { fetchGroceryListById } from '../slices/groceryListSlice.ts';
-import { editGroceryList } from '../slices/groceryListsSlice.ts';
+import { editGroceryList, editGroceryListFromFirestore } from '../slices/groceryListsSlice.ts';
 
 import { formatDate, formatTime } from '../../../services/date.js';
 
@@ -134,7 +134,8 @@ const ViewGroceryList = () => {
             newIngredients.push(ing);
         });
 
-        dispatch(editGroceryList({ groceryListId: groceryList.id, recipes: groceryList.recipes, ingredients: newIngredients }));
+        // dispatch(editGroceryList({ groceryListId: groceryList.id, recipes: groceryList.recipes, ingredients: newIngredients }));
+        dispatch(editGroceryListFromFirestore({ fbid: groceryList.fbid, recipes: groceryList.recipes, ingredients: newIngredients }));
         
         navigate('/grocery-lists');
     }

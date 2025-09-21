@@ -69,7 +69,6 @@ export const recipeSlice = createSlice({
   extraReducers(builder) {
     builder
       .addCase(fetchRecipeById.fulfilled, (state, action) => {
-        console.log('payload', action.payload)
         state.recipe = action.payload;
       });
   },

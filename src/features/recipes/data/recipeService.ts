@@ -23,9 +23,6 @@ export const RecipeService = {
       const docRef = doc(db, 'recipes', fbid);
       const docSnap = await getDoc(docRef);
 
-      console.log(fbid)
-      console.log(docSnap)
-
       if (docSnap.exists()) {
         return { fbid: docSnap.id, ...docSnap.data() };
       } else {

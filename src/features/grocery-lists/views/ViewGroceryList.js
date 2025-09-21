@@ -8,7 +8,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
 
 import { fetchGroceryListById } from '../slices/groceryListSlice.ts';
-import { editGroceryList } from '../slices/groceryListsSlice.ts';
+import { editGroceryList, editGroceryListFromFirestore } from '../slices/groceryListsSlice.ts';
 
 import { formatDate, formatTime } from '../../../services/date.js';
 
@@ -101,7 +101,9 @@ const ViewGroceryList = () => {
   const isSaveDisabled = (!originalAllIngredients.length || !allIngredients.length) || originalAllIngredients.every((ing, i) => !!originalAllIngredients[i].crossed === !!allIngredients[i].crossed);
   const handleSave = (e) => {
     if (!isSaveDisabled) {
-        dispatch(editGroceryList({ groceryListId: groceryList.id, recipes: groceryList.recipes, ingredients: groceryList.ingredients }));
+        // dispatch(editGroceryList({ groceryListId: groceryList.id, recipes: groceryList.recipes, ingredients: groceryList.ingredients }));
+        dispatch(editGroceryListFromFirestore({ fbid: groceryList.fbid, recipes: groceryList.recipes, ingredients: groceryList.ingredients }));
+        
         setOriginalAllIngredients(getAllIngredients(groceryList));
     }
   }

@@ -34,7 +34,6 @@ export const getGroceryListsFromFirestore = createAsyncThunk(
       let q = groceryListsCollectionRef;
       
       const querySnapshot = await getDocs(q);
-      console.log('querySnapshot.docs', querySnapshot.docs)
       let groceryLists = querySnapshot.docs.map(doc => ({
         fbid: doc.id,
         ...doc.data()
@@ -49,13 +48,34 @@ export const getGroceryListsFromFirestore = createAsyncThunk(
 );
 
 export const addGroceryListToFirestore = createAsyncThunk(
-  'recipes/addGroceryList',
+  'groceryLists/addGroceryList',
   async (groceryListData, { rejectWithValue }) => {
     try {
       const newGroceryList = { id: nanoid(), ...groceryListData };
       const docRef = await addDoc(collection(db, 'grocery-lists'), newGroceryList);
-      console.log({ fbid: docRef.id, ...newGroceryList })
       return { fbid: docRef.id, ...newGroceryList };
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const editGroceryListFromFirestore = createAsyncThunk(
+  'groceryLists/editGroceryList',
+  async (groceryListData, { rejectWithValue }) => {
+    try {
+      // Create a reference to the specific document using its Firebase ID (fbid)
+      const docRef = doc(db, 'grocery-lists', groceryListData.fbid);
+
+      // Use updateDoc to update the fields in that document
+      // Note: We're using a copy of the data without the fbid itself for the update
+      const updatedData = { ...groceryListData };
+      delete updatedData.fbid;
+
+      await updateDoc(docRef, updatedData);
+
+      // Return the updated recipe to be used in the reducer
+      return groceryListData;
     } catch (error) {
       return rejectWithValue(error.message);
     }
@@ -122,7 +142,7 @@ export const groceryListsSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(getGroceryListsFromFirestore.pending, (state, action) => {
-        // console.log('test1', action.payload)
+        
       })
       .addCase(getGroceryListsFromFirestore.fulfilled, (state, action) => {
         state.groceryLists = action.payload;
@@ -131,18 +151,31 @@ export const groceryListsSlice = createSlice({
         
       })
       .addCase(addGroceryListToFirestore.pending, (state) => {
-        console.log('pending')
+        
       })
       .addCase(addGroceryListToFirestore.fulfilled, (state, action) => {
-        console.log('fulfilled')
         if (!state.groceryLists)
           state.groceryLists = [];
 
         state.groceryLists.push(action.payload);
       })
       .addCase(addGroceryListToFirestore.rejected, (state, action) => {
-        console.log('rejected', action)
       
+      })
+      .addCase(editGroceryListFromFirestore.pending, (state) => {
+              
+      })
+      .addCase(editGroceryListFromFirestore.fulfilled, (state, action) => {
+        const updatedGroceryList = action.payload || [];
+        if (!state.groceryLists)
+          state.groceryLists = [];
+
+        state.groceryLists = state.groceryLists.map(groceryList =>
+          groceryList.fbid === updatedGroceryList.fbid ? updatedGroceryList : groceryList
+        );
+      })
+      .addCase(editGroceryListFromFirestore.rejected, (state, action) => {
+        
       })
   },
 });

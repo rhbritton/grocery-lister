@@ -19,7 +19,6 @@ const EditRecipe = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-
         let recipe = (await dispatch(fetchRecipeById(recipeId))).payload;
 
         if (recipe) {

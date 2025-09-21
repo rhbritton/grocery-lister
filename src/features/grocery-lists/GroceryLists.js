@@ -49,7 +49,7 @@ function GroceryLists() {
           <div>No grocery lists found.</div>
         ) : (
           groceryLists.map((gl, i) => (
-            <GroceryListItem key={gl.id+i} gl={gl} setDeleteModalID={setDeleteModalID} />
+            <GroceryListItem key={gl.fbid+i} gl={gl} setDeleteModalID={setDeleteModalID} />
           ))
         )}
       </section>
