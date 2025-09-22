@@ -92,6 +92,29 @@ export const getRecipesFromFirestore = createAsyncThunk(
   }
 );
 
+export const addRecipesToFirestore = createAsyncThunk(
+  'recipes/addRecipes',
+  async (recipesData, { rejectWithValue }) => {
+    try {
+      // Ensure the input is an array
+      if (!Array.isArray(recipesData)) {
+        return rejectWithValue('Input must be an array of recipes.');
+      }
+
+      const addedRecipes = [];
+      for (const recipeData of recipesData) {
+        const newRecipe = { id: nanoid(), ...recipeData };
+        const docRef = await addDoc(collection(db, 'recipes'), newRecipe);
+        addedRecipes.push({ fbid: docRef.id, ...newRecipe });
+      }
+
+      return addedRecipes;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 export const addRecipeToFirestore = createAsyncThunk(
   'recipes/addRecipe',
   async (recipeData, { rejectWithValue }) => {
@@ -220,6 +243,18 @@ export const recipesSlice = createSlice({
       })
       .addCase(getRecipesFromFirestore.rejected, (state, action) => {
         
+      })
+      .addCase(addRecipesToFirestore.pending, (state) => {
+        
+      })
+      .addCase(addRecipesToFirestore.fulfilled, (state, action) => {
+        if (!state.recipes)
+          state.recipes = [];
+
+        state.recipes.push(...action.payload);
+      })
+      .addCase(addRecipesToFirestore.rejected, (state, action) => {
+      
       })
       .addCase(addRecipeToFirestore.pending, (state) => {
         

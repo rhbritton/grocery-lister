@@ -7,6 +7,8 @@ import store from 'store2';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faClipboard, faPaste, faFileImport, faFileExport } from '@fortawesome/free-solid-svg-icons';
 
+import { addRecipesToFirestore } from '../slices/recipesSlice.ts';
+
 import RecipeSearch from '../components/RecipeSearch.js';
 import RecipeItem from '../components/RecipeItem.js';
 import DeleteModal from '../components/DeleteModal.js';
@@ -77,8 +79,9 @@ function RecipesList() {
   const handleImport = (parsedRecipes) => {
     try {
       if (Array.isArray(parsedRecipes)) {
-        store('recipes', parsedRecipes);
-        dispatch(setRecipes(parsedRecipes));
+        // store('recipes', parsedRecipes);
+        // dispatch(setRecipes(parsedRecipes));
+        dispatch(addRecipesToFirestore(parsedRecipes))
         alert('Recipes imported successfully!');
       } else {
         alert('Invalid data format.');
