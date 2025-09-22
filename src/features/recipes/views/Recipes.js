@@ -20,7 +20,6 @@ function RecipesList() {
   const fileInputRef = useRef(null);
   
   const { recipes } = useSelector(state => state.recipes);
-  // const recipes = useSelector((state) => selectRecipes(state));
   const dispatch = useDispatch();
 
   const handleImport2 = () => {
@@ -34,7 +33,6 @@ function RecipesList() {
       reader.onload = (e) => {
         try {
           const importedData = JSON.parse(e.target.result);
-          // Process importedData here (e.g., update component state, send to an API)
           console.log('Successfully imported:', importedData);
           handleImport(importedData);
         } catch (error) {
@@ -45,18 +43,8 @@ function RecipesList() {
     }
   };
 
-  // initial load
   useEffect(() => {
       dispatch(getRecipesFromFirestore());
-    // if (recipes.length === 0) {
-      // const storedRecipes = store('recipes');
-
-      // if (storedRecipes) {
-      //   dispatch(fetchRecipes(storedRecipes));
-      // } else {
-      //   dispatch(fetchRecipes([]));
-      // }
-    // }
   }, []);
 
   const handleDownload = (text, filename) => {
@@ -64,11 +52,11 @@ function RecipesList() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = filename || 'download.txt'; // Default filename
+    link.download = filename || 'download.txt';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(url); // Clean up the URL object
+    URL.revokeObjectURL(url);
   };
 
   const handleExport = () => {
@@ -77,9 +65,6 @@ function RecipesList() {
       if (storedRecipes) {
         const jsonString = JSON.stringify(storedRecipes);
         handleDownload(jsonString);
-
-        // navigator.clipboard.writeText(jsonString);
-        // alert('Recipes copied to clipboard!');
       } else {
         alert('No recipes to export.');
       }
@@ -94,7 +79,6 @@ function RecipesList() {
       if (Array.isArray(parsedRecipes)) {
         store('recipes', parsedRecipes);
         dispatch(setRecipes(parsedRecipes));
-        // dispatch(fetchRecipes(parsedRecipes));
         alert('Recipes imported successfully!');
       } else {
         alert('Invalid data format.');
@@ -104,8 +88,6 @@ function RecipesList() {
       alert('Failed to import recipes.');
     }
   };
-
-  console.log('recipes', recipes)
 
   return (
     <div>

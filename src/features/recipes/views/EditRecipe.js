@@ -55,7 +55,6 @@ const EditRecipe = () => {
 
   const handleSave = () => {
     if (name.trim() !== '' && ingredients.length > 0 && ingredients.every(ingredient => ingredient.amount !== "" && ingredient.name.trim() !== "")) {
-      // dispatch(editRecipe({ recipeId, name, ingredients, instructions }));
       dispatch(editRecipeFromFirestore({ fbid: recipeId, name, ingredients, instructions }));
       setName('');
       setIngredients([{ amount: '', name: '', type: '' }]);

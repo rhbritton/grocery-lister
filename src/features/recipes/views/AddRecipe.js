@@ -35,7 +35,6 @@ const AddRecipe = () => {
 
   const handleSave = () => {
     if (name.trim() !== '' && ingredients.length > 0 && ingredients.every(ingredient => ingredient.amount !== "" && ingredient.name.trim() !== "")) {
-      // dispatch(addRecipe({ name, ingredients, instructions }));
       dispatch(addRecipeToFirestore({ name, ingredients, instructions }));
       setName('');
       setIngredients([{ amount: '', name: '', type: '' }]);
@@ -86,7 +85,6 @@ const AddRecipe = () => {
               setIngredients(recipe.ingredients);
               setInstructions(recipe.instructions);
             } else {
-              // Clear the form if no option is selected
               setName('');
               setIngredients([]);
               setInstructions('');
@@ -112,9 +110,7 @@ const AddRecipe = () => {
         <label className="block font-medium text-gray-700">Ingredients:</label>
         {ingredients.map((ingredient, index) => (
           <div key={index} className="flex items-center space-x-2 mb-8">
-            {/* Left section containing all inputs */}
             <div className="flex-grow flex flex-col space-y-2">
-              {/* Top row for Amount and Type */}
               <div className="flex space-x-2">
                 <input
                   type="text"
@@ -132,7 +128,6 @@ const AddRecipe = () => {
                 />
               </div>
 
-              {/* Bottom row for Ingredient */}
               <div>
                 <input
                   type="text"
@@ -144,7 +139,6 @@ const AddRecipe = () => {
               </div>
             </div>
 
-            {/* Right section for the button */}
             <div>
               <button
                 type="button"
