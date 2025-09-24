@@ -134,7 +134,6 @@ const ViewGroceryList = () => {
             newIngredients.push(ing);
         });
 
-        // dispatch(editGroceryList({ groceryListId: groceryList.id, recipes: groceryList.recipes, ingredients: newIngredients }));
         dispatch(editGroceryListFromFirestore({ fbid: groceryList.fbid, recipes: groceryList.recipes, ingredients: newIngredients }));
         
         navigate('/grocery-lists');
@@ -300,9 +299,7 @@ const ViewGroceryList = () => {
         <label className="block font-medium text-gray-700">Custom List Items:</label>
         {ingredients.map((ingredient, index) => (
             <div key={index} className="flex items-center space-x-2 mb-8">
-                {/* Left container takes up most of the space */}
                 <div className="flex-grow flex flex-col space-y-2">
-                    {/* Top container with Amount and Select inputs */}
                     <div className="flex space-x-2">
                     <input
                         type="text"
@@ -320,7 +317,6 @@ const ViewGroceryList = () => {
                     />
                     </div>
                     
-                    {/* Bottom container with Ingredient input */}
                     <div className="flex">
                     <input
                         type="text"
@@ -332,7 +328,6 @@ const ViewGroceryList = () => {
                     </div>
                 </div>
 
-                {/* Right container with the delete button, vertically centered */}
                 <div>
                     <button
                     type="button"

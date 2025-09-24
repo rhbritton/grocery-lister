@@ -101,7 +101,6 @@ const ViewGroceryList = () => {
   const isSaveDisabled = (!originalAllIngredients.length || !allIngredients.length) || originalAllIngredients.every((ing, i) => !!originalAllIngredients[i].crossed === !!allIngredients[i].crossed);
   const handleSave = (e) => {
     if (!isSaveDisabled) {
-        // dispatch(editGroceryList({ groceryListId: groceryList.id, recipes: groceryList.recipes, ingredients: groceryList.ingredients }));
         dispatch(editGroceryListFromFirestore({ fbid: groceryList.fbid, recipes: groceryList.recipes, ingredients: groceryList.ingredients }));
         
         setOriginalAllIngredients(getAllIngredients(groceryList));

@@ -16,22 +16,10 @@ function GroceryLists() {
   const [deleteModalID, setDeleteModalID] = useState(false);
 
   const { groceryLists } = useSelector(state => state.groceryLists);
-  // const groceryLists = useSelector((state) => selectGroceryLists(state));
   const dispatch = useDispatch();
 
-  // initial load
   useEffect(() => {
       dispatch(getGroceryListsFromFirestore());
-      
-    // if (groceryLists.length === 0) {
-      // const storedGroceryLists = store('grocery-lists');
-
-      // if (storedGroceryLists) {
-      //   dispatch(fetchGroceryLists(storedGroceryLists));
-      // } else {
-      //   dispatch(fetchGroceryLists([]));
-      // }
-    // }
   }, []);
 
   return (
