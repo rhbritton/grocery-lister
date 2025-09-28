@@ -96,7 +96,6 @@ export const addRecipesToFirestore = createAsyncThunk(
   'recipes/addRecipes',
   async (recipesData, { rejectWithValue }) => {
     try {
-      // Ensure the input is an array
       if (!Array.isArray(recipesData)) {
         return rejectWithValue('Input must be an array of recipes.');
       }
@@ -132,17 +131,11 @@ export const editRecipeFromFirestore = createAsyncThunk(
   'recipes/editRecipe',
   async (recipeData, { rejectWithValue }) => {
     try {
-      // Create a reference to the specific document using its Firebase ID (fbid)
       const docRef = doc(db, 'recipes', recipeData.fbid);
-
-      // Use updateDoc to update the fields in that document
-      // Note: We're using a copy of the data without the fbid itself for the update
       const updatedData = { ...recipeData };
       delete updatedData.fbid;
-
       await updateDoc(docRef, updatedData);
 
-      // Return the updated recipe to be used in the reducer
       return recipeData;
     } catch (error) {
       return rejectWithValue(error.message);
@@ -154,13 +147,9 @@ export const deleteRecipeFromFirestore = createAsyncThunk(
   'recipes/deleteRecipe',
   async (fbid, { rejectWithValue }) => {
     try {
-      // Create a reference to the specific document using its Firebase ID (fbid)
       const docRef = doc(db, 'recipes', fbid);
-
-      // Use deleteDoc to remove the document from the database
       await deleteDoc(docRef);
 
-      // Return the fbid so the reducer can remove the item from the state
       return fbid;
     } catch (error) {
       return rejectWithValue(error.message);
@@ -239,7 +228,7 @@ export const recipesSlice = createSlice({
         
       })
       .addCase(getRecipesFromFirestore.fulfilled, (state, action) => {
-        state.recipes = action.payload || []; // Set the recipes with the fetched data
+        state.recipes = action.payload || [];
       })
       .addCase(getRecipesFromFirestore.rejected, (state, action) => {
         
@@ -299,7 +288,7 @@ export const recipesSlice = createSlice({
 export const { setRecipes, addRecipe, editRecipe, deleteRecipe, searchRecipes } = recipesSlice.actions
 
 export const fetchRecipes = (storedRecipes: any) => (dispatch: any) => {
-  dispatch(setRecipes(storedRecipes)); // Dispatch the setRecipes action
+  dispatch(setRecipes(storedRecipes));
 };
 
 export const selectRecipes = (state: RootState) => state.recipes.recipes;

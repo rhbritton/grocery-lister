@@ -52,13 +52,11 @@ export const fetchRecipeById = createAsyncThunk<
   string 
 >('recipes/fetchRecipeById', async (id) => {
   try {
-    // const recipe = await RecipeService.getRecipeById(id);
     const recipe = await RecipeService.getRecipeByFirebaseId(id);
     return recipe;
   } catch (error) {
-    // Handle errors appropriately (e.g., log, display error messages)
     console.error('Error fetching recipe:', error);
-    return undefined; // Return undefined on error
+    return undefined;
   }
 });
 
@@ -73,7 +71,5 @@ export const recipeSlice = createSlice({
       });
   },
 });
-
-// export const {} = recipeSlice.actions
 
 export default recipeSlice.reducer;
