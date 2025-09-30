@@ -26,7 +26,6 @@ export const RecipeService = {
       if (docSnap.exists()) {
         return { fbid: docSnap.id, ...docSnap.data() };
       } else {
-        // Document does not exist
         console.log("No such document!");
         return undefined;
       }
