@@ -82,6 +82,20 @@ export const editGroceryListFromFirestore = createAsyncThunk(
   }
 );
 
+export const deleteGroceryListFromFirestore = createAsyncThunk(
+  'recipes/deleteGroceryList',
+  async (fbid, { rejectWithValue }) => {
+    try {
+      const docRef = doc(db, 'grocery-lists', fbid);
+      await deleteDoc(docRef);
+
+      return fbid;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 export const groceryListsSlice = createSlice({
   name: 'groceryLists',
   initialState,
@@ -177,6 +191,15 @@ export const groceryListsSlice = createSlice({
       .addCase(editGroceryListFromFirestore.rejected, (state, action) => {
         
       })
+      .addCase(deleteGroceryListFromFirestore.pending, (state) => {
+        
+      })
+      .addCase(deleteGroceryListFromFirestore.fulfilled, (state, action) => {
+        state.groceryLists = state.groceryLists.filter(groceryList => groceryList.fbid !== action.payload);
+      })
+      .addCase(deleteGroceryListFromFirestore.rejected, (state, action) => {
+        
+      });
   },
 });
 

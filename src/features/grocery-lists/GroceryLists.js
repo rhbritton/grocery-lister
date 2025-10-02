@@ -14,13 +14,17 @@ import DeleteModal from './components/DeleteModal.js';
 
 function GroceryLists() {
   const [deleteModalID, setDeleteModalID] = useState(false);
+  const [hasLoadedGroceryLists, setHasLoadedGroceryLists] = useState(false);
 
   const { groceryLists } = useSelector(state => state.groceryLists);
   const dispatch = useDispatch();
 
   useEffect(() => {
+    if (!hasLoadedGroceryLists) {
       dispatch(getGroceryListsFromFirestore());
-  }, []);
+      setHasLoadedGroceryLists(true);
+    }
+  }, [dispatch]);
 
   return (
     <div>

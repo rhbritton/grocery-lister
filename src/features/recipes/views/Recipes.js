@@ -18,6 +18,7 @@ import { setRecipes, fetchRecipes, selectRecipes, searchRecipes, getRecipesFromF
 function RecipesList() {
   const [exportRecipesToggle, setExportRecipesToggle] = useState(false);
   const [deleteModalID, setDeleteModalID] = useState(false);
+  const [hasLoadedRecipes, setHasLoadedRecipes] = useState(false);
 
   const fileInputRef = useRef(null);
   
@@ -46,8 +47,11 @@ function RecipesList() {
   };
 
   useEffect(() => {
+    if (!hasLoadedRecipes) {
       dispatch(getRecipesFromFirestore());
-  }, []);
+      setHasLoadedRecipes(true);
+    }
+  }, [dispatch]);
 
   const handleDownload = (text, filename) => {
     const blob = new Blob([text], { type: 'text/plain' });

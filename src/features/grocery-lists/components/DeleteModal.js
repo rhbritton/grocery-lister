@@ -1,7 +1,7 @@
 import React from 'react';
 import { useDispatch } from 'react-redux';
 
-import { deleteGroceryList } from '../slices/groceryListsSlice.ts';
+import { deleteGroceryList, deleteGroceryListFromFirestore } from '../slices/groceryListsSlice.ts';
 
 function DeleteModal(props) {
     const dispatch = useDispatch();
@@ -37,7 +37,8 @@ function DeleteModal(props) {
             onClick={(e) => {
                 e.stopPropagation();
                 
-                dispatch(deleteGroceryList({ groceryListId: props.deleteModalID }));
+                // dispatch(deleteGroceryList({ groceryListId: props.deleteModalID }));
+                dispatch(deleteGroceryListFromFirestore(props.deleteModalID));
                 props.setDeleteModalID(false);
             }}
           >
