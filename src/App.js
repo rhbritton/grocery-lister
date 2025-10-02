@@ -23,9 +23,6 @@ import ViewRecipe from './features/recipes/views/ViewRecipe.js';
 
 import './App.css';
 
-// IMPORTANT: The variables below are read from your .env file.
-// All environment variables must be prefixed with REACT_APP_ to work in a
-// create-react-app environment.
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_API_KEY,
   authDomain: process.env.REACT_APP_AUTH_DOMAIN,
@@ -43,12 +40,10 @@ function App() {
   const [userProfile, setUserProfile] = useState(null);
 
   useEffect(() => {
-    // Set up the auth state change listener.
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
         const userId = currentUser.uid;
-        // Use the globally imported 'db'
         const userProfileRef = doc(db, `artifacts/${appId}/users/${userId}/profiles/${userId}`);
         
         onSnapshot(userProfileRef, (docSnap) => {
@@ -82,7 +77,6 @@ function App() {
       const result = await signInWithPopup(auth, provider);
       const googleUser = result.user;
       
-      // Save user profile to Firestore
       const userProfileRef = doc(db, `artifacts/${appId}/users/${googleUser.uid}/profiles/${googleUser.uid}`);
       await setDoc(userProfileRef, {
         uid: googleUser.uid,
@@ -97,7 +91,6 @@ function App() {
     }
   };
 
-  // Handle Logout
   const handleLogout = async () => {
     if (auth) {
       await signOut(auth);
