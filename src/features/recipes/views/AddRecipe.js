@@ -12,10 +12,9 @@ import { faTrash } from '@fortawesome/free-solid-svg-icons';
 
 import recipesConfig from '../config.json';
 
-const AddRecipe = () => {
-  const auth = getAuth();
-  const currentUser = auth.currentUser;
-  const userId = currentUser.uid;
+const AddRecipe = (props) => {
+  const { user } = props;
+  const userId = user.uid;
 
   const navigate = useNavigate();
   const dispatch = useDispatch();

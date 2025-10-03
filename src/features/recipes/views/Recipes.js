@@ -16,10 +16,9 @@ import DeleteModal from '../components/DeleteModal.js';
 
 import { setRecipes, fetchRecipes, selectRecipes, searchRecipes, getRecipesFromFirestore } from '../slices/recipesSlice.ts';
 
-function RecipesList() {
-  const auth = getAuth();
-  const currentUser = auth.currentUser;
-  const userId = currentUser.uid;
+function RecipesList(props) {
+  const { user } = props;
+  const userId = user.uid;
 
   const [exportRecipesToggle, setExportRecipesToggle] = useState(false);
   const [deleteModalID, setDeleteModalID] = useState(false);

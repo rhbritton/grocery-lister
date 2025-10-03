@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUserCircle, faSignOutAlt } from '@fortawesome/free-solid-svg-icons';
 
 function Header(props) {
+  const { user } = props;
   const location = useLocation();
 
   const isActiveURL = (path) => {
@@ -61,7 +62,13 @@ function Header(props) {
             <FontAwesomeIcon icon={faUserCircle} />
           </button>
           {isDropdownOpen && (
-            <ul className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-10">
+            <ul className="absolute right-0 mt-2 w-60 bg-white border border-gray-200 rounded-md shadow-lg py-1 z-10">
+              <li className="text-right flex items-center px-4 py-2 text-sm text-gray-700">
+                {user.displayName}
+              </li>
+              <li className="flex items-center px-4 py-2 text-sm text-gray-700">
+                {user.email}
+              </li>
               <li
                 onClick={() => {
                   props.handleLogout();

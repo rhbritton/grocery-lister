@@ -14,10 +14,9 @@ import { selectGroceryLists, fetchGroceryLists, getGroceryListsFromFirestore } f
 import GroceryListItem from './components/GroceryListItem';
 import DeleteModal from './components/DeleteModal.js';
 
-function GroceryLists() {
-  const auth = getAuth();
-  const currentUser = auth.currentUser;
-  const userId = currentUser.uid;
+function GroceryLists(props) {
+  const { user } = props;
+  const userId = user.uid;
 
   const [deleteModalID, setDeleteModalID] = useState(false);
   const [hasLoadedGroceryLists, setHasLoadedGroceryLists] = useState(false);

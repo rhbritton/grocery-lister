@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
-import { auth, db } from './auth/firebaseConfig'; 
+import { auth, db } from './auth/firebaseConfig';
 
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom';
 
@@ -132,18 +132,18 @@ function App() {
   return (
     <div className="App bg-gray-100 min-h-screen p-4">
         <BrowserRouter basename="/gl">
-        <Header handleLogout={handleLogout} />
+        <Header user={user} handleLogout={handleLogout} />
         
         <main className="flex flex-col md:flex-col md:space-y-0 md:space-x-4">
           <Routes>
-            <Route path="/" element={<Recipes />} />
-            <Route path="/recipes" element={<Recipes />} />
-            <Route path="/recipes/add" element={<AddRecipe />} />
+            <Route path="/" element={<Recipes user={user} />} />
+            <Route path="/recipes" element={<Recipes user={user} />} />
+            <Route path="/recipes/add" element={<AddRecipe user={user} />} />
             <Route path="/recipes/edit/:recipeId" element={<EditRecipe />} />
             <Route path="/recipes/view/:recipeId" element={<ViewRecipe />} />
 
-            <Route path="/grocery-lists" element={<GroceryLists />} />
-            <Route path="/grocery-lists/add" element={<AddGroceryList />} />
+            <Route path="/grocery-lists" element={<GroceryLists user={user} />} />
+            <Route path="/grocery-lists/add" element={<AddGroceryList user={user} />} />
             <Route path="/grocery-lists/edit/:groceryListId" element={<EditGroceryList />} />
             <Route path="/grocery-lists/view/:groceryListId" element={<ViewGroceryList />} />
           </Routes>
