@@ -32,6 +32,7 @@ export interface Ingredient {
 };
 
 export interface Recipe {
+  userid: string | undefined;
   fbid: string | undefined;
   id: string;
   name: string;

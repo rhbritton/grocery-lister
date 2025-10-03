@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
+import { getAuth } from 'firebase/auth';
 
 import store from 'store2';
 
@@ -16,6 +17,10 @@ import DeleteModal from '../components/DeleteModal.js';
 import { setRecipes, fetchRecipes, selectRecipes, searchRecipes, getRecipesFromFirestore } from '../slices/recipesSlice.ts';
 
 function RecipesList() {
+  const auth = getAuth();
+  const currentUser = auth.currentUser;
+  const userId = currentUser.uid;
+
   const [exportRecipesToggle, setExportRecipesToggle] = useState(false);
   const [deleteModalID, setDeleteModalID] = useState(false);
   const [hasLoadedRecipes, setHasLoadedRecipes] = useState(false);
@@ -48,7 +53,8 @@ function RecipesList() {
 
   useEffect(() => {
     if (!hasLoadedRecipes) {
-      dispatch(getRecipesFromFirestore());
+      console.log(userId)
+      dispatch(getRecipesFromFirestore({ userId }));
       setHasLoadedRecipes(true);
     }
   }, [dispatch]);
@@ -85,6 +91,9 @@ function RecipesList() {
       if (Array.isArray(parsedRecipes)) {
         // store('recipes', parsedRecipes);
         // dispatch(setRecipes(parsedRecipes));
+        parsedRecipes = parsedRecipes.map((recipe) => {
+          return { ...recipe, userId };
+        });
         dispatch(addRecipesToFirestore(parsedRecipes))
         alert('Recipes imported successfully!');
       } else {
@@ -98,7 +107,7 @@ function RecipesList() {
 
   return (
     <div>
-      <RecipeSearch />
+      <RecipeSearch userId={userId} />
       
       <div className="flex justify-between">
         <div>

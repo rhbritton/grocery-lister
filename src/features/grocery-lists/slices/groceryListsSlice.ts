@@ -28,10 +28,13 @@ const getGroceryListsBySearch = (state, searchTerm) => {
 
 export const getGroceryListsFromFirestore = createAsyncThunk(
   'groceryLists/fetchGroceryLists',
-  async (_, { rejectWithValue }) => {
+  async (userId, { rejectWithValue }) => {
     try {
       const groceryListsCollectionRef = collection(db, 'grocery-lists');
-      let q = groceryListsCollectionRef;
+      let q = query(
+        groceryListsCollectionRef,
+        where('userId', '==', userId)
+      );
       
       const querySnapshot = await getDocs(q);
       let groceryLists = querySnapshot.docs.map(doc => ({

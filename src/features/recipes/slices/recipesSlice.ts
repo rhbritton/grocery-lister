@@ -38,11 +38,14 @@ const getRecipesBySearch = (state, searchTerm, searchType = 'name') => {
 
 export const getAllRecipesFromFirestore = createAsyncThunk(
   'recipes/fetchAllRecipes',
-  async (_, { rejectWithValue }) => {
+  async (userId, { rejectWithValue }) => {
     try {
       let q;
       const recipesCollectionRef = collection(db, 'recipes');
-      q = recipesCollectionRef;
+      q = query(
+        recipesCollectionRef,
+        where('userId', '==', userId)
+      );
       
       const querySnapshot = await getDocs(q);
       let recipes = querySnapshot.docs.map(doc => ({
@@ -59,14 +62,17 @@ export const getAllRecipesFromFirestore = createAsyncThunk(
 
 export const getRecipesFromFirestore = createAsyncThunk(
   'recipes/fetchRecipes',
-  async ({ searchTerm, searchType }, { rejectWithValue }) => {
+  async ({ userId, searchTerm, searchType }, { rejectWithValue }) => {
     if (searchType)
       searchType = searchType.toLowerCase();
 
     try {
       let q;
       const recipesCollectionRef = collection(db, 'recipes');
-      q = recipesCollectionRef;
+      q = query(
+        recipesCollectionRef,
+        where('userId', '==', userId)
+      );
       
       const querySnapshot = await getDocs(q);
       let recipes = querySnapshot.docs.map(doc => ({

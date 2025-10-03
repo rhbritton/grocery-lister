@@ -4,6 +4,8 @@ import { nanoid } from '@reduxjs/toolkit';
 import { useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 
+import { getAuth } from 'firebase/auth';
+
 import { addGroceryList, addGroceryListToFirestore } from '../slices/groceryListsSlice.ts';
 
 import store from 'store2';
@@ -18,6 +20,10 @@ import recipesConfig from '../../recipes/config.json';
 import GroceryRecipeListItem from '../components/GroceryRecipeListItem.js';
 
 const AddGroceryList = () => {
+  const auth = getAuth();
+  const currentUser = auth.currentUser;
+  const userId = currentUser.uid;
+
   const navigate = useNavigate();
   const dispatch = useDispatch();
   
@@ -29,7 +35,7 @@ const AddGroceryList = () => {
 
   useEffect(() => {
     if (!allRecipes || allRecipes.length === 0) {
-        dispatch(getAllRecipesFromFirestore());
+        dispatch(getAllRecipesFromFirestore(userId));
     }
   }, [dispatch, allRecipes]);
 
@@ -79,7 +85,7 @@ const AddGroceryList = () => {
   
   const handleSave = () => {
     if (!isSaveDisabled) {
-      dispatch(addGroceryListToFirestore({ id: nanoid(), recipes, ingredients, timestamp: (new Date()).getTime() }));
+      dispatch(addGroceryListToFirestore({ id: nanoid(), userId, recipes, ingredients, timestamp: (new Date()).getTime() }));
       setRecipes([]);
       setIngredients([]);
       

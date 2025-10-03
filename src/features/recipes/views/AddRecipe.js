@@ -3,6 +3,8 @@ import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 
+import { getAuth } from 'firebase/auth';
+
 import { addRecipe, addRecipeToFirestore } from '../slices/recipesSlice.ts';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -11,6 +13,10 @@ import { faTrash } from '@fortawesome/free-solid-svg-icons';
 import recipesConfig from '../config.json';
 
 const AddRecipe = () => {
+  const auth = getAuth();
+  const currentUser = auth.currentUser;
+  const userId = currentUser.uid;
+
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [name, setName] = useState('');
@@ -35,7 +41,7 @@ const AddRecipe = () => {
 
   const handleSave = () => {
     if (name.trim() !== '' && ingredients.length > 0 && ingredients.every(ingredient => ingredient.amount !== "" && ingredient.name.trim() !== "")) {
-      dispatch(addRecipeToFirestore({ name, ingredients, instructions }));
+      dispatch(addRecipeToFirestore({ userId, name, ingredients, instructions }));
       setName('');
       setIngredients([{ amount: '', name: '', type: '' }]);
       setInstructions('');

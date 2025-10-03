@@ -7,6 +7,7 @@ import { faMagnifyingGlass, faChevronDown } from '@fortawesome/free-solid-svg-ic
 import { fetchRecipes, selectRecipes, searchRecipes, getRecipesFromFirestore } from '../slices/recipesSlice.ts';
 
 function RecipeSearch(props) {
+    const { userId } = props;
     const [searchTerm, setSearchTerm] = useState('');
     const [searchType, setSearchType] = useState('Name');
     const dispatch = useDispatch();
@@ -18,9 +19,8 @@ function RecipeSearch(props) {
     const handleSearch = () => {
         const debouncedSearch = setTimeout(() => {
             // dispatch(searchRecipes(searchTerm));
-            console.log(searchTerm);
             // dispatch(searchRecipes({ searchString: searchTerm, searchType: searchType }));
-            dispatch(getRecipesFromFirestore({ searchTerm: searchTerm, searchType: searchType }));
+            dispatch(getRecipesFromFirestore({ userId, searchTerm: searchTerm, searchType: searchType }));
         }, 250);
 
         return () => clearTimeout(debouncedSearch);
