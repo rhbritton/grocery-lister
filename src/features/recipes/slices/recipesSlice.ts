@@ -67,7 +67,10 @@ export const getRecipesFromFirestore = createAsyncThunk(
   'recipes/fetchRecipes',
   async ({ userId, searchTerm, searchType }, { rejectWithValue }) => {
     if (searchType)
-      searchType = searchType.toLowerCase();
+      searchType = searchType.toLowerCase().trim();
+
+    if (searchTerm)
+      searchTerm = searchTerm.toLowerCase().trim();
 
     try {
       let q;
