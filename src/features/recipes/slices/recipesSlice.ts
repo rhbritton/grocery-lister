@@ -13,7 +13,10 @@ interface RecipesState {
 };
 
 const initialState: RecipesState = {
-  recipes: []
+  recipes: [],
+  status: 'idle',
+  error: null,
+  allRecipes: [],
 };
 
 export const getAllRecipes = async () => {
@@ -222,22 +225,23 @@ export const recipesSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(getAllRecipesFromFirestore.pending, (state) => {
-        
+
       })
       .addCase(getAllRecipesFromFirestore.fulfilled, (state, action) => {
         state.allRecipes = action.payload || [];
       })
       .addCase(getAllRecipesFromFirestore.rejected, (state, action) => {
-        
+
       })
       .addCase(getRecipesFromFirestore.pending, (state) => {
-        
+        state.status = 'loading';
       })
       .addCase(getRecipesFromFirestore.fulfilled, (state, action) => {
+        state.status = 'succeeded';
         state.recipes = action.payload || [];
       })
       .addCase(getRecipesFromFirestore.rejected, (state, action) => {
-        
+        state.status = 'failed';
       })
       .addCase(addRecipesToFirestore.pending, (state) => {
         

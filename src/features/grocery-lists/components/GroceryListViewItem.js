@@ -29,8 +29,22 @@ function GroceryListViewItem(props) {
                 let updateRecipes = [];
                 groceryList.recipes.forEach(function(r, i) {
                     if (r.id == props.ingredient.recipe.id) {
-                        let newRecipe = { ...r };
-                        newRecipe.recipe.ingredients[ingredientIndex].crossed = cross;
+                        const updatedIngredient = { 
+                            ...r.recipe.ingredients[ingredientIndex],
+                            crossed: cross 
+                        };
+                        const updatedIngredients = r.recipe.ingredients.map((ing, index) =>
+                            index === ingredientIndex ? updatedIngredient : ing
+                        );
+                        const updatedRecipeDetails = { 
+                            ...r.recipe, 
+                            ingredients: updatedIngredients 
+                        };
+                        const newRecipe = { 
+                            ...r, 
+                            recipe: updatedRecipeDetails 
+                        };
+                        
                         updateRecipes.push(newRecipe);
                     } else {
                         updateRecipes.push(r)

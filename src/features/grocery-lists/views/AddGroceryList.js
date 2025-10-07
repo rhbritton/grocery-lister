@@ -82,13 +82,23 @@ const AddGroceryList = (props) => {
 
   const isSaveDisabled = (customIsZero && recipesAreZero) || customHasUnfilled || (recipesAreAllCrossed && customIsZero);
   
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!isSaveDisabled) {
-      dispatch(addGroceryListToFirestore({ id: nanoid(), userId, recipes, ingredients, timestamp: (new Date()).getTime() }));
-      setRecipes([]);
-      setIngredients([]);
-      
-      navigate('/grocery-lists');
+      try {
+        await dispatch(addGroceryListToFirestore({ 
+            id: nanoid(), 
+            userId, 
+            recipes, 
+            ingredients, 
+            timestamp: (new Date()).getTime() 
+        }));
+
+        setRecipes([]);
+        setIngredients([]);
+        navigate('/grocery-lists');
+      } catch (error) {
+        console.error("Failed to save grocery list:", error);
+      }
     }
   };
 

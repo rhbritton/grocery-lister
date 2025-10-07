@@ -22,11 +22,11 @@ function RecipesList(props) {
 
   const [exportRecipesToggle, setExportRecipesToggle] = useState(false);
   const [deleteModalID, setDeleteModalID] = useState(false);
-  const [hasLoadedRecipes, setHasLoadedRecipes] = useState(false);
 
   const fileInputRef = useRef(null);
   
-  const { recipes } = useSelector(state => state.recipes);
+  const { recipes, status } = useSelector(state => state.recipes);
+
   const dispatch = useDispatch();
 
   const handleImport2 = () => {
@@ -51,12 +51,10 @@ function RecipesList(props) {
   };
 
   useEffect(() => {
-    if (!hasLoadedRecipes) {
-      console.log(userId)
+    if (status === 'idle' && recipes && recipes.length === 0) {
       dispatch(getRecipesFromFirestore({ userId }));
-      setHasLoadedRecipes(true);
     }
-  }, [dispatch]);
+  }, [dispatch, status, recipes.length, userId]);
 
   const handleDownload = (text, filename) => {
     const blob = new Blob([text], { type: 'text/plain' });
@@ -108,8 +106,8 @@ function RecipesList(props) {
     <div>
       <RecipeSearch userId={userId} />
       
-      <div className="flex justify-between">
-        <div>
+      <div className="">
+        {/* <div>
         <button onClick={(e) => { setExportRecipesToggle(!exportRecipesToggle) }} className="mb-4 px-4 py-2 rounded-md bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-800">
           <FontAwesomeIcon icon={faFileImport} /> | <FontAwesomeIcon icon={faFileExport} />
         </button>
@@ -137,7 +135,7 @@ function RecipesList(props) {
           </button>
         </span>}
         
-        </div>
+        </div> */}
 
         <NavLink to="/recipes/add">
           <button className="mb-4 px-4 py-2 rounded-md bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-800">
@@ -149,7 +147,9 @@ function RecipesList(props) {
       
       
       <section className="App-body RecipesList w-full space-y-4">
-        {recipes.length === 0 ? (
+        {status === 'loading' ? (
+          <div>Loading recipes...</div>
+        ) : recipes.length === 0 ? (
           <div>No recipes found.</div>
         ) : (
           recipes.map((recipe) => (

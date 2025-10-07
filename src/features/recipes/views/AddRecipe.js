@@ -38,14 +38,21 @@ const AddRecipe = (props) => {
     setIngredients(newIngredients);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (name.trim() !== '' && ingredients.length > 0 && ingredients.every(ingredient => ingredient.amount !== "" && ingredient.name.trim() !== "")) {
-      dispatch(addRecipeToFirestore({ userId, name, ingredients, instructions }));
-      setName('');
-      setIngredients([{ amount: '', name: '', type: '' }]);
-      setInstructions('');
-      
-      navigate('/recipes');
+      try {
+        await dispatch(addRecipeToFirestore({ 
+            userId, name, ingredients, instructions
+        }));
+
+        setName('');
+        setIngredients([{ amount: '', name: '', type: '' }]);
+        setInstructions('');
+        
+        navigate('/recipes');
+      } catch (error) {
+        console.error("Failed to save grocery list:", error);
+      }
     }
   };
 

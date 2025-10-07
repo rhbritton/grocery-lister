@@ -67,18 +67,13 @@ export const editGroceryListFromFirestore = createAsyncThunk(
   'groceryLists/editGroceryList',
   async (groceryListData, { rejectWithValue }) => {
     try {
-      // Create a reference to the specific document using its Firebase ID (fbid)
       const docRef = doc(db, 'grocery-lists', groceryListData.fbid);
-
-      // Use updateDoc to update the fields in that document
-      // Note: We're using a copy of the data without the fbid itself for the update
       const updatedData = { ...groceryListData };
       delete updatedData.fbid;
-
       await updateDoc(docRef, updatedData);
+      const updatedSnapshot = await getDoc(docRef);
 
-      // Return the updated recipe to be used in the reducer
-      return groceryListData;
+      return updatedSnapshot.exists() ? updatedSnapshot.data() : undefined;
     } catch (error) {
       return rejectWithValue(error.message);
     }
