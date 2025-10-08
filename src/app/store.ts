@@ -1,15 +1,24 @@
-import { configureStore } from '@reduxjs/toolkit';
+import { configureStore, combineReducers } from '@reduxjs/toolkit';
 
 import counterReducer from '../features/counter/counterSlice.ts';
 import recipesReducer from '../features/recipes/slices/recipesSlice.ts';
 import groceryListsReducer from '../features/grocery-lists/slices/groceryListsSlice.ts';
 
+const appReducer = combineReducers({
+  counter: counterReducer,
+  recipes: recipesReducer,
+  groceryLists: groceryListsReducer,
+});
+
+export const rootReducer = (state, action) => {
+  if (action.type === 'USER_LOGOUT')
+    return appReducer(undefined, action);
+
+  return appReducer(state, action);
+};
+
 export const store = configureStore({
-  reducer: {
-    counter: counterReducer,
-    recipes: recipesReducer,
-    groceryLists: groceryListsReducer,
-  },
+  reducer: rootReducer,
 });
 
 // Infer the `RootState` and `AppDispatch` types from the store itself

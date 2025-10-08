@@ -8,11 +8,13 @@ import { collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc } 
 import store from 'store2';
 
 interface GroceryListsState {
-    groceryLists: GroceryList[];
+  groceryLists: GroceryList[];
+  status: string;
 };
 
 const initialState: GroceryListsState = {
-    groceryLists: []
+  groceryLists: [],
+  status: 'idle',
 };
 
 export const getAllGroceryLists = () => {
@@ -154,13 +156,14 @@ export const groceryListsSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(getGroceryListsFromFirestore.pending, (state, action) => {
-        
+        state.status = 'loading';
       })
       .addCase(getGroceryListsFromFirestore.fulfilled, (state, action) => {
+        state.status = 'succeeded';
         state.groceryLists = action.payload;
       })
       .addCase(getGroceryListsFromFirestore.rejected, (state, action) => {
-        
+        state.status = 'failed';
       })
       .addCase(addGroceryListToFirestore.pending, (state) => {
         

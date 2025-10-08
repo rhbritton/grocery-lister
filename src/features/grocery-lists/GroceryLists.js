@@ -21,15 +21,21 @@ function GroceryLists(props) {
   const [deleteModalID, setDeleteModalID] = useState(false);
   const [hasLoadedGroceryLists, setHasLoadedGroceryLists] = useState(false);
 
-  const { groceryLists } = useSelector(state => state.groceryLists);
+  const { groceryLists, status } = useSelector(state => state.groceryLists);
   const dispatch = useDispatch();
 
   useEffect(() => {
-    if (!hasLoadedGroceryLists) {
+    if (status === 'idle' && groceryLists && groceryLists.length === 0) {
       dispatch(getGroceryListsFromFirestore(userId));
-      setHasLoadedGroceryLists(true);
     }
-  }, [dispatch]);
+  }, [dispatch, status, groceryLists.length, userId]);
+
+  // useEffect(() => {
+  //   if (!hasLoadedGroceryLists) {
+  //     dispatch(getGroceryListsFromFirestore(userId));
+  //     setHasLoadedGroceryLists(true);
+  //   }
+  // }, [dispatch]);
 
   return (
     <div>

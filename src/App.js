@@ -3,6 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from './auth/firebaseConfig';
+import { userLogout } from './auth/authActions';
 
 import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom';
 
@@ -21,6 +22,8 @@ import AddRecipe from './features/recipes/views/AddRecipe.js';
 import EditRecipe from './features/recipes/views/EditRecipe.js';
 import ViewRecipe from './features/recipes/views/ViewRecipe.js';
 
+import { getRecipesFromFirestore } from './features/recipes/slices/recipesSlice.ts';
+
 import './App.css';
 
 const firebaseConfig = {
@@ -38,6 +41,8 @@ function App() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState(null);
+  
+  const dispatch = useDispatch();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -45,6 +50,8 @@ function App() {
         setUser(currentUser);
         const userId = currentUser.uid;
         const userProfileRef = doc(db, `artifacts/${appId}/users/${userId}/profiles/${userId}`);
+
+        fetchInitialUserData(dispatch, userId);
         
         onSnapshot(userProfileRef, (docSnap) => {
           if (docSnap.exists()) {
@@ -65,6 +72,10 @@ function App() {
     // Clean up the listener on component unmount.
     return () => unsubscribe();
   }, []);
+
+  const fetchInitialUserData = (dispatch, userId) => {
+      dispatch(getRecipesFromFirestore({ userId }));
+  };
 
   // Handle Google Sign-in
   const handleGoogleLogin = async () => {
@@ -93,6 +104,8 @@ function App() {
 
   const handleLogout = async () => {
     if (auth) {
+      dispatch(userLogout());
+
       await signOut(auth);
     }
   };

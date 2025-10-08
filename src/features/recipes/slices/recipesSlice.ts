@@ -10,11 +10,18 @@ import { collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc } 
 
 interface RecipesState {
   recipes: Recipe[];
+  status: string;
+  searchTerm: string;
+  searchType: string;
+  error: string | null;
+  allRecipes: Recipe[];
 };
 
 const initialState: RecipesState = {
   recipes: [],
   status: 'idle',
+  searchTerm: '',
+  searchType: 'Name',
   error: null,
   allRecipes: [],
 };
@@ -65,7 +72,7 @@ export const getAllRecipesFromFirestore = createAsyncThunk(
 
 export const getRecipesFromFirestore = createAsyncThunk(
   'recipes/fetchRecipes',
-  async ({ userId, searchTerm, searchType }, { rejectWithValue }) => {
+  async ({ userId, searchTerm='', searchType }, { rejectWithValue }) => {
     if (searchType)
       searchType = searchType.toLowerCase().trim();
 
@@ -173,6 +180,10 @@ export const recipesSlice = createSlice({
   name: 'recipes',
   initialState,
   reducers: {
+    setRecipeSearchParams: (state, action) => {
+      state.searchTerm = action.payload.searchTerm;
+      state.searchType = action.payload.searchType;
+    },
     setRecipes: (state, action) => {
       state.recipes = action.payload;
     },
@@ -298,7 +309,7 @@ export const recipesSlice = createSlice({
   },
 });
 
-export const { setRecipes, addRecipe, editRecipe, deleteRecipe, searchRecipes } = recipesSlice.actions
+export const { setRecipeSearchParams, setRecipes, addRecipe, editRecipe, deleteRecipe, searchRecipes } = recipesSlice.actions
 
 export const fetchRecipes = (storedRecipes: any) => (dispatch: any) => {
   dispatch(setRecipes(storedRecipes));
