@@ -19,11 +19,11 @@ const AddRecipe = (props) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [name, setName] = useState('');
-  const [ingredients, setIngredients] = useState([{ amount: '', name: '', type: '' }]);
+  const [ingredients, setIngredients] = useState([{ amount: '1', name: '', type: '' }]);
   const [instructions, setInstructions] = useState('');
 
   const handleAddIngredient = () => {
-    setIngredients([...ingredients, { amount: '', name: '', type: '' }]);
+    setIngredients([...ingredients, { amount: '1', name: '', type: '' }]);
   };
 
   const handleRemoveIngredient = (index) => {
@@ -46,7 +46,7 @@ const AddRecipe = (props) => {
         }));
 
         setName('');
-        setIngredients([{ amount: '', name: '', type: '' }]);
+        setIngredients([{ amount: '1', name: '', type: '' }]);
         setInstructions('');
         
         navigate('/recipes');
@@ -58,7 +58,7 @@ const AddRecipe = (props) => {
 
   const handleCancel = () => {
     setName('');
-    setIngredients([{ amount: '', name: '', type: '' }]);
+    setIngredients([{ amount: '1', name: '', type: '' }]);
     setInstructions('');
 
     navigate('/recipes');

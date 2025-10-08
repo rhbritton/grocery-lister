@@ -13,7 +13,7 @@ const EditRecipe = () => {
   const dispatch = useDispatch();
   
   const [name, setName] = useState('');
-  const [ingredients, setIngredients] = useState([{ amount: '', name: '', type: '' }]);
+  const [ingredients, setIngredients] = useState([{ amount: '1', name: '', type: '' }]);
   const [instructions, setInstructions] = useState('');
 
   useEffect(() => {
@@ -57,7 +57,7 @@ const EditRecipe = () => {
     if (name.trim() !== '' && ingredients.length > 0 && ingredients.every(ingredient => ingredient.amount !== "" && ingredient.name.trim() !== "")) {
       dispatch(editRecipeFromFirestore({ fbid: recipeId, name, ingredients, instructions }));
       setName('');
-      setIngredients([{ amount: '', name: '', type: '' }]);
+      setIngredients([{ amount: '1', name: '', type: '' }]);
       setInstructions('');
       
       navigate('/recipes');
@@ -66,7 +66,7 @@ const EditRecipe = () => {
 
   const handleCancel = () => {
     setName('');
-    setIngredients([{ amount: '', name: '', type: '' }]);
+    setIngredients([{ amount: '1', name: '', type: '' }]);
     setInstructions('');
 
     navigate('/recipes');
