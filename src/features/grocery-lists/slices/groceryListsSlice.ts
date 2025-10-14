@@ -45,7 +45,6 @@ export const getGroceryListsFromFirestore = createAsyncThunk(
       }));
 
       return groceryLists;
-      // return [];
     } catch (error) {
       return rejectWithValue(error.message);
     }

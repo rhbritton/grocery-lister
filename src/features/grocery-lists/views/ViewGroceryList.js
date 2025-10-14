@@ -5,7 +5,7 @@ import { useParams, useNavigate, NavLink, useSearchParams } from 'react-router-d
 import pako from 'pako';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faShareAlt, faPen } from '@fortawesome/free-solid-svg-icons';
 
 import { fetchGroceryListById } from '../slices/groceryListSlice.ts';
 import { editGroceryList, editGroceryListFromFirestore } from '../slices/groceryListsSlice.ts';
@@ -27,6 +27,9 @@ const ViewGroceryList = () => {
   const [groceryList, setGroceryList] = useState(undefined);
   const [originalAllIngredients, setOriginalAllIngredients] = useState([]);
   const [allIngredients, setAllIngredients] = useState([]);
+
+  // State for managing share feedback
+  const [shareFeedback, setShareFeedback] = useState('');
 
   function getAllIngredientsByType(all_ingredients) {
     let all_ingredients_by_type = {};
@@ -107,6 +110,41 @@ const ViewGroceryList = () => {
     }
   }
 
+    const shareURL = async () => {
+        const fullUrl = window.location.href;
+
+        const shareData = {
+            title: `Grocery List: ${groceryList ? formatDate(new Date(groceryList.timestamp)) : ''}`,
+            text: 'Check out this grocery list!',
+            url: fullUrl,
+        };
+
+        if (navigator.share) {
+            try {
+                await navigator.share(shareData);
+                setShareFeedback('URL shared successfully!');
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    console.error('Error sharing:', err);
+                    setShareFeedback('Failed to share.');
+                }
+            }
+        } else if (navigator.clipboard) {
+            try {
+                await navigator.clipboard.writeText(fullUrl);
+                setShareFeedback('Link copied to clipboard! 📋');
+            } catch (err) {
+                console.error('Failed to copy link:', err);
+                setShareFeedback('Could not copy link. Please copy manually.');
+            }
+        } else {
+            prompt('Copy this link to share:', fullUrl);
+            setShareFeedback('Please copy the URL from the prompt.');
+        }
+
+        setTimeout(() => setShareFeedback(''), 3000);
+    };
+
   let all_ingredients_by_type = getAllIngredientsByType(allIngredients);
 
   return (
@@ -122,16 +160,20 @@ const ViewGroceryList = () => {
                 {groceryList && (formatDate(new Date(groceryList.timestamp)) + ' - ' + formatTime(new Date(groceryList.timestamp)))}
             </h2>
             <div className="text-right w-1/2">
-                {/* <button
+                <NavLink 
                     onClick={shareURL}
-                    className="text-right mb-4 px-4 py-2 rounded-md bg-green-500 text-white hover:bg-green-600 active:bg-yellow-800"
+                    className="text-right mb-4 mr-2 px-4 py-2 rounded-md bg-green-500 text-white hover:bg-green-600 active:bg-yellow-800"
                 >
-                    Share
-                </button> */}
+                    <FontAwesomeIcon icon={faShareAlt} />
+                    <span> Share</span>
+                </NavLink>
                 <NavLink 
                     to={`/grocery-lists/edit/${groceryListId}`}
                     className="text-right mb-4 px-4 py-2 rounded-md bg-yellow-500 text-white hover:bg-yellow-600 active:bg-yellow-800"
-                >Edit</NavLink>
+                >
+                    <FontAwesomeIcon icon={faPen} />
+                    <span> Edit</span>
+                </NavLink>
             </div>
         </div>
 
