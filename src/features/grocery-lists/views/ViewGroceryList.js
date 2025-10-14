@@ -18,7 +18,7 @@ import GroceryListViewItem from '../components/GroceryListViewItem.js';
 
 const groceryListRecipeSeparator = ', ';
 
-const ViewGroceryList = () => {
+const ViewGroceryList = (props) => {
   const { groceryListId } = useParams();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -111,7 +111,7 @@ const ViewGroceryList = () => {
   }
 
     const shareURL = async () => {
-        const fullUrl = window.location.href;
+        const fullUrl = `${window.location.origin}${props.basename}?grocerylist=${groceryListId}`;
 
         const shareData = {
             title: `Grocery List: ${groceryList ? formatDate(new Date(groceryList.timestamp)) : ''}`,

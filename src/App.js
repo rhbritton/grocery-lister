@@ -5,7 +5,7 @@ import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from './auth/firebaseConfig';
 import { userLogout } from './auth/authActions';
 
-import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, useLocation, useSearchParams, Navigate } from 'react-router-dom';
 
 import { useSelector, useDispatch } from 'react-redux';
 
@@ -142,6 +142,18 @@ function App() {
     );
   }
 
+  
+
+  const QueryRedirectHandler = ({ user }) => {
+    const [searchParams] = useSearchParams();
+    const grocerylistId = searchParams.get('grocerylist');
+
+    if (grocerylistId)
+      return <Navigate to={`/grocery-lists/view/${grocerylistId}`} replace />;
+
+    return <Recipes user={user} />;
+  };
+
   return (
     <div className="App bg-gray-100 min-h-screen p-4">
         <BrowserRouter basename="/gl">
@@ -149,7 +161,7 @@ function App() {
         
         <main className="flex flex-col md:flex-col md:space-y-0 md:space-x-4">
           <Routes>
-            <Route path="/" element={<Recipes user={user} />} />
+            <Route path="/" element={<QueryRedirectHandler user={user} />} />
             <Route path="/recipes" element={<Recipes user={user} />} />
             <Route path="/recipes/add" element={<AddRecipe user={user} />} />
             <Route path="/recipes/edit/:recipeId" element={<EditRecipe />} />
@@ -158,7 +170,7 @@ function App() {
             <Route path="/grocery-lists" element={<GroceryLists user={user} />} />
             <Route path="/grocery-lists/add" element={<AddGroceryList user={user} />} />
             <Route path="/grocery-lists/edit/:groceryListId" element={<EditGroceryList />} />
-            <Route path="/grocery-lists/view/:groceryListId" element={<ViewGroceryList />} />
+            <Route path="/grocery-lists/view/:groceryListId" element={<ViewGroceryList basename="/gl" />} />
           </Routes>
         </main>
         
