@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate, NavLink, useSearchParams } from 'react-router-dom';
+
+import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { auth, db } from '../../../auth/firebaseConfig';
 
 import pako from 'pako';
 
@@ -23,13 +26,15 @@ const ViewGroceryList = (props) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
+
+  const isInitialLoad = useRef(true);
   
   const [groceryList, setGroceryList] = useState(undefined);
   const [originalAllIngredients, setOriginalAllIngredients] = useState([]);
   const [allIngredients, setAllIngredients] = useState([]);
 
   // State for managing share feedback
-  const [shareFeedback, setShareFeedback] = useState('');
+  const [shareFeedback, setShareFeedback] = useState('');
 
   function getAllIngredientsByType(all_ingredients) {
     let all_ingredients_by_type = {};
@@ -100,6 +105,40 @@ const ViewGroceryList = (props) => {
     let all_ingredients = getAllIngredients(groceryList);
     setAllIngredients(all_ingredients);
   }, [groceryList]);
+
+  useEffect(() => {
+    if (!groceryListId) return;
+
+    const docRef = doc(db, 'grocery-lists', groceryListId);
+
+    const unsubscribe = onSnapshot(docRef, (docSnap) => {
+      if (docSnap.exists()) {
+        if (isInitialLoad.current) {
+          isInitialLoad.current = false;
+          console.log("Initial list data fetched.");
+          return;
+        }
+        
+        const isLocalSave = docSnap.metadata.hasPendingWrites; 
+        if (!isLocalSave) {
+          // This code runs only when the update comes from the server (a remote device)
+          console.log('Remote update detected on secondary device: updated');
+          props.setGroceryListHasChanged(true);
+          unsubscribe();
+        } else {
+          // This code runs when the change is from the current device (a local save)
+          console.log('Local save detected. Ignoring for "updated" notification.');
+        }
+
+      } else {
+        console.log("No such document (list may have been deleted)");
+      }
+    }, (error) => {
+      console.error("Error listening to document changes:", error);
+    });
+
+    return () => unsubscribe();
+  }, [groceryListId]);
 
   const isSaveDisabled = (!originalAllIngredients.length || !allIngredients.length) || originalAllIngredients.every((ing, i) => !!originalAllIngredients[i].crossed === !!allIngredients[i].crossed);
   const handleSave = (e) => {
@@ -309,8 +348,9 @@ const ViewGroceryList = (props) => {
             <div className="flex justify-end space-x-4 sticky bottom-0 bg-white p-6 rounded-b-lg shadow-md">
                 <button
                     onClick={handleSave}
-                    disabled={isSaveDisabled}
-                    className={`px-4 py-2 rounded-md bg-green-500 text-white hover:bg-green-600 ${isSaveDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    disabled={isSaveDisabled || props.groceryListHasChanged}
+                    className={`px-4 py-2 rounded-md bg-green-500 text-white hover:bg-green-600 ${isSaveDisabled || props.groceryListHasChanged ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    title={props.groceryListHasChanged && `List was changed by another user. Please refresh before saving.`}
                 >
                     Save
                 </button>

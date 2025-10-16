@@ -42,6 +42,8 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState(null);
   
+  const [groceryListHasChanged, setGroceryListHasChanged] = useState(false);
+  
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -102,6 +104,10 @@ function App() {
     }
   };
 
+  const handleRefresh = () => {
+    window.location.reload();
+  };
+
   const handleLogout = async () => {
     if (auth) {
       dispatch(userLogout());
@@ -156,6 +162,19 @@ function App() {
 
   return (
     <div className="App bg-gray-100 min-h-screen p-4">
+        {groceryListHasChanged && (
+            <div 
+                onClick={handleRefresh}
+                className="bg-blue-100 border-t-4 border-blue-500 rounded-b text-blue-900 px-4 py-2 shadow-md flex justify-between items-center" 
+                role="alert"
+            >
+                <div className="flex items-center">
+                    <p className="font-bold">This Grocery List was updated by another user</p>
+                    <p className="text-sm ml-2">Click to refresh to see the changes.</p>
+                </div>
+            </div>
+        )}
+
         <BrowserRouter basename="/gl">
         <Header user={user} handleLogout={handleLogout} />
         
@@ -170,7 +189,7 @@ function App() {
             <Route path="/grocery-lists" element={<GroceryLists user={user} />} />
             <Route path="/grocery-lists/add" element={<AddGroceryList user={user} />} />
             <Route path="/grocery-lists/edit/:groceryListId" element={<EditGroceryList />} />
-            <Route path="/grocery-lists/view/:groceryListId" element={<ViewGroceryList basename="/gl" />} />
+            <Route path="/grocery-lists/view/:groceryListId" element={<ViewGroceryList basename="/gl" groceryListHasChanged={groceryListHasChanged} setGroceryListHasChanged={setGroceryListHasChanged} />} />
           </Routes>
         </main>
         
