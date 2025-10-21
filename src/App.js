@@ -76,7 +76,7 @@ function App() {
   }, []);
 
   const fetchInitialUserData = (dispatch, userId) => {
-      dispatch(getRecipesFromFirestore({ userId }));
+      dispatch(getRecipesFromFirestore({ resetPagination: true, userId }));
   };
 
   // Handle Google Sign-in

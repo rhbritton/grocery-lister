@@ -19,6 +19,13 @@ export const rootReducer = (state, action) => {
 
 export const store = configureStore({
   reducer: rootReducer,
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: {
+        ignoredPaths: ['recipes.lastVisibleSearch'],
+        ignoredActionPaths: ['payload.lastVisibleSearch'],
+      },
+    }),
 });
 
 // Infer the `RootState` and `AppDispatch` types from the store itself

@@ -1,18 +1,21 @@
 import { createSlice, nanoid, createAsyncThunk } from '@reduxjs/toolkit';
 import { RootState } from '../../../app/store.ts';
+import { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { Recipe, Ingredient } from './recipeSlice.ts';
 
 import recipesConfig from '../config.json';
 
 import store from 'store2';
 import { db, auth } from '../../../auth/firebaseConfig';
-import { collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc, limit, startAfter, orderBy } from 'firebase/firestore';
 
 interface RecipesState {
   recipes: Recipe[];
   status: string;
   searchTerm: string;
   searchType: string;
+  lastVisibleSearch: QueryDocumentSnapshot<DocumentData> | null;
+  allRecipesGrabbed: boolean | null;
   error: string | null;
   allRecipes: Recipe[];
 };
@@ -22,6 +25,8 @@ const initialState: RecipesState = {
   status: 'idle',
   searchTerm: '',
   searchType: 'Name',
+  lastVisibleSearch: null,
+  allRecipesGrabbed: false,
   error: null,
   allRecipes: [],
 };
@@ -72,39 +77,77 @@ export const getAllRecipesFromFirestore = createAsyncThunk(
 
 export const getRecipesFromFirestore = createAsyncThunk(
   'recipes/fetchRecipes',
-  async ({ userId, searchTerm='', searchType }, { rejectWithValue }) => {
+  async ({ resetPagination, userId, searchTerm='', searchType, existingRecipes=[] }, { getState, rejectWithValue }) => {
+    const pageCount = 5;
     if (searchType)
       searchType = searchType.toLowerCase().trim();
 
     if (searchTerm)
       searchTerm = searchTerm.toLowerCase().trim();
+    
+    const isLazyLoading = !searchType || searchType === 'name';
+
+    const state = getState() as RootState;
+    const lastVisible = resetPagination ? null : state.recipes.lastVisibleSearch;
 
     try {
       let q;
       const recipesCollectionRef = collection(db, 'recipes');
-      q = query(
-        recipesCollectionRef,
-        where('userId', '==', userId)
-      );
+      let queryConstraints: any[] = [
+        where('userId', '==', userId),
+        orderBy('name_lowercase'),
+      ];
+
+      if (isLazyLoading) {
+        queryConstraints.push(limit(pageCount));
+        
+        if (lastVisible) {
+          queryConstraints.push(startAfter(lastVisible));
+        }
+      }
+
+      // TODO: use name_keywords [] 
+      if (searchTerm && searchType === 'name') {
+        const endSearchTerm = searchTerm + '\uf8ff';
+        queryConstraints.push(
+            where('name_lowercase', '>=', searchTerm),
+            where('name_lowercase', '<', endSearchTerm)
+        );
+      }
+
+      q = query(recipesCollectionRef, ...queryConstraints);
       
       const querySnapshot = await getDocs(q);
+      const newLastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
+
+      let newAllRecipesGrabbed = false;
+      if (isLazyLoading) {
+          if (querySnapshot.docs.length < pageCount) {
+              newAllRecipesGrabbed = true;
+          }
+      }
+
       let recipes = querySnapshot.docs.map(doc => ({
         fbid: doc.id,
         ...doc.data()
       }));
 
-      // TODO: ElasticSearch should probably be used instead
-      recipes = recipes.filter((recipe) => {
-        if (!searchType || searchType == 'name') {
-          return recipe.name.toLowerCase().includes(searchTerm);
-        } else if (searchType == 'ingredient') {
-          return recipe.ingredients.some(function(ing) {
-            return ing.name.toLowerCase().includes(searchTerm);
-          });
-        }
-      });
+      if (searchType === 'ingredient' || searchType === 'name_legacy') {
+        // TODO: ElasticSearch should probably be used instead
+        recipes = recipes.filter((recipe) => {
+          if (searchType == 'name_legacy') {
+            return recipe.name.toLowerCase().includes(searchTerm);
+          } else if (searchType == 'ingredient') {
+            return recipe.ingredients.some(function(ing) {
+              return ing.name.toLowerCase().includes(searchTerm);
+            });
+          }
+        });
+      }
+      
+      const combinedRecipes = searchType === 'ingredient' ? recipes : [...existingRecipes, ...recipes];
 
-      return recipes;
+      return { recipes: combinedRecipes, lastVisibleSearch: newLastVisible, allRecipesGrabbed: newAllRecipesGrabbed };
     } catch (error) {
       return rejectWithValue(error.message);
     }
@@ -121,7 +164,11 @@ export const addRecipesToFirestore = createAsyncThunk(
 
       const addedRecipes = [];
       for (const recipeData of recipesData) {
-        const newRecipe = { id: nanoid(), ...recipeData };
+        const newRecipe = { 
+          id: nanoid(), 
+          ...recipeData, 
+          name_lowercase: recipeData.name ? recipeData.name.trim().toLowerCase() : ''
+        };
         const docRef = await addDoc(collection(db, 'recipes'), newRecipe);
         addedRecipes.push({ fbid: docRef.id, ...newRecipe });
       }
@@ -137,7 +184,11 @@ export const addRecipeToFirestore = createAsyncThunk(
   'recipes/addRecipe',
   async (recipeData, { rejectWithValue }) => {
     try {
-      const newRecipe = { id: nanoid(), ...recipeData };
+      const newRecipe = {
+        id: nanoid(), 
+        ...recipeData,
+        name_lowercase: recipeData.name ? recipeData.name.trim().toLowerCase() : ''
+      };
       const docRef = await addDoc(collection(db, 'recipes'), newRecipe);
       return { fbid: docRef.id, ...newRecipe };
     } catch (error) {
@@ -151,7 +202,10 @@ export const editRecipeFromFirestore = createAsyncThunk(
   async (recipeData, { rejectWithValue }) => {
     try {
       const docRef = doc(db, 'recipes', recipeData.fbid);
-      const updatedData = { ...recipeData };
+      const updatedData = { 
+        ...recipeData,
+        name_lowercase: recipeData.name ? recipeData.name.trim().toLowerCase() : ''
+      };
       delete updatedData.fbid;
       await updateDoc(docRef, updatedData);
 
@@ -252,7 +306,9 @@ export const recipesSlice = createSlice({
       })
       .addCase(getRecipesFromFirestore.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.recipes = action.payload || [];
+        state.recipes = action.payload && action.payload.recipes ? action.payload.recipes : [];
+        state.lastVisibleSearch = action.payload && action.payload.lastVisibleSearch ? action.payload.lastVisibleSearch : null;
+        state.allRecipesGrabbed = action.payload && action.payload.allRecipesGrabbed ? action.payload.allRecipesGrabbed : null;
       })
       .addCase(getRecipesFromFirestore.rejected, (state, action) => {
         state.status = 'failed';
@@ -276,7 +332,14 @@ export const recipesSlice = createSlice({
         if (!state.recipes)
           state.recipes = [];
 
-        state.recipes.push(action.payload);
+        const isLazyLoad = !state.searchType || state.searchType === 'Name';
+        if (isLazyLoad) {
+          state.recipes = [];
+          state.lastVisibleSearch = null;
+          state.allRecipesGrabbed = false;
+        } else {
+          state.recipes.push(action.payload);
+        }
       })
       .addCase(addRecipeToFirestore.rejected, (state, action) => {
       

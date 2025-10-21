@@ -14,12 +14,11 @@ function RecipeSearch(props) {
     
     const debouncedSearchRef = useRef(null); 
     const handleSearch = (termToSearch, typeToSearch) => {
-        console.log('handleSearch')
         clearTimeout(debouncedSearchRef.current);
         debouncedSearchRef.current = setTimeout(() => {
             // dispatch(searchRecipes(searchTerm));
             // dispatch(searchRecipes({ searchString: searchTerm, searchType: searchType }));
-            dispatch(getRecipesFromFirestore({ userId, searchTerm: termToSearch, searchType: typeToSearch }));
+            dispatch(getRecipesFromFirestore({ resetPagination: true, userId, searchTerm: termToSearch, searchType: typeToSearch }));
         }, 400);
     };
 
@@ -38,6 +37,7 @@ function RecipeSearch(props) {
                 className="block appearance-none bg-white py-2 pl-3 pr-8 rounded-l-md outline-none cursor-pointer border-r border-gray-300"
             >
                 <option value="Name">Name</option>
+                <option value="name_legacy">Name (Legacy)</option>
                 <option value="Ingredient">Ingredient</option>
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
@@ -56,7 +56,7 @@ function RecipeSearch(props) {
                 handleSearch(newTerm, searchType); 
             }}
         />
-        <button onClick={() => { console.log('handleSearch3');handleSearch(searchTerm, searchType); }} className="px-4 py-2 rounded-r-md bg-blue-500 text-white hover:bg-blue-600">
+        <button onClick={() => { handleSearch(searchTerm, searchType); }} className="px-4 py-2 rounded-r-md bg-blue-500 text-white hover:bg-blue-600">
             <FontAwesomeIcon icon={faMagnifyingGlass} /> Search
         </button>
     </div>

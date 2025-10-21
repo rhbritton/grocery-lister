@@ -25,9 +25,63 @@ function RecipesList(props) {
 
   const fileInputRef = useRef(null);
   
-  const { recipes, status } = useSelector(state => state.recipes);
+  const { recipes, status, lastVisibleSearch, searchTerm, searchType, allRecipesGrabbed } = useSelector(state => state.recipes);
 
   const dispatch = useDispatch();
+
+  const loadMore = (e) => {
+    if (status === 'loading') {
+      console.log('Already loading. Aborting.');
+      return;
+    }
+    
+    if (lastVisibleSearch === undefined) {
+      console.log('No more recipes to load.');
+      return;
+    }
+    
+    dispatch(getRecipesFromFirestore({ 
+      userId, 
+      existingRecipes: recipes,
+      searchTerm,
+      searchType,
+    }));
+  };
+
+  const observerTargetRef = useRef(null);
+  const [isCooldown, setIsCooldown] = useState(false);
+
+  useEffect(() => {
+    if (allRecipesGrabbed) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isCooldown && status !== 'loading') {
+          setIsCooldown(true);
+
+          setTimeout(() => {
+            loadMore();
+
+            setTimeout(() => {
+              setIsCooldown(false);
+            }, 1500);
+          }, 300);
+        }
+      },
+      {
+        root: null,
+        rootMargin: '0px',
+        threshold: 0.1,
+      }
+    );
+
+    const target = observerTargetRef.current;
+    if (target) observer.observe(target);
+
+    return () => {
+      if (target) observer.unobserve(target);
+    };
+  }, [loadMore, allRecipesGrabbed, isCooldown, status]);
 
   const handleImport2 = () => {
     fileInputRef.current.click();
@@ -52,7 +106,7 @@ function RecipesList(props) {
 
   useEffect(() => {
     if (status === 'idle' && recipes && recipes.length === 0) {
-      dispatch(getRecipesFromFirestore({ userId }));
+      dispatch(getRecipesFromFirestore({ resetPagination: true, userId }));
     }
   }, [dispatch, status, recipes.length, userId]);
 
@@ -144,17 +198,20 @@ function RecipesList(props) {
         </NavLink>
       </div>
       
-      
-      
       <section className="App-body RecipesList w-full space-y-4">
-        {status === 'loading' ? (
-          <div>Loading recipes...</div>
-        ) : recipes.length === 0 ? (
-          <div>No recipes found.</div>
-        ) : (
-          recipes.map((recipe) => (
-            <RecipeItem key={recipe.fbid} recipe={recipe} setDeleteModalID={setDeleteModalID} />
-          ))
+        {recipes ? recipes.length && recipes.map((recipe) => (
+          <RecipeItem key={recipe.fbid} recipe={recipe} setDeleteModalID={setDeleteModalID} />
+        )) : recipes.length === 0 && <div>No recipes found.</div>}
+
+        {!allRecipesGrabbed && searchType === 'Name' && status !== 'loading' && recipes.length !== 0 &&
+          <div onClick={loadMore}>Load More</div>
+        }
+
+        {!allRecipesGrabbed && searchType === 'Name' && (
+          <div
+            ref={observerTargetRef}
+            style={{ height: '1px' }}
+          />
         )}
       </section>
 

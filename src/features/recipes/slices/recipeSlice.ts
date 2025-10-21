@@ -36,6 +36,7 @@ export interface Recipe {
   fbid: string | undefined;
   id: string;
   name: string;
+  name_lowercase: string | null;
   ingredients: Ingredient[];
 };
 
