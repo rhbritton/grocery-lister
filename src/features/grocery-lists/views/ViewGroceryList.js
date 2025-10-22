@@ -33,7 +33,6 @@ const ViewGroceryList = (props) => {
   const [originalAllIngredients, setOriginalAllIngredients] = useState([]);
   const [allIngredients, setAllIngredients] = useState([]);
 
-  // State for managing share feedback
   const [shareFeedback, setShareFeedback] = useState('');
 
   function getAllIngredientsByType(all_ingredients) {
@@ -206,13 +205,13 @@ const ViewGroceryList = (props) => {
                     <FontAwesomeIcon icon={faShareAlt} />
                     <span> Share</span>
                 </NavLink>
-                <NavLink 
+                {groceryList && groceryList.userId && props.userId === groceryList.userId && <NavLink 
                     to={`/grocery-lists/edit/${groceryListId}`}
                     className="text-right mb-4 px-4 py-2 rounded-md bg-yellow-500 text-white hover:bg-yellow-600 active:bg-yellow-800"
                 >
                     <FontAwesomeIcon icon={faPen} />
                     <span> Edit</span>
-                </NavLink>
+                </NavLink>}
             </div>
         </div>
 

@@ -3,18 +3,22 @@ import { RootState } from '../../../app/store.ts';
 import { GroceryList } from './groceryListSlice.ts';
 
 import { db, auth } from '../../../auth/firebaseConfig';
-import { collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc, limit, startAfter, orderBy, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 
 import store from 'store2';
 
 interface GroceryListsState {
   groceryLists: GroceryList[];
   status: string;
+  lastVisibleSearch: QueryDocumentSnapshot<DocumentData> | null;
+  allGroceryListsGrabbed: boolean | null;
 };
 
 const initialState: GroceryListsState = {
   groceryLists: [],
   status: 'idle',
+  lastVisibleSearch: null,
+  allGroceryListsGrabbed: false,
 };
 
 export const getAllGroceryLists = () => {
@@ -30,21 +34,41 @@ const getGroceryListsBySearch = (state, searchTerm) => {
 
 export const getGroceryListsFromFirestore = createAsyncThunk(
   'groceryLists/fetchGroceryLists',
-  async (userId, { rejectWithValue }) => {
+  async ({ resetPagination, userId, existingGroceryLists=[] }, { getState, rejectWithValue }) => {
+    const pageCount = 3;
+
+    const state = getState() as RootState;
+    const lastVisible = resetPagination ? null : state.groceryLists.lastVisibleSearch;
+
     try {
       const groceryListsCollectionRef = collection(db, 'grocery-lists');
-      let q = query(
-        groceryListsCollectionRef,
-        where('userId', '==', userId)
-      );
-      
+      let queryConstraints: any[] = [
+        where('userId', '==', userId),
+        orderBy('timestamp'),
+      ];
+
+      queryConstraints.push(limit(pageCount));
+      if (lastVisible) {
+        queryConstraints.push(startAfter(lastVisible));
+      }
+
+      const q = query(groceryListsCollectionRef, ...queryConstraints);
       const querySnapshot = await getDocs(q);
+      const newLastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
+
+      let newAllGroceryListsGrabbed = false;
+      if (querySnapshot.docs.length < pageCount) {
+        newAllGroceryListsGrabbed = true;
+      }
+
       let groceryLists = querySnapshot.docs.map(doc => ({
         fbid: doc.id,
         ...doc.data()
       }));
 
-      return groceryLists;
+      const combinedGroceryLists = [...existingGroceryLists, ...groceryLists];
+
+      return { groceryLists: combinedGroceryLists, lastVisibleSearch: newLastVisible, allGroceryListsGrabbed: newAllGroceryListsGrabbed };
     } catch (error) {
       return rejectWithValue(error.message);
     }
@@ -159,7 +183,9 @@ export const groceryListsSlice = createSlice({
       })
       .addCase(getGroceryListsFromFirestore.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.groceryLists = action.payload;
+        state.groceryLists = action.payload && action.payload.groceryLists ? action.payload.groceryLists : [];
+        state.lastVisibleSearch = action.payload && action.payload.lastVisibleSearch ? action.payload.lastVisibleSearch : null;
+        state.allGroceryListsGrabbed = action.payload && action.payload.allGroceryListsGrabbed ? action.payload.allGroceryListsGrabbed : null;
       })
       .addCase(getGroceryListsFromFirestore.rejected, (state, action) => {
         state.status = 'failed';

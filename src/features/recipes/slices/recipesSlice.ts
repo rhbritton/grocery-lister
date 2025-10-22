@@ -1,13 +1,12 @@
 import { createSlice, nanoid, createAsyncThunk } from '@reduxjs/toolkit';
 import { RootState } from '../../../app/store.ts';
-import { QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 import { Recipe, Ingredient } from './recipeSlice.ts';
 
 import recipesConfig from '../config.json';
 
 import store from 'store2';
 import { db, auth } from '../../../auth/firebaseConfig';
-import { collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc, limit, startAfter, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc, limit, startAfter, orderBy, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
 
 interface RecipesState {
   recipes: Recipe[];

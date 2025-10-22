@@ -153,9 +153,13 @@ function App() {
   const QueryRedirectHandler = ({ user }) => {
     const [searchParams] = useSearchParams();
     const grocerylistId = searchParams.get('grocerylist');
+    const recipeId = searchParams.get('recipe');
 
     if (grocerylistId)
       return <Navigate to={`/grocery-lists/view/${grocerylistId}`} replace />;
+
+    if (recipeId)
+      return <Navigate to={`/recipes/view/${recipeId}`} replace />;
 
     return <Recipes user={user} />;
   };
@@ -184,12 +188,12 @@ function App() {
             <Route path="/recipes" element={<Recipes user={user} />} />
             <Route path="/recipes/add" element={<AddRecipe user={user} />} />
             <Route path="/recipes/edit/:recipeId" element={<EditRecipe />} />
-            <Route path="/recipes/view/:recipeId" element={<ViewRecipe />} />
+            <Route path="/recipes/view/:recipeId" element={<ViewRecipe basename="/gl" userId={user.uid} />} />
 
             <Route path="/grocery-lists" element={<GroceryLists user={user} />} />
             <Route path="/grocery-lists/add" element={<AddGroceryList user={user} />} />
             <Route path="/grocery-lists/edit/:groceryListId" element={<EditGroceryList />} />
-            <Route path="/grocery-lists/view/:groceryListId" element={<ViewGroceryList basename="/gl" groceryListHasChanged={groceryListHasChanged} setGroceryListHasChanged={setGroceryListHasChanged} />} />
+            <Route path="/grocery-lists/view/:groceryListId" element={<ViewGroceryList basename="/gl" userId={user.uid} groceryListHasChanged={groceryListHasChanged} setGroceryListHasChanged={setGroceryListHasChanged} />} />
           </Routes>
         </main>
         

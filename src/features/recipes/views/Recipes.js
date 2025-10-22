@@ -29,7 +29,7 @@ function RecipesList(props) {
 
   const dispatch = useDispatch();
 
-  const loadMore = (e) => {
+  const loadMore = () => {
     if (status === 'loading') {
       console.log('Already loading. Aborting.');
       return;
@@ -158,9 +158,18 @@ function RecipesList(props) {
 
   return (
     <div>
+      <NavLink
+        to="/recipes/add"
+        className="fixed bottom-6 right-6 z-50"
+      >
+        <button className="w-16 h-16 rounded-2xl bg-blue-500 text-white shadow-lg text-3xl flex items-center justify-center hover:bg-blue-600 active:bg-blue-800 transition-colors">
+          <FontAwesomeIcon icon={faPlus} />
+        </button>
+      </NavLink>
+
       <RecipeSearch userId={userId} />
       
-      <div className="">
+      {/* <div className=""> */}
         {/* <div>
         <button onClick={(e) => { setExportRecipesToggle(!exportRecipesToggle) }} className="mb-4 px-4 py-2 rounded-md bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-800">
           <FontAwesomeIcon icon={faFileImport} /> | <FontAwesomeIcon icon={faFileExport} />
@@ -191,21 +200,19 @@ function RecipesList(props) {
         
         </div> */}
 
-        <NavLink to="/recipes/add">
+        {/* <NavLink to="/recipes/add">
           <button className="mb-4 px-4 py-2 rounded-md bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-800">
             Add Recipe <FontAwesomeIcon icon={faPlus} />
           </button>
         </NavLink>
-      </div>
+      </div> */}
       
-      <section className="App-body RecipesList w-full space-y-4">
-        {recipes ? recipes.length && recipes.map((recipe) => (
+      <section className="App-body RecipesList w-full space-y-4 pb-20">
+        {recipes && recipes.length ? recipes.map((recipe) => (
           <RecipeItem key={recipe.fbid} recipe={recipe} setDeleteModalID={setDeleteModalID} />
-        )) : recipes.length === 0 && <div>No recipes found.</div>}
+        )) : (status !== 'loading' && <div>No recipes found.</div>)}
 
-        {!allRecipesGrabbed && searchType === 'Name' && status !== 'loading' && recipes.length !== 0 &&
-          <div onClick={loadMore}>Load More</div>
-        }
+        {status === 'loading' ? <div>Loading...</div> : (!allRecipesGrabbed && <div onClick={loadMore}>Load More</div>)}
 
         {!allRecipesGrabbed && searchType === 'Name' && (
           <div
