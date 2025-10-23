@@ -5,7 +5,7 @@ import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from './auth/firebaseConfig';
 import { userLogout } from './auth/authActions';
 
-import { BrowserRouter, Routes, Route, NavLink, useLocation, useSearchParams, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, useLocation, useSearchParams, Navigate, useNavigate } from 'react-router-dom';
 
 import { useSelector, useDispatch } from 'react-redux';
 
@@ -71,7 +71,6 @@ function App() {
       setLoading(false);
     });
 
-    // Clean up the listener on component unmount.
     return () => unsubscribe();
   }, []);
 
@@ -124,29 +123,62 @@ function App() {
     );
   }
 
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-900 p-4">
-        <div className="w-full max-w-sm p-8 bg-gray-800 rounded-2xl shadow-2xl text-white text-center">
-          <h1 className="text-4xl font-extrabold mb-4 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-500 to-teal-600">
-            Welcome to GroceryLister
-          </h1>
-          <p className="text-gray-400 mb-8 font-light">
-            Your personal grocery list and recipe manager. Please sign in to get started!
-          </p>
-          <button
-            onClick={handleGoogleLogin}
-            className="w-full flex items-center justify-center py-4 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900"
-          >
-            <svg className="w-6 h-6 mr-3" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M22.618 10.289h-2.158v-2.031h-2.031v2.031h-2.158v2.031h2.158v2.158h2.031v-2.158h2.158v-2.031zM11.691 10.289c1.928 0 3.737 0.643 5.216 1.839l-1.42 1.42c-1.125-0.892-2.585-1.428-4.084-1.428-3.328 0-6.143 2.031-7.18 4.881l-1.89-1.391c1.375-3.09 4.607-5.187 8.358-5.187zM11.691 22.846c-5.875 0-10.643-4.768-10.643-10.643s4.768-10.643 10.643-10.643c2.723 0 5.24 1.054 7.152 2.768l-2.089 2.089c-1.464-1.071-3.214-1.714-5.063-1.714-3.522 0-6.42 2.531-7.116 5.866l-2.107-1.554c1.196-2.589 3.866-4.393 6.821-4.393 2.045 0 3.964 0.696 5.518 1.897l-0.995 1.139c-1.286-0.875-2.884-1.428-4.527-1.428-3.076 0-5.625 2.232-6.286 5.232h12.563c0.165-0.781 0.268-1.589 0.268-2.429 0-0.741-0.089-1.464-0.214-2.161h-6.232v-2.031h8.286c-0.125-0.714-0.357-1.428-0.67-2.098l-2.857-2.857c-2.054-1.991-4.857-3.214-7.902-3.214-5.875 0-10.643 4.768-10.643 10.643s4.768 10.643 10.643 10.643c4.768 0 8.875-3.143 10.295-7.464h-2.161c-1.295 3.036-4.223 5.259-7.134 5.259z"/>
-            </svg>
-            Sign in with Google
-          </button>
-        </div>
+  // if (!user) {
+  //   return (
+  //     <div className="flex items-center justify-center min-h-screen bg-gray-900 p-4">
+  //       <div className="w-full max-w-sm p-8 bg-gray-800 rounded-2xl shadow-2xl text-white text-center">
+  //         <h1 className="text-4xl font-extrabold mb-4 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-500 to-teal-600">
+  //           Welcome to GroceryLister
+  //         </h1>
+  //         <p className="text-gray-400 mb-8 font-light">
+  //           Your personal grocery list and recipe manager. Please sign in to get started!
+  //         </p>
+  //         <button
+  //           onClick={handleGoogleLogin}
+  //           className="w-full flex items-center justify-center py-4 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+  //         >
+  //           <svg className="w-6 h-6 mr-3" fill="currentColor" viewBox="0 0 24 24">
+  //             <path d="M22.618 10.289h-2.158v-2.031h-2.031v2.031h-2.158v2.031h2.158v2.158h2.031v-2.158h2.158v-2.031zM11.691 10.289c1.928 0 3.737 0.643 5.216 1.839l-1.42 1.42c-1.125-0.892-2.585-1.428-4.084-1.428-3.328 0-6.143 2.031-7.18 4.881l-1.89-1.391c1.375-3.09 4.607-5.187 8.358-5.187zM11.691 22.846c-5.875 0-10.643-4.768-10.643-10.643s4.768-10.643 10.643-10.643c2.723 0 5.24 1.054 7.152 2.768l-2.089 2.089c-1.464-1.071-3.214-1.714-5.063-1.714-3.522 0-6.42 2.531-7.116 5.866l-2.107-1.554c1.196-2.589 3.866-4.393 6.821-4.393 2.045 0 3.964 0.696 5.518 1.897l-0.995 1.139c-1.286-0.875-2.884-1.428-4.527-1.428-3.076 0-5.625 2.232-6.286 5.232h12.563c0.165-0.781 0.268-1.589 0.268-2.429 0-0.741-0.089-1.464-0.214-2.161h-6.232v-2.031h8.286c-0.125-0.714-0.357-1.428-0.67-2.098l-2.857-2.857c-2.054-1.991-4.857-3.214-7.902-3.214-5.875 0-10.643 4.768-10.643 10.643s4.768 10.643 10.643 10.643c4.768 0 8.875-3.143 10.295-7.464h-2.161c-1.295 3.036-4.223 5.259-7.134 5.259z"/>
+  //           </svg>
+  //           Sign in with Google
+  //         </button>
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
+  const loginPage = 
+    <div className="flex items-center justify-center min-h-screen bg-gray-900 p-4">
+      <div className="w-full max-w-sm p-8 bg-gray-800 rounded-2xl shadow-2xl text-white text-center">
+        <h1 className="text-4xl font-extrabold mb-4 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-500 to-teal-600">
+          Welcome to GroceryLister
+        </h1>
+        <p className="text-gray-400 mb-8 font-light">
+          Your personal grocery list and recipe manager. Please sign in to get started!
+        </p>
+        <button
+          onClick={handleGoogleLogin}
+          className="w-full flex items-center justify-center py-4 px-6 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+        >
+          <svg className="w-6 h-6 mr-3" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M22.618 10.289h-2.158v-2.031h-2.031v2.031h-2.158v2.031h2.158v2.158h2.031v-2.158h2.158v-2.031zM11.691 10.289c1.928 0 3.737 0.643 5.216 1.839l-1.42 1.42c-1.125-0.892-2.585-1.428-4.084-1.428-3.328 0-6.143 2.031-7.18 4.881l-1.89-1.391c1.375-3.09 4.607-5.187 8.358-5.187zM11.691 22.846c-5.875 0-10.643-4.768-10.643-10.643s4.768-10.643 10.643-10.643c2.723 0 5.24 1.054 7.152 2.768l-2.089 2.089c-1.464-1.071-3.214-1.714-5.063-1.714-3.522 0-6.42 2.531-7.116 5.866l-2.107-1.554c1.196-2.589 3.866-4.393 6.821-4.393 2.045 0 3.964 0.696 5.518 1.897l-0.995 1.139c-1.286-0.875-2.884-1.428-4.527-1.428-3.076 0-5.625 2.232-6.286 5.232h12.563c0.165-0.781 0.268-1.589 0.268-2.429 0-0.741-0.089-1.464-0.214-2.161h-6.232v-2.031h8.286c-0.125-0.714-0.357-1.428-0.67-2.098l-2.857-2.857c-2.054-1.991-4.857-3.214-7.902-3.214-5.875 0-10.643 4.768-10.643 10.643s4.768 10.643 10.643 10.643c4.768 0 8.875-3.143 10.295-7.464h-2.161c-1.295 3.036-4.223 5.259-7.134 5.259z"/>
+          </svg>
+          Sign in with Google
+        </button>
       </div>
-    );
-  }
+    </div>;
+
+  const _404 = 
+    <div className="flex items-center justify-center min-h-screen bg-gray-900 p-4">
+      <div className="w-full max-w-sm p-8 bg-gray-800 rounded-2xl shadow-2xl text-white text-center">
+        <h1 className="text-4xl font-extrabold mb-4 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-500 to-teal-600">
+          404 Page Not Found
+        </h1>
+        <p className="text-gray-400 mb-8 font-light">
+          Your personal grocery list and recipe manager. Please sign in to get started!
+        </p>
+      </div>
+    </div>;
 
   
 
@@ -161,11 +193,11 @@ function App() {
     if (recipeId)
       return <Navigate to={`/recipes/view/${recipeId}`} replace />;
 
-    return <Recipes user={user} />;
+    return user ? _404 : loginPage;
   };
 
   return (
-    <div className="App bg-gray-100 min-h-screen p-4">
+    <div className="App bg-gray-100 min-h-screen">
         {groceryListHasChanged && (
             <div 
                 onClick={handleRefresh}
@@ -180,21 +212,23 @@ function App() {
         )}
 
         <BrowserRouter basename="/gl">
-        <Header user={user} handleLogout={handleLogout} />
-        
-        <main className="flex flex-col md:flex-col md:space-y-0 md:space-x-4">
-          <Routes>
-            <Route path="/" element={<QueryRedirectHandler user={user} />} />
-            <Route path="/recipes" element={<Recipes user={user} />} />
-            <Route path="/recipes/add" element={<AddRecipe user={user} />} />
-            <Route path="/recipes/edit/:recipeId" element={<EditRecipe />} />
-            <Route path="/recipes/view/:recipeId" element={<ViewRecipe basename="/gl" userId={user.uid} />} />
 
-            <Route path="/grocery-lists" element={<GroceryLists user={user} />} />
-            <Route path="/grocery-lists/add" element={<AddGroceryList user={user} />} />
-            <Route path="/grocery-lists/edit/:groceryListId" element={<EditGroceryList />} />
-            <Route path="/grocery-lists/view/:groceryListId" element={<ViewGroceryList basename="/gl" userId={user.uid} groceryListHasChanged={groceryListHasChanged} setGroceryListHasChanged={setGroceryListHasChanged} />} />
-          </Routes>
+        <main className="flex flex-col md:flex-col md:space-y-0 md:space-x-4">
+            {user && <Header user={user} handleGoogleLogin={handleGoogleLogin} handleLogout={handleLogout} />}
+            <Routes>
+              {user && <Route path="/" element={<Recipes user={user} />} />}
+              {user && <Route path="/recipes" element={<Recipes user={user} />} />}
+              {user && <Route path="/recipes/add" element={<AddRecipe user={user} />} />}
+              {user && <Route path="/recipes/edit/:recipeId" element={<EditRecipe />} />}
+              
+              {user && <Route path="/grocery-lists" element={<GroceryLists user={user} />} />}
+              {user && <Route path="/grocery-lists/add" element={<AddGroceryList user={user} />} />}
+              {user && <Route path="/grocery-lists/edit/:groceryListId" element={<EditGroceryList />} />}
+              {user && <Route path="/grocery-lists/view/:groceryListId" element={<ViewGroceryList basename="/gl" userId={user.uid} groceryListHasChanged={groceryListHasChanged} setGroceryListHasChanged={setGroceryListHasChanged} />} />}
+              
+              <Route path="/recipes/view/:recipeId" element={<ViewRecipe basename="/gl" userId={user?.uid} Header={<Header user={user} handleGoogleLogin={handleGoogleLogin} handleLogout={handleLogout} />} />} />
+              <Route path="*" element={<QueryRedirectHandler user={user} />} />
+            </Routes>
         </main>
         
         </BrowserRouter>

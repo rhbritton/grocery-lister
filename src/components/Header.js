@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom';
+
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUserCircle, faSignOutAlt } from '@fortawesome/free-solid-svg-icons';
@@ -8,6 +9,7 @@ import { faUserCircle, faSignOutAlt } from '@fortawesome/free-solid-svg-icons';
 function Header(props) {
   const { user } = props;
   const location = useLocation();
+  const navigate = useNavigate();
 
   const isActiveURL = (path) => {
     if (path === '/' && location.pathname === path)
@@ -28,8 +30,8 @@ function Header(props) {
 
   return (
     <div>
+      {user &&
       <header className="bg-white p-6 rounded-lg shadow-md mb-4 flex justify-between items-center">
-        {/* This div groups Recipes and Grocery Lists together on the left */}
         <div className="flex space-x-8">
           <NavLink
             to="/"
@@ -73,6 +75,7 @@ function Header(props) {
                 onClick={() => {
                   props.handleLogout();
                   setIsDropdownOpen(false);
+                  navigate('/');
                 }}
                 className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
               >
@@ -83,6 +86,18 @@ function Header(props) {
           )}
         </div>
       </header>
+      }
+
+      {!user &&
+      <header className="bg-white p-6 rounded-lg shadow-md mb-4 flex justify-between items-center">
+        <button
+          onClick={props.handleGoogleLogin}
+          className="w-full flex items-center justify-center py-4 px-6 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+        >
+          GroceryLister | Sign in with Google
+        </button>
+      </header>
+      }
     </div>
   );
 }

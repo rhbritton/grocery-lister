@@ -24,7 +24,7 @@ function RecipeSearch(props) {
     };
 
     return (
-        <div className="RecipeSearch flex items-center space-x-4 mb-4">
+        <div className="RecipeSearch flex items-center space-x-4 mb-2 px-2">
     <div className="flex items-center bg-white border border-gray-300 rounded-md flex-grow">
         <div className="relative inline-block text-gray-700">
             <select
