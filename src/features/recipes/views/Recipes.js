@@ -104,11 +104,11 @@ function RecipesList(props) {
     }
   };
 
-  useEffect(() => {
-    if (status === 'idle' && recipes && recipes.length === 0) {
-      dispatch(getRecipesFromFirestore({ resetPagination: true, userId }));
-    }
-  }, [dispatch, status, recipes.length, userId]);
+  // useEffect(() => {
+  //   if (status === 'idle' && recipes && recipes.length === 0) {
+  //     dispatch(getRecipesFromFirestore({ resetPagination: true, userId }));
+  //   }
+  // }, [dispatch, status, recipes.length, userId]);
 
   const handleDownload = (text, filename) => {
     const blob = new Blob([text], { type: 'text/plain' });
@@ -155,6 +155,8 @@ function RecipesList(props) {
       alert('Failed to import recipes.');
     }
   };
+
+  const isLazyLoading = !searchTerm;
 
   return (
     <div>
@@ -211,10 +213,10 @@ function RecipesList(props) {
         {recipes && recipes.length ? recipes.map((recipe) => (
           <RecipeItem key={recipe.fbid} recipe={recipe} setDeleteModalID={setDeleteModalID} />
         )) : (status !== 'loading' && <div>No recipes found.</div>)}
+        
+        {status === 'loading' ? <div>Loading...</div> : (isLazyLoading && !allRecipesGrabbed && <div onClick={loadMore}>Load More</div>)}
 
-        {status === 'loading' ? <div>Loading...</div> : (!allRecipesGrabbed && <div onClick={loadMore}>Load More</div>)}
-
-        {!allRecipesGrabbed && searchType === 'Name' && (
+        {isLazyLoading && !allRecipesGrabbed && searchType === 'Name' && (
           <div
             ref={observerTargetRef}
             style={{ height: '1px' }}

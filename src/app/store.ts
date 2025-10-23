@@ -22,7 +22,7 @@ export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
-        ignoredPaths: ['recipes.lastVisibleSearch'],
+        ignoredPaths: ['recipes.lastVisibleSearch', 'groceryLists.lastVisibleSearch'],
         ignoredActionPaths: ['payload.lastVisibleSearch'],
       },
     }),

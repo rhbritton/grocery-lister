@@ -36,10 +36,6 @@ const ViewSharedGroceryList = () => {
     }
 
     function loadData() {
-        console.log('l')
-        
-            console.log(originalAllIngredients)
-            console.log(allIngredients)
         const data = searchParams.get('data');
         if (data) {
             const originalString = atob(data);
@@ -78,7 +74,6 @@ const ViewSharedGroceryList = () => {
         if (!all_ingredients_by_type[type])
             all_ingredients_by_type[type] = [];
 
-        console.log(ing)
         all_ingredients_by_type[type].push(ing);
     });
 

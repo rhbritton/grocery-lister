@@ -18,8 +18,9 @@ function RecipeSearch(props) {
         debouncedSearchRef.current = setTimeout(() => {
             // dispatch(searchRecipes(searchTerm));
             // dispatch(searchRecipes({ searchString: searchTerm, searchType: searchType }));
-            dispatch(getRecipesFromFirestore({ resetPagination: true, userId, searchTerm: termToSearch, searchType: typeToSearch }));
-        }, 400);
+            if (termToSearch.trim().length != 1)
+                dispatch(getRecipesFromFirestore({ resetPagination: true, userId, searchTerm: termToSearch, searchType: typeToSearch }));
+        }, 500);
     };
 
     return (
@@ -37,7 +38,6 @@ function RecipeSearch(props) {
                 className="block appearance-none bg-white py-2 pl-3 pr-8 rounded-l-md outline-none cursor-pointer border-r border-gray-300"
             >
                 <option value="Name">Name</option>
-                <option value="name_legacy">Name (Legacy)</option>
                 <option value="Ingredient">Ingredient</option>
             </select>
             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">

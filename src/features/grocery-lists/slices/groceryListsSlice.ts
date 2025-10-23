@@ -35,7 +35,7 @@ const getGroceryListsBySearch = (state, searchTerm) => {
 export const getGroceryListsFromFirestore = createAsyncThunk(
   'groceryLists/fetchGroceryLists',
   async ({ resetPagination, userId, existingGroceryLists=[] }, { getState, rejectWithValue }) => {
-    const pageCount = 3;
+    const pageCount = 5;
 
     const state = getState() as RootState;
     const lastVisible = resetPagination ? null : state.groceryLists.lastVisibleSearch;

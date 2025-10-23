@@ -4,6 +4,8 @@ import { Recipe, Ingredient } from './recipeSlice.ts';
 
 import recipesConfig from '../config.json';
 
+import { generateSearchIndex, generateWordIndexFromRecipe } from '../../../services/search.js';
+
 import store from 'store2';
 import { db, auth } from '../../../auth/firebaseConfig';
 import { collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc, limit, startAfter, orderBy, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
@@ -77,6 +79,7 @@ export const getAllRecipesFromFirestore = createAsyncThunk(
 export const getRecipesFromFirestore = createAsyncThunk(
   'recipes/fetchRecipes',
   async ({ resetPagination, userId, searchTerm='', searchType, existingRecipes=[] }, { getState, rejectWithValue }) => {
+    console.log('getRecipesFromFirestore')
     const pageCount = 5;
     if (searchType)
       searchType = searchType.toLowerCase().trim();
@@ -84,37 +87,39 @@ export const getRecipesFromFirestore = createAsyncThunk(
     if (searchTerm)
       searchTerm = searchTerm.toLowerCase().trim();
     
-    const isLazyLoading = !searchType || searchType === 'name';
+    const isLazyLoading = !searchTerm;
+    if (!isLazyLoading)
+      resetPagination = true;
 
     const state = getState() as RootState;
     const lastVisible = resetPagination ? null : state.recipes.lastVisibleSearch;
 
     try {
-      let q;
       const recipesCollectionRef = collection(db, 'recipes');
       let queryConstraints: any[] = [
         where('userId', '==', userId),
-        orderBy('name_lowercase'),
       ];
 
       if (isLazyLoading) {
+        queryConstraints.push(orderBy('name_lowercase'));
         queryConstraints.push(limit(pageCount));
         
         if (lastVisible) {
           queryConstraints.push(startAfter(lastVisible));
         }
+      } else {
+        if (searchType === 'name') {
+          queryConstraints.push(
+            where('search_keywords', 'array-contains', searchTerm)
+          );
+        } else if (searchType === 'ingredient') {
+          queryConstraints.push(
+            where('ingredient_keywords', 'array-contains', searchTerm)
+          );
+        }
       }
 
-      // TODO: use name_keywords [] 
-      if (searchTerm && searchType === 'name') {
-        const endSearchTerm = searchTerm + '\uf8ff';
-        queryConstraints.push(
-            where('name_lowercase', '>=', searchTerm),
-            where('name_lowercase', '<', endSearchTerm)
-        );
-      }
-
-      q = query(recipesCollectionRef, ...queryConstraints);
+      const q = query(recipesCollectionRef, ...queryConstraints);
       
       const querySnapshot = await getDocs(q);
       const newLastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
@@ -131,12 +136,10 @@ export const getRecipesFromFirestore = createAsyncThunk(
         ...doc.data()
       }));
 
-      if (searchType === 'ingredient' || searchType === 'name_legacy') {
+      if (!isLazyLoading && searchType == 'ingredient') {
         // TODO: ElasticSearch should probably be used instead
         recipes = recipes.filter((recipe) => {
-          if (searchType == 'name_legacy') {
-            return recipe.name.toLowerCase().includes(searchTerm);
-          } else if (searchType == 'ingredient') {
+          if (searchType == 'ingredient') {
             return recipe.ingredients.some(function(ing) {
               return ing.name.toLowerCase().includes(searchTerm);
             });
@@ -144,7 +147,17 @@ export const getRecipesFromFirestore = createAsyncThunk(
         });
       }
       
-      const combinedRecipes = searchType === 'ingredient' ? recipes : [...existingRecipes, ...recipes];
+      if (!isLazyLoading) {
+        recipes = recipes.sort((a, b) => {
+          if (a.name_lowercase < b.name_lowercase) {
+            return -1;
+          } else {
+            return 1;
+          }
+        })
+      }
+      
+      const combinedRecipes = !isLazyLoading ? recipes : [...existingRecipes, ...recipes];
 
       return { recipes: combinedRecipes, lastVisibleSearch: newLastVisible, allRecipesGrabbed: newAllRecipesGrabbed };
     } catch (error) {
@@ -163,10 +176,13 @@ export const addRecipesToFirestore = createAsyncThunk(
 
       const addedRecipes = [];
       for (const recipeData of recipesData) {
+        let name_lowercase = recipeData.name ? recipeData.name.trim().toLowerCase() : '';
         const newRecipe = { 
           id: nanoid(), 
           ...recipeData, 
-          name_lowercase: recipeData.name ? recipeData.name.trim().toLowerCase() : ''
+          name_lowercase: name_lowercase,
+          search_keywords: generateSearchIndex(name_lowercase),
+          ingredient_keywords: generateWordIndexFromRecipe(recipeData),
         };
         const docRef = await addDoc(collection(db, 'recipes'), newRecipe);
         addedRecipes.push({ fbid: docRef.id, ...newRecipe });
@@ -183,10 +199,13 @@ export const addRecipeToFirestore = createAsyncThunk(
   'recipes/addRecipe',
   async (recipeData, { rejectWithValue }) => {
     try {
+      let name_lowercase = recipeData.name ? recipeData.name.trim().toLowerCase() : '';
       const newRecipe = {
         id: nanoid(), 
         ...recipeData,
-        name_lowercase: recipeData.name ? recipeData.name.trim().toLowerCase() : ''
+        name_lowercase: name_lowercase,
+        search_keywords: generateSearchIndex(name_lowercase),
+        ingredient_keywords: generateWordIndexFromRecipe(recipeData),
       };
       const docRef = await addDoc(collection(db, 'recipes'), newRecipe);
       return { fbid: docRef.id, ...newRecipe };
@@ -201,15 +220,19 @@ export const editRecipeFromFirestore = createAsyncThunk(
   async (recipeData, { rejectWithValue }) => {
     try {
       const docRef = doc(db, 'recipes', recipeData.fbid);
+      let name_lowercase = recipeData.name ? recipeData.name.trim().toLowerCase() : '';
       const updatedData = { 
         ...recipeData,
-        name_lowercase: recipeData.name ? recipeData.name.trim().toLowerCase() : ''
+        name_lowercase: name_lowercase,
+        search_keywords: generateSearchIndex(name_lowercase),
+        ingredient_keywords: generateWordIndexFromRecipe(recipeData),
       };
       delete updatedData.fbid;
       await updateDoc(docRef, updatedData);
 
       return recipeData;
     } catch (error) {
+      console.log('error', error)
       return rejectWithValue(error.message);
     }
   }
@@ -331,11 +354,12 @@ export const recipesSlice = createSlice({
         if (!state.recipes)
           state.recipes = [];
 
-        const isLazyLoad = !state.searchType || state.searchType === 'Name';
+        const isLazyLoad = !state.searchTerm;
         if (isLazyLoad) {
-          state.recipes = [];
-          state.lastVisibleSearch = null;
-          state.allRecipesGrabbed = false;
+          const lastSearchRecipe = state.recipes[state.recipes.length-1];
+          if (lastSearchRecipe.name_lowercase > action.payload.name_lowercase) {
+            state.recipes.push(action.payload);
+          }
         } else {
           state.recipes.push(action.payload);
         }

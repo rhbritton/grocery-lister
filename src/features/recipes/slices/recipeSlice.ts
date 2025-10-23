@@ -37,6 +37,7 @@ export interface Recipe {
   id: string;
   name: string;
   name_lowercase: string | null;
+  search_keywords: any[];
   ingredients: Ingredient[];
 };
 
