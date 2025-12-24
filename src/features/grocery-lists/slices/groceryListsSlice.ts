@@ -44,7 +44,7 @@ export const getGroceryListsFromFirestore = createAsyncThunk(
       const groceryListsCollectionRef = collection(db, 'grocery-lists');
       let queryConstraints: any[] = [
         where('userId', '==', userId),
-        orderBy('timestamp'),
+        orderBy('timestamp', 'desc'),
       ];
 
       queryConstraints.push(limit(pageCount));

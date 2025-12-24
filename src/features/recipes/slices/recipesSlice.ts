@@ -79,7 +79,6 @@ export const getAllRecipesFromFirestore = createAsyncThunk(
 export const getRecipesFromFirestore = createAsyncThunk(
   'recipes/fetchRecipes',
   async ({ resetPagination, userId, searchTerm='', searchType, existingRecipes=[] }, { getState, rejectWithValue }) => {
-    console.log('getRecipesFromFirestore')
     const pageCount = 5;
     if (searchType)
       searchType = searchType.toLowerCase().trim();
