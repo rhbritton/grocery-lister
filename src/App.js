@@ -184,6 +184,7 @@ function App() {
 
   const QueryRedirectHandler = ({ user }) => {
     const [searchParams] = useSearchParams();
+    const location = useLocation();
     const grocerylistId = searchParams.get('grocerylist');
     const recipeId = searchParams.get('recipe');
 
@@ -192,6 +193,9 @@ function App() {
 
     if (recipeId)
       return <Navigate to={`/recipes/view/${recipeId}`} replace />;
+
+    if (location.pathname === '/' || location.pathname === '/gl' && user)
+      return <Navigate to="/recipes" replace />;
 
     return user ? _404 : loginPage;
   };
@@ -216,7 +220,6 @@ function App() {
         <main className="flex flex-col md:flex-col md:space-y-0 md:space-x-4">
             {user && <Header user={user} handleGoogleLogin={handleGoogleLogin} handleLogout={handleLogout} />}
             <Routes>
-              {user && <Route path="/" element={<Recipes user={user} />} />}
               {user && <Route path="/recipes" element={<Recipes user={user} />} />}
               {user && <Route path="/recipes/add" element={<AddRecipe user={user} />} />}
               {user && <Route path="/recipes/edit/:recipeId" element={<EditRecipe />} />}
