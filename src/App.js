@@ -22,7 +22,7 @@ import AddRecipe from './features/recipes/views/AddRecipe.js';
 import EditRecipe from './features/recipes/views/EditRecipe.js';
 import ViewRecipe from './features/recipes/views/ViewRecipe.js';
 
-import { getRecipesFromFirestore } from './features/recipes/slices/recipesSlice.ts';
+import { getAllRecipesFromFirestore, getAllFavoriteRecipesFromFirestore } from './features/recipes/slices/recipesSlice.ts';
 
 import './App.css';
 
@@ -53,7 +53,7 @@ function App() {
         const userId = currentUser.uid;
         const userProfileRef = doc(db, `artifacts/${appId}/users/${userId}/profiles/${userId}`);
 
-        fetchInitialUserData(dispatch, userId);
+        await fetchInitialUserData(dispatch, userId);
         
         onSnapshot(userProfileRef, (docSnap) => {
           if (docSnap.exists()) {
@@ -74,8 +74,9 @@ function App() {
     return () => unsubscribe();
   }, []);
 
-  const fetchInitialUserData = (dispatch, userId) => {
-      dispatch(getRecipesFromFirestore({ resetPagination: true, userId }));
+  const fetchInitialUserData = async (dispatch, userId) => {
+    await dispatch(getAllFavoriteRecipesFromFirestore(userId)).unwrap();
+    dispatch(getAllRecipesFromFirestore(userId));
   };
 
   // Handle Google Sign-in

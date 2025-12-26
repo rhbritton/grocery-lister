@@ -11,7 +11,7 @@ import { addGroceryList, addGroceryListToFirestore } from '../slices/groceryList
 import store from 'store2';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faTrash } from '@fortawesome/free-solid-svg-icons';
+import { faTrash, faHeart as faHeartSolid } from '@fortawesome/free-solid-svg-icons';
 
 import { fetchRecipes, selectRecipes, searchRecipes, getAllRecipes, getAllRecipesFromFirestore } from '../../recipes/slices/recipesSlice.ts';
 
@@ -26,20 +26,27 @@ const AddGroceryList = (props) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   
-  const { allRecipes } = useSelector(state => state.recipes);
-  const recipeOptions = allRecipes && allRecipes.map((recipe) => ({
+  const { allRecipes, favoriteRecipes } = useSelector(state => state.recipes);
+  const combinedRecipes = Array.from(
+    new Map([...allRecipes, ...favoriteRecipes].map(r => [r.fbid || r.id, r])).values()
+  ).sort((a, b) => a.name_lowercase.localeCompare(b.name_lowercase));
+
+  console.log('combinedRecipes', combinedRecipes)
+
+  const recipeOptions = combinedRecipes && combinedRecipes.map((recipe) => ({
     value: recipe.id,
     label: recipe.name,
+    isFavorite: recipe.favorited
   }));
 
-  useEffect(() => {
-    if (!allRecipes || allRecipes.length === 0) {
-        dispatch(getAllRecipesFromFirestore(userId));
-    }
-  }, [dispatch, allRecipes]);
+  // useEffect(() => {
+  //   if (!allRecipes || allRecipes.length === 0) {
+  //       dispatch(getAllRecipesFromFirestore(userId));
+  //   }
+  // }, [dispatch, allRecipes]);
 
   let allRecipesById = {};
-  allRecipes && allRecipes.forEach(function(r) {
+  combinedRecipes && combinedRecipes.forEach(function(r) {
     allRecipesById[r.id] = r;
   });
 
@@ -72,6 +79,7 @@ const AddGroceryList = (props) => {
   const customHasUnfilled = ingredients && ingredients.some(ingredient => ingredient.amount === "" || ingredient.name.trim() === "");
   
   const recipesAreZero = recipes.length === 0 || (recipes && recipes.every((r) => {
+    console.log(r)
     return !r.recipe.ingredients.length;
   }));
   const recipesAreAllCrossed = recipes && recipes.every((r) => {
@@ -127,6 +135,17 @@ const AddGroceryList = (props) => {
             <Select
               isMulti
               options={recipeOptions}
+              formatOptionLabel={({ label, isFavorite }) => (
+                <div className="flex items-center">
+                  <span>{label}</span>
+                  {isFavorite && (
+                    <FontAwesomeIcon 
+                      icon={faHeartSolid} 
+                      className="text-red-600 ml-2 text-sm" 
+                    />
+                  )}
+                </div>
+              )}
               onChange={(selectedOptions) => {
                 if (selectedOptions && selectedOptions.length) {
                   let updateSavedRecipes = [];

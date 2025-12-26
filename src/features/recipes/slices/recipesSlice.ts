@@ -7,8 +7,9 @@ import recipesConfig from '../config.json';
 import { generateSearchIndex, generateWordIndexFromRecipe } from '../../../services/search.js';
 
 import store from 'store2';
-import { db, auth } from '../../../auth/firebaseConfig';
-import { collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc, limit, startAfter, orderBy, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
+import { db, auth, appId } from '../../../auth/firebaseConfig';
+import { collection, query, where, getDoc, getDocs, addDoc, doc, documentId, updateDoc, setDoc, deleteDoc, limit, 
+          startAfter, orderBy, QueryDocumentSnapshot, DocumentData, arrayUnion, arrayRemove } from 'firebase/firestore';
 
 interface RecipesState {
   recipes: Recipe[];
@@ -19,6 +20,8 @@ interface RecipesState {
   allRecipesGrabbed: boolean | null;
   error: string | null;
   allRecipes: Recipe[];
+  isFavoriteLoading: boolean | null;
+  favoriteRecipes: Recipe[];
 };
 
 const initialState: RecipesState = {
@@ -30,6 +33,8 @@ const initialState: RecipesState = {
   allRecipesGrabbed: false,
   error: null,
   allRecipes: [],
+  isFavoriteLoading: false,
+  favoriteRecipes: [],
 };
 
 export const getAllRecipes = async () => {
@@ -51,6 +56,59 @@ const getRecipesBySearch = (state, searchTerm, searchType = 'name') => {
     }
   });
 }
+
+export const getAllFavoriteRecipesFromFirestore = createAsyncThunk(
+  'recipes/fetchAllFavoriteRecipes',
+  async (userId, { rejectWithValue }) => {
+    try {
+      // 1. Get the list of favorite snippets
+      const userFavRef = doc(db, 'recipe-favorites', userId);
+      const favSnap = await getDoc(userFavRef);
+      
+      if (!favSnap.exists()) return [];
+      
+      const favoriteSnippets = favSnap.data().favorites || [];
+      const favoriteIds = favoriteSnippets.map(fav => fav.id);
+
+      if (favoriteIds.length === 0) return [];
+
+      // 2. Fetch full documents in batches
+      const recipesCollectionRef = collection(db, 'recipes');
+      const batches = [];
+      for (let i = 0; i < favoriteIds.length; i += 30) {
+        const chunk = favoriteIds.slice(i, i + 30);
+        const q = query(recipesCollectionRef, where(documentId(), 'in', chunk));
+        batches.push(getDocs(q));
+      }
+
+      const snapshots = await Promise.all(batches);
+      const foundRecipes = snapshots.flatMap(snapshot => 
+        snapshot.docs.map(doc => ({
+          fbid: doc.id,
+          favorited: true,
+          ...doc.data()
+        }))
+      );
+
+      // --- SELF-HEALING LOGIC ---
+      // 3. Identify which IDs were NOT found (they were deleted from the 'recipes' collection)
+      const foundIds = new Set(foundRecipes.map(r => r.fbid));
+      const missingSnippets = favoriteSnippets.filter(fav => !foundIds.has(fav.id));
+
+      if (missingSnippets.length > 0) {
+        // Remove the dead references from Firestore so we don't fetch them next time
+        await updateDoc(userFavRef, {
+          favorites: arrayRemove(...missingSnippets)
+        });
+      }
+      // --- END SELF-HEALING ---
+
+      return foundRecipes;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
 
 export const getAllRecipesFromFirestore = createAsyncThunk(
   'recipes/fetchAllRecipes',
@@ -76,9 +134,67 @@ export const getAllRecipesFromFirestore = createAsyncThunk(
   }
 );
 
+export const searchRecipesFromAll = createAsyncThunk(
+  'recipes/searchRecipesFromAll',
+  async ({ searchTerm = '', searchType }, { getState, rejectWithValue }) => {
+    try {
+      if (searchType) searchType = searchType.toLowerCase().trim();
+      if (searchTerm) searchTerm = searchTerm.toLowerCase().trim();
+
+      const state = getState() as RootState;
+      const { allRecipes, favoriteRecipes } = state.recipes;
+
+      // 1. Combine both lists and ensure uniqueness by ID
+      // We prioritize favoriteRecipes because they already have the 'favorited: true' flag
+      const combined = [...favoriteRecipes, ...allRecipes];
+      const uniqueMap = new Map();
+      
+      combined.forEach(recipe => {
+        const id = recipe.fbid || recipe.id;
+        if (!uniqueMap.has(id)) {
+          uniqueMap.set(id, recipe);
+        }
+      });
+
+      const sourceList = Array.from(uniqueMap.values());
+
+      // 2. Perform the filter based on the searchType
+      let filteredResults = sourceList.filter((recipe) => {
+        if (!searchTerm) return true; // Show all if search is empty
+
+        if (searchType === 'ingredient') {
+          // Check ingredient_keywords array
+          return recipe.ingredient_keywords?.some(keyword => 
+            keyword.toLowerCase().includes(searchTerm)
+          );
+        } else {
+          // Default to name/keyword search
+          // Check search_keywords array
+          return recipe.search_keywords?.some(keyword => 
+            keyword.toLowerCase().includes(searchTerm)
+          );
+        }
+      });
+
+      // 3. Final Sort: Alphabetical by name_lowercase
+      filteredResults.sort((a, b) => {
+        const nameA = a.name_lowercase || a.name?.toLowerCase() || '';
+        const nameB = b.name_lowercase || b.name?.toLowerCase() || '';
+        return nameA.localeCompare(nameB);
+      });
+
+      // 4. Return the results for the reducer to put into state.recipes
+      return filteredResults;
+    } catch (error) {
+      console.error("Local search error:", error);
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 export const getRecipesFromFirestore = createAsyncThunk(
   'recipes/fetchRecipes',
-  async ({ resetPagination, userId, searchTerm='', searchType, existingRecipes=[] }, { getState, rejectWithValue }) => {
+  async ({ resetPagination, userId, searchTerm='', searchType, existingRecipes=[], includeFavorites=false }, { getState, rejectWithValue }) => {
     const pageCount = 5;
     if (searchType)
       searchType = searchType.toLowerCase().trim();
@@ -134,6 +250,66 @@ export const getRecipesFromFirestore = createAsyncThunk(
         fbid: doc.id,
         ...doc.data()
       }));
+
+      // GEMINI TODO: get state.recipes.favoriteRecipes { id: id, name: name } and sort by name, and select names that are greater than first in recipes { name: name }, and less than or equal to last in recipes, use lowercase version of names to compare
+      // --- START FAVORITES INTEGRATION ---
+      const favoriteRecipes = state.recipes.favoriteRecipes || [];
+      
+      if (isLazyLoading && favoriteRecipes.length > 0 && recipes.length > 0) {
+        // 1. Determine the alphabetical range of the current Firestore batch
+        const firstBatchName = recipes[0].name_lowercase;
+        const lastBatchName = recipes[recipes.length - 1].name_lowercase;
+
+        // 2. Filter favorites that fall within this range
+        const matchingFavorites = favoriteRecipes.filter(fav => {
+          const favName = fav.name.toLowerCase();
+          // We include favorites >= first and <= last of current batch
+          // If it's the very first page (resetPagination), we include everything up to lastBatchName
+          const isAfterStart = resetPagination ? true : favName >= firstBatchName;
+          const isBeforeEnd = favName <= lastBatchName;
+          
+          return isAfterStart && isBeforeEnd;
+        });
+        
+        // GEMINI TODO: lets fetch the real recipes for all matchingFavorites in the recipes collection based on fav.id
+        // 3. Fetch full documents for these favorites
+        let fullFavoriteRecipes = [];
+        if (matchingFavorites.length > 0) {
+          const favIdsToFetch = matchingFavorites.map(f => f.id);
+          const favBatches = [];
+
+          // Firestore 'in' limit is 30
+          for (let i = 0; i < favIdsToFetch.length; i += 30) {
+            const chunk = favIdsToFetch.slice(i, i + 30);
+            const qFavs = query(recipesCollectionRef, where(documentId(), 'in', chunk));
+            favBatches.push(getDocs(qFavs));
+          }
+
+          const favSnapshots = await Promise.all(favBatches);
+          fullFavoriteRecipes = favSnapshots.flatMap(snap => 
+            snap.docs.map(doc => ({ fbid: doc.id, favorited: true, ...doc.data() }))
+          );
+        }
+
+
+        // 4. Merge and Deduplicate
+        const recipeIdsInBatch = new Set(recipes.map(r => r.fbid));
+        const uniqueFavorites = fullFavoriteRecipes.filter(fav => !recipeIdsInBatch.has(fav.fbid));
+
+        // 5. Combine and Sort
+        recipes = [...recipes, ...uniqueFavorites].sort((a, b) => {
+          const nameA = (a.name_lowercase || a.name.toLowerCase());
+          const nameB = (b.name_lowercase || b.name.toLowerCase());
+          return nameA.localeCompare(nameB);
+        });
+      }
+      // --- END FAVORITES INTEGRATION ---
+
+
+
+
+
+
 
       if (!isLazyLoading && searchType == 'ingredient') {
         // TODO: ElasticSearch should probably be used instead
@@ -251,6 +427,41 @@ export const deleteRecipeFromFirestore = createAsyncThunk(
   }
 );
 
+export const toggleFavoriteRecipeInFirestore = createAsyncThunk(
+  'user/toggleFavorite',
+  async ({ userId, recipeId, recipeName, isAdding }, { rejectWithValue }) => {
+    try {
+      const userRef = doc(db, "recipe-favorites", userId);
+      const favoriteItem = { id: recipeId, name: recipeName };
+
+      await setDoc(userRef, {
+        userId: userId,
+        favorites: isAdding 
+          ? arrayUnion(favoriteItem) 
+          : arrayRemove(favoriteItem)
+      }, { merge: true });
+
+      // 2. Fetch the full recipe document to return to the reducer
+      const recipeRef = doc(db, "recipes", recipeId);
+      const recipeSnap = await getDoc(recipeRef);
+
+      if (!recipeSnap.exists()) {
+        throw new Error("Recipe not found");
+      }
+
+      const fullRecipe = {
+        id: recipeSnap.id,
+        fbid: recipeSnap.id, // Ensuring fbid is set for your search logic
+        ...recipeSnap.data()
+      };
+
+      return { recipe: fullRecipe, isAdding };
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
+
 export const recipesSlice = createSlice({
   name: 'recipes',
   initialState,
@@ -342,6 +553,11 @@ export const recipesSlice = createSlice({
           state.recipes = [];
 
         state.recipes.push(...action.payload);
+        
+        if (!state.allRecipes)
+          state.allRecipes = [];
+
+        state.allRecipes.push(...action.payload);
       })
       .addCase(addRecipesToFirestore.rejected, (state, action) => {
       
@@ -353,15 +569,16 @@ export const recipesSlice = createSlice({
         if (!state.recipes)
           state.recipes = [];
 
-        const isLazyLoad = !state.searchTerm;
-        if (isLazyLoad) {
-          const lastSearchRecipe = state.recipes[state.recipes.length-1];
-          if (lastSearchRecipe.name_lowercase > action.payload.name_lowercase) {
-            state.recipes.push(action.payload);
-          }
-        } else {
+        // const isLazyLoad = !state.searchTerm;
+        // if (isLazyLoad) {
+        //   const lastSearchRecipe = state.recipes[state.recipes.length-1];
+        //   if (lastSearchRecipe.name_lowercase > action.payload.name_lowercase) {
+        //     state.recipes.push(action.payload);
+        //   }
+        // } else {
           state.recipes.push(action.payload);
-        }
+          state.allRecipes.push(action.payload);
+        // }
       })
       .addCase(addRecipeToFirestore.rejected, (state, action) => {
       
@@ -377,6 +594,13 @@ export const recipesSlice = createSlice({
         state.recipes = state.recipes.map(recipe =>
           recipe.fbid === updatedRecipe.fbid ? updatedRecipe : recipe
         );
+
+        if (!state.allRecipes)
+          state.allRecipes = [];
+
+        state.allRecipes = state.allRecipes.map(recipe =>
+          recipe.fbid === updatedRecipe.fbid ? updatedRecipe : recipe
+        );
       })
       .addCase(editRecipeFromFirestore.rejected, (state, action) => {
       
@@ -385,12 +609,88 @@ export const recipesSlice = createSlice({
         
       })
       .addCase(deleteRecipeFromFirestore.fulfilled, (state, action) => {
+        state.allRecipes = state.allRecipes.filter(recipe => recipe.fbid !== action.payload);
         state.recipes = state.recipes.filter(recipe => recipe.fbid !== action.payload);
       })
       .addCase(deleteRecipeFromFirestore.rejected, (state, action) => {
         
+      })
+      .addCase(toggleFavoriteRecipeInFirestore.pending, (state) => {
+        state.isFavoriteLoading = true;
+      })
+      .addCase(toggleFavoriteRecipeInFirestore.fulfilled, (state, action) => {
+        state.isFavoriteLoading = false;
+        
+        // Assuming action.payload contains { recipe, isAdded }
+        const { recipe, isAdding } = action.payload;
+
+        if (isAdding) {
+          // Add to the list if not already there
+          const exists = state.favoriteRecipes.find(f => f.fbid === recipe.fbid);
+          if (!exists) {
+            state.favoriteRecipes.push({ ...recipe, favorited: true });
+          }
+
+          // 2. Check if it should be injected into the current search results
+          if (state.recipes.length > 0) {
+            const first = state.recipes[0].name_lowercase;
+            const last = state.recipes[state.recipes.length - 1].name_lowercase;
+            const targetName = recipe.name.toLowerCase();
+
+            const targetIsBeforeFirst = targetName <= state.recipes[0].name_lowercase;
+            const targetIsAfterLastWithNoMoreRecipes = state.allRecipesGrabbed && targetName >= state.recipes[0].name_lowercase
+
+            // If it fits alphabetically in the current "window"
+            if (targetIsBeforeFirst || targetIsAfterLastWithNoMoreRecipes || (targetName >= first && targetName <= last)) {
+              const existsInSearch = state.recipes.find(r => r.fbid === recipe.fbid);
+              
+              if (!existsInSearch) {
+                // Prepare the recipe for the list
+                const recipeWithFlag = { ...recipe, favorited: true };
+                
+                // Push and re-sort so it doesn't just appear at the bottom
+                state.recipes.push(recipeWithFlag);
+                state.recipes.sort((a, b) => 
+                  a.name_lowercase.localeCompare(b.name_lowercase)
+                );
+              } else {
+                // If it was already there (user's own recipe), just turn on the heart
+                existsInSearch.favorited = true;
+                console.log('existsInSearch')
+              }
+            }
+          }
+        } else {
+          // Remove from the list
+          state.favoriteRecipes = state.favoriteRecipes.filter(
+            f => f.fbid !== recipe.fbid
+          );
+
+          state.recipes = state.recipes.filter(r => r.fbid !== recipe.fbid);
+        }
+      })
+      .addCase(toggleFavoriteRecipeInFirestore.rejected, (state) => {
+        state.isFavoriteLoading = false;
+      })
+      .addCase(getAllFavoriteRecipesFromFirestore.pending, (state) => {
+        
+      })
+      .addCase(getAllFavoriteRecipesFromFirestore.fulfilled, (state, action) => {
+        state.favoriteRecipes = action.payload || [];
+      })
+      .addCase(getAllFavoriteRecipesFromFirestore.rejected, (state) => {
+        
+      })
+      .addCase(searchRecipesFromAll.pending, (state) => {
+        state.status = 'loading';
+      })
+      .addCase(searchRecipesFromAll.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.recipes = action.payload || [];
+      })
+      .addCase(searchRecipesFromAll.rejected, (state, action) => {
+        state.status = 'failed';
       });
-      
   },
 });
 

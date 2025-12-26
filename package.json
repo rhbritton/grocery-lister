@@ -4,6 +4,7 @@
   "private": true,
   "homepage": "https://rhbritton.github.io/gl",
   "dependencies": {
+    "@fortawesome/free-regular-svg-icons": "^7.1.0",
     "@fortawesome/free-solid-svg-icons": "^6.7.2",
     "@fortawesome/react-fontawesome": "^0.2.2",
     "@reduxjs/toolkit": "^2.5.0",

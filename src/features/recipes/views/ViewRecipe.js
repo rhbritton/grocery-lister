@@ -1,11 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { useDispatch } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useParams, useNavigate, NavLink } from 'react-router-dom';
 
+import { getDoc, doc } from 'firebase/firestore';
+import { db } from '../../../auth/firebaseConfig';
+
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faArrowLeft, faShareAlt, faPen } from '@fortawesome/free-solid-svg-icons';
+import { faArrowLeft, faShareAlt, faPen, faHeart as faHeartSolid } from '@fortawesome/free-solid-svg-icons';
+import { faHeart as faHeartRegular } from '@fortawesome/free-regular-svg-icons';
 
 import { fetchRecipeById } from '../slices/recipeSlice.ts';
+import { toggleFavoriteRecipeInFirestore } from '../slices/recipesSlice.ts';
+
+import UnfavoriteModal from '../components/UnfavoriteModal.js';
 
 import '../styles/ViewRecipe.css';
 
@@ -20,6 +27,10 @@ const ViewRecipe = (props) => {
   const [instructions, setInstructions] = useState('');
   const [focusedColumn, setFocusedColumn] = useState('instructions');
   const [shareFeedback, setShareFeedback] = useState('');
+
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [showUnfavoriteModal, setShowUnfavoriteModal] = useState(false);
+  const isFavoriteLoading = useSelector((state) => state.recipes.isFavoriteLoading);
 
   const shareURL = async () => {
     const fullUrl = `${window.location.origin}${props.basename}?recipe=${recipeId}`;
@@ -75,6 +86,56 @@ const ViewRecipe = (props) => {
     fetchData();
   }, [dispatch, recipeId]);
 
+  
+
+  useEffect(() => {
+    const checkFavoriteStatus = async () => {
+      if (!props.userId || !recipeId) {
+        setIsFavorite(false);
+        return;
+      }
+
+      try {
+        const favRef = doc(db, "recipe-favorites", props.userId);
+        const docSnap = await getDoc(favRef);
+
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          // Check if the favorites array exists and contains this recipeId
+          const favorites = data.favorites || [];
+          const isFav = favorites.some(fav => fav.id === recipeId);
+          setIsFavorite(isFav);
+        } else {
+          // Document doesn't exist yet (user has no favorites)
+          setIsFavorite(false);
+        }
+      } catch (error) {
+        console.error("Error checking favorite status:", error);
+        setIsFavorite(false);
+      }
+    };
+
+    checkFavoriteStatus();
+  }, [props.userId, recipeId]);
+
+  const confirmFavoriteToggle = async () => {
+    if (!props.userId) return;
+
+    const newStatus = !isFavorite;
+    setIsFavorite(newStatus);
+
+    const isAdding = !isFavorite;
+    dispatch(toggleFavoriteRecipeInFirestore({ userId: props.userId, recipeId, recipeName: name, isAdding }));
+  };
+
+  const handleFavoriteToggle = () => {
+    if (isFavorite)
+      setShowUnfavoriteModal(true);
+    else
+      confirmFavoriteToggle();
+  };
+
+
   const handleColumnClick = (columnName) => {
     setFocusedColumn(columnName);
   };
@@ -104,6 +165,15 @@ const ViewRecipe = (props) => {
             {name}
         </h2>
         <div className="text-right w-1/2">
+            {(owner && props.userId !== owner) && props.userId && <NavLink 
+                onClick={handleFavoriteToggle}
+                disabled={isFavoriteLoading}
+                className={`text-right mb-4 mr-2 px-4 py-2 rounded-md text-white transition-color 
+                  ${isFavoriteLoading ? 'opacity-50 cursor-not-allowed' : ''} 
+                  ${isFavorite ? 'bg-red-600' : 'bg-gray-400'}`}
+                >
+                <FontAwesomeIcon icon={isFavorite ? faHeartSolid : faHeartRegular} />
+            </NavLink>}
             {props.userId && <NavLink 
                 onClick={shareURL}
                 className="text-right mb-4 mr-2 px-4 py-2 rounded-md bg-green-500 text-white hover:bg-green-600 active:bg-yellow-800"
@@ -172,6 +242,13 @@ const ViewRecipe = (props) => {
         </div>
       </div>
     </div>
+
+    {showUnfavoriteModal && (
+      <UnfavoriteModal 
+        setShowModal={setShowUnfavoriteModal} 
+        onConfirm={confirmFavoriteToggle} 
+      />
+    )}
     
     </div>
   );

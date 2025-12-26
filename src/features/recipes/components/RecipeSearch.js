@@ -4,24 +4,49 @@ import { useSelector, useDispatch } from 'react-redux';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMagnifyingGlass, faChevronDown } from '@fortawesome/free-solid-svg-icons';
 
-import { fetchRecipes, selectRecipes, searchRecipes, getRecipesFromFirestore, setRecipeSearchParams } from '../slices/recipesSlice.ts';
+import { fetchRecipes, selectRecipes, searchRecipes, getRecipesFromFirestore, searchRecipesFromAll, setRecipeSearchParams } from '../slices/recipesSlice.ts';
 
 function RecipeSearch(props) {
     const { userId } = props;
     const dispatch = useDispatch();
     
-    const { searchTerm, searchType } = useSelector(state => state.recipes);
+    const { searchTerm, searchType, allRecipes, favoriteRecipes } = useSelector(state => state.recipes);
     
     const debouncedSearchRef = useRef(null); 
+    // const handleSearch = (termToSearch, typeToSearch) => {
+    //     clearTimeout(debouncedSearchRef.current);
+    //     debouncedSearchRef.current = setTimeout(() => {
+    //         // dispatch(searchRecipes(searchTerm));
+    //         // dispatch(searchRecipes({ searchString: searchTerm, searchType: searchType }));
+    //         if (termToSearch.trim().length != 1)
+    //             dispatch(getRecipesFromFirestore({ 
+    //                 resetPagination: true, 
+    //                 userId, 
+    //                 searchTerm: termToSearch, 
+    //                 searchType: typeToSearch, 
+    //                 includeFavorites: true 
+    //             }));
+    //     }, 500);
+    // };
+
     const handleSearch = (termToSearch, typeToSearch) => {
         clearTimeout(debouncedSearchRef.current);
         debouncedSearchRef.current = setTimeout(() => {
-            // dispatch(searchRecipes(searchTerm));
-            // dispatch(searchRecipes({ searchString: searchTerm, searchType: searchType }));
-            if (termToSearch.trim().length != 1)
-                dispatch(getRecipesFromFirestore({ resetPagination: true, userId, searchTerm: termToSearch, searchType: typeToSearch }));
-        }, 500);
+            if (termToSearch.trim().length != 1) {
+                dispatch(searchRecipesFromAll({ 
+                    searchTerm: termToSearch, 
+                    searchType: typeToSearch
+                }));
+            }
+        }, 100);
     };
+
+    useEffect(() => {
+        dispatch(searchRecipesFromAll({ 
+            searchTerm: searchTerm,
+            searchType: searchType 
+        }));
+    }, [dispatch, allRecipes, favoriteRecipes]);
 
     return (
         <div className="RecipeSearch flex items-center space-x-4 mb-2 px-2">

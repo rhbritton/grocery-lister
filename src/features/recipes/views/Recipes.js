@@ -14,7 +14,7 @@ import RecipeSearch from '../components/RecipeSearch.js';
 import RecipeItem from '../components/RecipeItem.js';
 import DeleteModal from '../components/DeleteModal.js';
 
-import { setRecipes, fetchRecipes, selectRecipes, searchRecipes, getRecipesFromFirestore } from '../slices/recipesSlice.ts';
+import { setRecipes, fetchRecipes, selectRecipes, searchRecipes, getRecipesFromFirestore, searchRecipesFromAll } from '../slices/recipesSlice.ts';
 
 function RecipesList(props) {
   const { user } = props;
@@ -25,7 +25,7 @@ function RecipesList(props) {
 
   const fileInputRef = useRef(null);
   
-  const { recipes, status, lastVisibleSearch, searchTerm, searchType, allRecipesGrabbed } = useSelector(state => state.recipes);
+  const { recipes, status, lastVisibleSearch, searchTerm, searchType, allRecipes, favoriteRecipes, allRecipesGrabbed } = useSelector(state => state.recipes);
 
   const dispatch = useDispatch();
 
@@ -40,48 +40,64 @@ function RecipesList(props) {
       return;
     }
     
-    dispatch(getRecipesFromFirestore({ 
-      userId, 
-      existingRecipes: recipes,
-      searchTerm,
-      searchType,
+    // dispatch(getRecipesFromFirestore({ 
+    //   userId, 
+    //   existingRecipes: recipes,
+    //   searchTerm,
+    //   searchType,
+    // }));
+    dispatch(searchRecipesFromAll({ 
+        searchTerm, 
+        searchType
     }));
   };
 
-  const observerTargetRef = useRef(null);
-  const [isCooldown, setIsCooldown] = useState(false);
+  // useEffect(() => {
+  //   if (status === 'succeeded' || (allRecipes.length > 0 && favoriteRecipes.length > 0)) {
+  //       // Trigger initial "search" to populate state.recipes with the full list
+  //       dispatch(searchRecipesFromAll({ 
+  //           searchTerm: searchTerm, // Use current state values
+  //           searchType: searchType 
+  //       }));
+  //   }
+  // }, [status, allRecipes.length, favoriteRecipes.length]);
 
-  useEffect(() => {
-    if (allRecipesGrabbed) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !isCooldown && status !== 'loading') {
-          setIsCooldown(true);
+  
+  // const observerTargetRef = useRef(null);
+  // const [isCooldown, setIsCooldown] = useState(false);
 
-          setTimeout(() => {
-            loadMore();
+  // useEffect(() => {
+  //   if (allRecipesGrabbed) return;
 
-            setTimeout(() => {
-              setIsCooldown(false);
-            }, 1500);
-          }, 300);
-        }
-      },
-      {
-        root: null,
-        rootMargin: '0px',
-        threshold: 0.1,
-      }
-    );
+  //   const observer = new IntersectionObserver(
+  //     (entries) => {
+  //       if (entries[0].isIntersecting && !isCooldown && status !== 'loading') {
+  //         setIsCooldown(true);
 
-    const target = observerTargetRef.current;
-    if (target) observer.observe(target);
+  //         setTimeout(() => {
+  //           loadMore();
 
-    return () => {
-      if (target) observer.unobserve(target);
-    };
-  }, [loadMore, allRecipesGrabbed, isCooldown, status]);
+  //           setTimeout(() => {
+  //             setIsCooldown(false);
+  //           }, 1500);
+  //         }, 300);
+  //       }
+  //     },
+  //     {
+  //       root: null,
+  //       rootMargin: '0px',
+  //       threshold: 0.1,
+  //     }
+  //   );
+
+  //   const target = observerTargetRef.current;
+  //   if (target) observer.observe(target);
+
+  //   return () => {
+  //     if (target) observer.unobserve(target);
+  //   };
+  // }, [loadMore, allRecipesGrabbed, isCooldown, status]);
 
   const handleImport2 = () => {
     fileInputRef.current.click();
@@ -156,7 +172,7 @@ function RecipesList(props) {
     }
   };
 
-  const isLazyLoading = !searchTerm;
+  // const isLazyLoading = !searchTerm;
 
   return (
     <div>
@@ -167,6 +183,7 @@ function RecipesList(props) {
         <button className="w-16 h-16 rounded-2xl bg-blue-500 text-white shadow-lg text-3xl flex items-center justify-center hover:bg-blue-600 active:bg-blue-800 transition-colors">
           <FontAwesomeIcon icon={faPlus} />
         </button>
+        
       </NavLink>
 
       <RecipeSearch userId={userId} />
@@ -214,14 +231,14 @@ function RecipesList(props) {
           <RecipeItem key={recipe.fbid} recipe={recipe} setDeleteModalID={setDeleteModalID} />
         )) : (status !== 'loading' && <div>No recipes found.</div>)}
         
-        {status === 'loading' ? <div>Loading...</div> : (isLazyLoading && !allRecipesGrabbed && <div onClick={loadMore}>Load More</div>)}
+        {/* {status === 'loading' ? <div>Loading...</div> : (isLazyLoading && !allRecipesGrabbed && <div onClick={loadMore}>Load More</div>)} */}
 
-        {isLazyLoading && !allRecipesGrabbed && searchType === 'Name' && (
+        {/* {isLazyLoading && !allRecipesGrabbed && searchType === 'Name' && (
           <div
             ref={observerTargetRef}
             style={{ height: '1px' }}
           />
-        )}
+        )} */}
       </section>
 
       {deleteModalID && <DeleteModal deleteModalID={deleteModalID} setDeleteModalID={setDeleteModalID} />}
