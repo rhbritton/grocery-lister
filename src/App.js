@@ -46,37 +46,78 @@ function App() {
   
   const dispatch = useDispatch();
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser) {
-        setUser(currentUser);
-        const userId = currentUser.uid;
-        const userProfileRef = doc(db, `artifacts/${appId}/users/${userId}/profiles/${userId}`);
+  // useEffect(() => {
+  //   const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+  //     if (currentUser) {
+  //       setUser(currentUser);
+  //       const userId = currentUser.uid;
+  //       const userProfileRef = doc(db, `artifacts/${appId}/users/${userId}/profiles/${userId}`);
 
-        await fetchInitialUserData(dispatch, userId);
+  //       await fetchInitialUserData(dispatch, userId);
         
-        onSnapshot(userProfileRef, (docSnap) => {
-          if (docSnap.exists()) {
-            setUserProfile(docSnap.data());
-          } else {
-            setUserProfile(null);
-          }
-        }, (error) => {
-          console.error("Error listening to user profile:", error);
-        });
-      } else {
-        setUser(null);
-        setUserProfile(null);
-      }
-      setLoading(false);
-    });
+  //       onSnapshot(userProfileRef, (docSnap) => {
+  //         if (docSnap.exists()) {
+  //           setUserProfile(docSnap.data());
+  //         } else {
+  //           setUserProfile(null);
+  //         }
+  //       }, (error) => {
+  //         console.error("Error listening to user profile:", error);
+  //       });
+  //     } else {
+  //       setUser(null);
+  //       setUserProfile(null);
+  //     }
+  //     setLoading(false);
+  //   });
 
-    return () => unsubscribe();
+  //   return () => unsubscribe();
+  // }, []);
+
+  // 1. Auth Observer: Only handles the Auth State
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false); // Authentication check is done
+    });
+    return () => unsubscribeAuth();
   }, []);
 
+  // 2. Profile & Data Observer: Runs only when user.uid exists
+  useEffect(() => {
+    if (!user) return;
+
+    const userId = user.uid;
+    const userProfileRef = doc(db, `artifacts/${appId}/users/${userId}/profiles/${userId}`);
+
+    // Trigger Data Fetch
+    fetchInitialUserData(dispatch, userId);
+
+    // Setup Profile Listener
+    const unsubscribeSnapshot = onSnapshot(userProfileRef, (docSnap) => {
+      if (docSnap.exists()) {
+        setUserProfile(docSnap.data());
+      } else {
+        setUserProfile(null);
+      }
+    }, (error) => {
+      console.error("Error listening to user profile:", error);
+    });
+
+    // CLEANUP: This is the most important part. 
+    // It kills the listener when the user logs out or the ID changes.
+    return () => unsubscribeSnapshot();
+  }, [user?.uid, dispatch]);
+
+
+
   const fetchInitialUserData = async (dispatch, userId) => {
-    await dispatch(getAllFavoriteRecipesFromFirestore(userId)).unwrap();
-    dispatch(getAllRecipesFromFirestore(userId));
+    await Promise.all([
+      dispatch(getAllFavoriteRecipesFromFirestore(userId)),
+      dispatch(getAllRecipesFromFirestore(userId))
+    ])
+    // await dispatch(getAllFavoriteRecipesFromFirestore(userId)).unwrap();
+    // dispatch(getAllRecipesFromFirestore(userId));
   };
 
   // Handle Google Sign-in
