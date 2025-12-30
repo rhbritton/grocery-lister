@@ -9,18 +9,28 @@ import { BrowserRouter, Routes, Route, NavLink, useLocation, useSearchParams, Na
 
 import { useSelector, useDispatch } from 'react-redux';
 
-import Header from './components/Header.js';
+import Header from './components/Header2.js';
 
-import GroceryLists from './features/grocery-lists/GroceryLists';
+import GroceryLists from './features/grocery-lists/GroceryLists2.js';
 import AddGroceryList from './features/grocery-lists/views/AddGroceryList.js';
 import EditGroceryList from './features/grocery-lists/views/EditGroceryList.js';
-import ViewGroceryList from './features/grocery-lists/views/ViewGroceryList.js';
+import ViewGroceryList from './features/grocery-lists/views/ViewGroceryList2.js';
 import ViewSharedGroceryList from './features/grocery-lists/views/ViewSharedGroceryList.js';
 
-import Recipes from './features/recipes/views/Recipes.js';
+import Recipes from './features/recipes/views/Recipes2.js';
 import AddRecipe from './features/recipes/views/AddRecipe.js';
 import EditRecipe from './features/recipes/views/EditRecipe.js';
 import ViewRecipe from './features/recipes/views/ViewRecipe.js';
+
+import TestRecipeList from './TestRecipeList.js';
+import TestRecipeView from './TestRecipeView.js';
+import TestRecipeEdit from './TestRecipeEdit.js';
+
+import TestGroceryListListView from './TestGroceryListList.js';
+import TestGroceryListView from './TestGroceryListView.js';
+import TestGroceryListEdit from './TestGroceryListEdit.js';
+
+
 
 import { getAllRecipesFromFirestore, getAllFavoriteRecipesFromFirestore } from './features/recipes/slices/recipesSlice.ts';
 
@@ -43,6 +53,11 @@ function App() {
   const [userProfile, setUserProfile] = useState(null);
   
   const [groceryListHasChanged, setGroceryListHasChanged] = useState(false);
+  
+  const [checkedCount, setCheckedCount] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
+  
+  const [spaceForFloatingButton, setSpaceForFloatingButton] = useState('');
   
   const dispatch = useDispatch();
 
@@ -116,8 +131,6 @@ function App() {
       dispatch(getAllFavoriteRecipesFromFirestore(userId)),
       dispatch(getAllRecipesFromFirestore(userId))
     ])
-    // await dispatch(getAllFavoriteRecipesFromFirestore(userId)).unwrap();
-    // dispatch(getAllRecipesFromFirestore(userId));
   };
 
   // Handle Google Sign-in
@@ -259,19 +272,25 @@ function App() {
 
         <BrowserRouter basename="/gl">
 
-        <main className="flex flex-col md:flex-col md:space-y-0 md:space-x-4">
-            {user && <Header user={user} handleGoogleLogin={handleGoogleLogin} handleLogout={handleLogout} />}
+        <main className={`min-h-screen bg-[#F8FAFC] font-sans text-slate-900 ${spaceForFloatingButton}`}>
+            {user && <Header user={user} handleGoogleLogin={handleGoogleLogin} handleLogout={handleLogout} hasProgressPercent={true} checkedCount={checkedCount} totalItems={totalItems} />}
             <Routes>
-              {user && <Route path="/recipes" element={<Recipes user={user} />} />}
+              {user && <Route path="/recipes" element={<Recipes user={user} setSpaceForFloatingButton={setSpaceForFloatingButton} />} />}
               {user && <Route path="/recipes/add" element={<AddRecipe user={user} />} />}
               {user && <Route path="/recipes/edit/:recipeId" element={<EditRecipe />} />}
               
-              {user && <Route path="/grocery-lists" element={<GroceryLists user={user} />} />}
+              {user && <Route path="/grocery-lists" element={<GroceryLists user={user} setSpaceForFloatingButton={setSpaceForFloatingButton} />} />}
               {user && <Route path="/grocery-lists/add" element={<AddGroceryList user={user} />} />}
               {user && <Route path="/grocery-lists/edit/:groceryListId" element={<EditGroceryList />} />}
-              {user && <Route path="/grocery-lists/view/:groceryListId" element={<ViewGroceryList basename="/gl" userId={user.uid} groceryListHasChanged={groceryListHasChanged} setGroceryListHasChanged={setGroceryListHasChanged} />} />}
+              {user && <Route path="/grocery-lists/view/:groceryListId" element={<ViewGroceryList basename="/gl" userId={user.uid} groceryListHasChanged={groceryListHasChanged} setGroceryListHasChanged={setGroceryListHasChanged} setCheckedCount={setCheckedCount} setTotalItems={setTotalItems} setSpaceForFloatingButton={setSpaceForFloatingButton} />} />}
               
-              <Route path="/recipes/view/:recipeId" element={<ViewRecipe basename="/gl" userId={user?.uid} Header={<Header user={user} handleGoogleLogin={handleGoogleLogin} handleLogout={handleLogout} />} />} />
+              <Route path="/recipes/view/:recipeId" element={<ViewRecipe basename="/gl" userId={user?.uid} Header={<Header user={user} handleGoogleLogin={handleGoogleLogin} handleLogout={handleLogout} checkedCount={checkedCount} totalItems={totalItems} />} />} />
+              <Route path="/test" element={<TestRecipeList user={user} />} />
+              <Route path="/test-recipe-view" element={<TestRecipeView user={user} />} />
+              <Route path="/test-recipe-edit" element={<TestRecipeEdit user={user} />} />
+              <Route path="/test-grocerylist-list" element={<TestGroceryListListView user={user} />} />
+              <Route path="/test-grocerylist-view" element={<TestGroceryListView user={user} />} />
+              <Route path="/test-grocerylist-edit" element={<TestGroceryListEdit user={user} />} />
               <Route path="*" element={<QueryRedirectHandler user={user} />} />
             </Routes>
         </main>
