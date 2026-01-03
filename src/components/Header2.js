@@ -125,7 +125,7 @@ function Header(props) {
     <>
       {user &&
         <>
-            <header className="bg-[#1976D2] px-6 py-4 shadow-lg sticky top-0 z-50">
+            <header className="bg-[#1976D2] px-6 py-4 shadow-lg sticky top-0 z-[9999]">
                 <div className="max-w-xl mx-auto flex items-center justify-between relative">
                     {getPathInfo().backButton && <NavLink 
                         to={getPathInfo().backButton}
@@ -188,37 +188,27 @@ function Header(props) {
                     </div>
                 </div>
             </header>
-            {!!(props.hasProgressPercent && props.totalItems) &&
-                <div className="bg-[#1976D2] h-6 shadow-lg sticky top-[90px] z-40">
-                    <div className="w-full h-6 bg-blue-900/20 relative flex items-center justify-center overflow-hidden">    
-                        {/* PROGRESS FILL */}
-                        <div 
-                            className={`absolute left-0 top-0 h-full transition-all duration-500 ease-out
+            {!!(props.hasProgressPercent && props.totalItems) && (
+              <div className="bg-[#1976D2] h-6 shadow-lg sticky top-[90px] z-40">
+                <div className="w-full h-6 bg-blue-900/20 relative flex items-center justify-center overflow-hidden">
+                  
+                  {/* 1. PROGRESS FILL (Stays behind everything) */}
+                  <div
+                    className={`absolute left-0 top-0 h-full transition-all duration-500 ease-out
                                 ${isFinished ? 'bg-green-700' : 'bg-white'}`}
-                            style={{ width: `${progressPercent}%` }}
-                        />
-                        
-                        {/* CENTERED ITEM COUNT */}
-                        {props.totalItems > 0 && <span 
-                        className="relative z-10 text-[16px] font-black uppercase tracking-widest text-white transition-colors duration-300"
-                        style={{
-                            /* Creates a sharp 1px outline using your brand blue */
-                            textShadow: isFinished ? 'none' : `
-                            1.5px  1.5px 0 #1976D2,
-                            -1.5px -1.5px 0 #1976D2,
-                            1.5px -1.5px 0 #1976D2,
-                            -1.5px  1.5px 0 #1976D2,
-                            1.5px  0px 0 #1976D2,
-                            -1.5px  0px 0 #1976D2,
-                            0px  1.5px 0 #1976D2,
-                            0px -1.5px 0 #1976D2
-                            `
-                        }}>
-                        {props.checkedCount} / {props.totalItems} Items Completed
-                        </span>}
-                    </div>
+                    style={{ width: `${progressPercent}%` }}
+                  />
+
+                  {/* 2. TEXT WITH BLACK BACKGROUND PILL */}
+                  {props.totalItems > 0 && (
+                    <span className={`${isFinished ? 'bg-green-700 text-white' : 'bg-white text-black'} relative z-10 px-3 py-0 text-[16px] font-black uppercase tracking-widest shadow-sm`}>
+                      {props.checkedCount} / {props.totalItems} Items Completed
+                    </span>
+                  )}
+                  
                 </div>
-            }
+              </div>
+            )}
         </>
       }
 

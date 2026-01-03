@@ -11,7 +11,7 @@ import { faPlus, faBook, faClipboardList } from '@fortawesome/free-solid-svg-ico
 
 import { selectGroceryLists, fetchGroceryLists, getGroceryListsFromFirestore } from './slices/groceryListsSlice.ts';
 
-import GroceryListItem from './components/GroceryListItem';
+import GroceryListItem from './components/GroceryListItem2.js';
 import DeleteModal from './components/DeleteModal.js';
 
 function GroceryLists(props) {
@@ -23,6 +23,10 @@ function GroceryLists(props) {
 
   const { groceryLists, status, lastVisibleSearch, allGroceryListsGrabbed } = useSelector(state => state.groceryLists);
   const dispatch = useDispatch();
+
+  useEffect(() => {
+      props.setSpaceForFloatingButton && props.setSpaceForFloatingButton('mb-20');
+  }, []);
 
   const loadMore = () => {
     if (status === 'loading') {
@@ -98,19 +102,12 @@ function GroceryLists(props) {
 
   return (
     <>
-      <NavLink
-        to="/grocery-lists/add"
-        className="fixed bottom-24 right-6 z-50"
-      >
-        <button className="w-16 h-16 rounded-2xl bg-blue-500 text-white shadow-lg text-3xl flex items-center justify-center hover:bg-blue-600 active:bg-blue-800 transition-colors">
-          <FontAwesomeIcon icon={faPlus} />
-        </button>
-      </NavLink>
-
-      <section className="App-body GroceryLists w-full space-y-4 pb-20">
-        {groceryLists && groceryLists.length ? groceryLists.map((gl, i) => (
-          <GroceryListItem key={gl.fbid+i} gl={gl} setDeleteModalID={setDeleteModalID} />
-        )) : (status !== 'loading' && <div>No grocery lists found.</div>)}
+      <main className="max-w-xl mx-auto p-6">
+        <div className="space-y-4">
+          {groceryLists && groceryLists.length ? groceryLists.map((gl, i) => (
+            <GroceryListItem key={gl.fbid+i} gl={gl} setDeleteModalID={setDeleteModalID} />
+          )) : (status !== 'loading' && <div>No grocery lists found.</div>)}
+        </div>
 
         {status === 'loading' ? <div>Loading...</div> : (!allGroceryListsGrabbed && <div onClick={loadMore}>Load More</div>)}
 
@@ -120,22 +117,31 @@ function GroceryLists(props) {
             style={{ height: '1px' }}
           />
         )}
-      </section>
+      </main>
 
-        <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex items-stretch h-20 z-20 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
-            <NavLink 
-                to={`/`}
-                className="flex-1 flex flex-col items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-all duration-200"
-            >
-                <FontAwesomeIcon icon={faBook} className="text-xl mb-1" />
-                <span className="text-[11px] font-bold uppercase tracking-widest">Recipes</span>
-            </NavLink>
+      <NavLink
+        to="/grocery-lists/add"
+        className="fixed bottom-24 right-6 z-50"
+      >
+        <button className="w-16 h-16 rounded-2xl bg-blue-500 text-white shadow-lg text-3xl flex items-center justify-center hover:bg-blue-600 active:bg-blue-800 transition-colors">
+          <FontAwesomeIcon icon={faPlus} />
+        </button>
+      </NavLink>
 
-            <button className="flex-1 flex flex-col items-center justify-center bg-[#1976D2] text-white transition-all duration-200 group">
-                <FontAwesomeIcon icon={faClipboardList} className="text-xl mb-1" />
-                <span className="text-[11px] font-bold uppercase tracking-widest">Grocery Lists</span>
-            </button>
-        </nav>
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex items-stretch h-20 z-20 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+          <NavLink 
+              to={`/`}
+              className="flex-1 flex flex-col items-center justify-center text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-all duration-200"
+          >
+              <FontAwesomeIcon icon={faBook} className="text-xl mb-1" />
+              <span className="text-[11px] font-bold uppercase tracking-widest">Recipes</span>
+          </NavLink>
+
+          <button className="flex-1 flex flex-col items-center justify-center bg-[#1976D2] text-white transition-all duration-200 group">
+              <FontAwesomeIcon icon={faClipboardList} className="text-xl mb-1" />
+              <span className="text-[11px] font-bold uppercase tracking-widest">Grocery Lists</span>
+          </button>
+      </nav>
 
       {deleteModalID && <DeleteModal deleteModalID={deleteModalID} setDeleteModalID={setDeleteModalID} />}
     </>

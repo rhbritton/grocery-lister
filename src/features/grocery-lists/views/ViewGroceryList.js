@@ -195,7 +195,7 @@ const ViewGroceryList = (props) => {
                 >
                     <FontAwesomeIcon icon={faArrowLeft} />
                 </NavLink>
-                {groceryList && (formatDate(new Date(groceryList.timestamp)) + ' - ' + formatTime(new Date(groceryList.timestamp)))}
+                {groceryList && (formatDate(new Date(groceryList.timestamp)) + ' - ' + formatTime(new Date(groceryList.timestamp), { hour: 'numeric', minute: 'numeric'}))}
             </h2>
             <div className="text-right w-1/2">
                 <NavLink 

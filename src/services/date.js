@@ -3,7 +3,6 @@ export function formatDate(date) {
     return date.toLocaleDateString(undefined, options);
 }
 
-export function formatTime(date) {
-    const options = { hour: 'numeric', minute: 'numeric', second: 'numeric'};
+export function formatTime(date, options = { hour: 'numeric', minute: 'numeric', second: 'numeric'}) {
     return date.toLocaleTimeString(undefined, options);
 }

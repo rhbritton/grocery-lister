@@ -10,8 +10,8 @@ import { faPlus, faClipboardList, faBook } from '@fortawesome/free-solid-svg-ico
 
 import { addRecipesToFirestore } from '../slices/recipesSlice.ts';
 
-import RecipeSearch from '../components/RecipeSearch.js';
-import RecipeItem from '../components/RecipeItem.js';
+import RecipeSearch from '../components/RecipeSearch2.js';
+import RecipeItem from '../components/RecipeItem2.js';
 import DeleteModal from '../components/DeleteModal.js';
 
 import { setRecipes, fetchRecipes, selectRecipes, searchRecipes, getRecipesFromFirestore, searchRecipesFromAll } from '../slices/recipesSlice.ts';
@@ -189,6 +189,8 @@ function RecipesList(props) {
         </button>
       </NavLink>
 
+      <main className="max-w-xl mx-auto min-w-[380px] p-6 pt-0 mb-16">
+
       <RecipeSearch userId={userId} />
       
       {/* <div className=""> */}
@@ -243,6 +245,8 @@ function RecipesList(props) {
           />
         )} */}
       </section>
+
+      </main>
 
         <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex items-stretch h-20 z-20 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
             <button className="flex-1 flex flex-col items-center justify-center bg-[#1976D2] text-white transition-all duration-200 group">

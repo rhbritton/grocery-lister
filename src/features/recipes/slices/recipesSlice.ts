@@ -20,6 +20,7 @@ interface RecipesState {
   allRecipesGrabbed: boolean | null;
   error: string | null;
   allRecipes: Recipe[];
+  allRecipesSorted: Recipe[];
   isFavoriteLoading: boolean | null;
   favoriteRecipes: Recipe[];
 };
@@ -33,6 +34,7 @@ const initialState: RecipesState = {
   allRecipesGrabbed: false,
   error: null,
   allRecipes: [],
+  allRecipesSorted: [],
   isFavoriteLoading: false,
   favoriteRecipes: [],
 };
@@ -41,6 +43,14 @@ export const getAllRecipes = async () => {
   let all_recipes = store('recipes');
 
   return all_recipes;
+}
+
+const sortRecipes = (recipes) => {
+  recipes.sort((a, b) => {
+    const nameA = (a.name_lowercase || a.name.toLowerCase());
+    const nameB = (b.name_lowercase || b.name.toLowerCase());
+    return nameA.localeCompare(nameB);
+  });
 }
 
 const getRecipesBySearch = (state, searchTerm, searchType = 'name') => {
@@ -529,6 +539,10 @@ export const recipesSlice = createSlice({
       })
       .addCase(getAllRecipesFromFirestore.fulfilled, (state, action) => {
         state.allRecipes = action.payload || [];
+
+        let allRecipesSorted = action.payload;
+        sortRecipes(allRecipesSorted);
+        state.allRecipesSorted = allRecipesSorted;
       })
       .addCase(getAllRecipesFromFirestore.rejected, (state, action) => {
 
@@ -558,6 +572,8 @@ export const recipesSlice = createSlice({
           state.allRecipes = [];
 
         state.allRecipes.push(...action.payload);
+        state.allRecipesSorted.push(...action.payload);
+        sortRecipes(state.allRecipesSorted);
       })
       .addCase(addRecipesToFirestore.rejected, (state, action) => {
       
@@ -601,6 +617,9 @@ export const recipesSlice = createSlice({
         state.allRecipes = state.allRecipes.map(recipe =>
           recipe.fbid === updatedRecipe.fbid ? updatedRecipe : recipe
         );
+        state.allRecipesSorted = state.allRecipesSorted.map(recipe =>
+          recipe.fbid === updatedRecipe.fbid ? updatedRecipe : recipe
+        );
       })
       .addCase(editRecipeFromFirestore.rejected, (state, action) => {
       
@@ -610,6 +629,7 @@ export const recipesSlice = createSlice({
       })
       .addCase(deleteRecipeFromFirestore.fulfilled, (state, action) => {
         state.allRecipes = state.allRecipes.filter(recipe => recipe.fbid !== action.payload);
+        state.allRecipesSorted = state.allRecipesSorted.filter(recipe => recipe.fbid !== action.payload);
         state.recipes = state.recipes.filter(recipe => recipe.fbid !== action.payload);
       })
       .addCase(deleteRecipeFromFirestore.rejected, (state, action) => {

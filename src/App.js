@@ -12,15 +12,15 @@ import { useSelector, useDispatch } from 'react-redux';
 import Header from './components/Header2.js';
 
 import GroceryLists from './features/grocery-lists/GroceryLists2.js';
-import AddGroceryList from './features/grocery-lists/views/AddGroceryList.js';
+import AddGroceryList from './features/grocery-lists/views/AddGroceryList2.js';
 import EditGroceryList from './features/grocery-lists/views/EditGroceryList.js';
 import ViewGroceryList from './features/grocery-lists/views/ViewGroceryList2.js';
 import ViewSharedGroceryList from './features/grocery-lists/views/ViewSharedGroceryList.js';
 
 import Recipes from './features/recipes/views/Recipes2.js';
-import AddRecipe from './features/recipes/views/AddRecipe.js';
-import EditRecipe from './features/recipes/views/EditRecipe.js';
-import ViewRecipe from './features/recipes/views/ViewRecipe.js';
+import AddRecipe from './features/recipes/views/AddRecipe2.js';
+import EditRecipe from './features/recipes/views/EditRecipe2.js';
+import ViewRecipe from './features/recipes/views/ViewRecipe2.js';
 
 import TestRecipeList from './TestRecipeList.js';
 import TestRecipeView from './TestRecipeView.js';

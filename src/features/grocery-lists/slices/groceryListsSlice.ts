@@ -197,7 +197,7 @@ export const groceryListsSlice = createSlice({
         if (!state.groceryLists)
           state.groceryLists = [];
 
-        state.groceryLists.push(action.payload);
+        state.groceryLists.unshift(action.payload);
       })
       .addCase(addGroceryListToFirestore.rejected, (state, action) => {
       
