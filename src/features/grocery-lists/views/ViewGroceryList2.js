@@ -120,20 +120,43 @@ const flashItem = (itemId, delay = 0) => {
       }
   };
 
-  const handleAddManualItem = (newItem) => {
+  const handleAddItem = (newItem, recipe) => {
     if (groceryList) {
-        const newIndex = groceryList.ingredients.length;
-        const itemId = `manual-${newIndex}`;
+        if (recipe) {
+            let matchFound = false;
 
-        const updatedIngredients = [...groceryList.ingredients, newItem];
-        setGroceryList({ ...groceryList, ingredients: updatedIngredients });
-        setIsAddModalOpen(false);
+            // 1. Try to update the recipe if it exists
+            const updatedRecipes = groceryList.recipes.map((r) => {
+                if (r?.recipe?.id === recipe.id) {
+                    matchFound = true;
+                    return recipe; 
+                }
 
-        // 1. Show instant confirmation
-        showToast(`Added "${newItem.amount} ${newItem.name}"!`);
-        
-        // 2. Trigger flash with a slightly longer delay (100-200ms)
-        flashItem(itemId, 200); 
+                return r;
+            });
+
+            // 2. If no match was found, append the new recipe to the list
+            const finalRecipes = matchFound 
+                ? updatedRecipes 
+                : [...groceryList.recipes, recipe];
+
+            // 3. Update state
+            setGroceryList({ ...groceryList, recipes: finalRecipes });
+            setIsAddModalOpen(false);
+            showToast(`Added "${recipe?.recipe?.name}"!`);
+            
+        } else {
+            // Logic for manual custom items
+            const newIndex = groceryList.ingredients.length;
+            const itemId = `manual-${newIndex}`;
+
+            const updatedIngredients = [...groceryList.ingredients, newItem];
+            setGroceryList({ ...groceryList, ingredients: updatedIngredients });
+            setIsAddModalOpen(false);
+
+            showToast(`Added "${newItem.amount} ${newItem.name}"!`);
+            flashItem(itemId, 200); 
+        }
     }
 };
 
@@ -391,7 +414,7 @@ const shareURL = async () => {
           </span>
           
           {/* Recipe Count Badge - Now Blue and more visible */}
-          <span className="text-[14px] bg-blue-50 px-2 py-0.5 rounded-full font-black text-[#1976D2] border border-blue-100 animate-in zoom-in duration-200">
+          <span className="text-[16px] bg-blue-50 px-2 py-0.5 rounded-full font-black text-[#1976D2] border border-blue-100 animate-in zoom-in duration-200">
             {groceryList && groceryList.recipes && groceryList.recipes.length ? groceryList.recipes.length : 0}
           </span>
         </div>
@@ -411,9 +434,9 @@ const shareURL = async () => {
           {groceryList && groceryList.recipes && groceryList.recipes.map((recipe, i) => (
             <span 
               key={recipe.id} 
-              className="text-[14px] font-bold text-[#1976D2] bg-blue-50/50 px-3 py-1.5 rounded-xl border border-blue-100/50 uppercase tracking-tight shadow-sm"
+              className="text-[16px] font-bold text-[#1976D2] bg-blue-50/50 px-3 py-1.5 rounded-xl border border-blue-100/50 uppercase tracking-tight shadow-sm"
             >
-              {recipe.recipe.name}
+              {recipe.recipe.name} {recipe?.recipe?.duplicateCount && `(x${recipe?.recipe?.duplicateCount})`}
             </span>
           ))}
         </div>
@@ -578,16 +601,14 @@ const shareURL = async () => {
             <AddIngredientModal 
                 isOpen={isAddModalOpen} 
                 onClose={() => setIsAddModalOpen(false)} 
-                onAdd={handleAddManualItem} 
+                onAdd={handleAddItem}
+                groceryList={groceryList}
             />
 
             {toast && (
                 <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] animate-in fade-in slide-in-from-bottom-4 duration-300">
                     <div className="bg-[#1976D2] text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-blue-400/30">
-                        <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
-                            <FontAwesomeIcon icon={faCheck} className="text-[12px] text-white" />
-                        </div>
-                        <span className="text-sm font-bold uppercase tracking-widest">{toast}</span>
+                        <span className="text-sm font-bold uppercase tracking-widest w-full">{toast}</span>
                     </div>
                 </div>
             )}

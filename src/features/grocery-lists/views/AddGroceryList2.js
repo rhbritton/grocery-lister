@@ -304,13 +304,13 @@ const AddGroceryList = (props) => {
             placeholder="Search for a recipe..."
             formatOptionLabel={({ label, isFavorite }) => (
                 <div className="flex items-center">
-                    <span>{label}</span>
                     {isFavorite && (
                     <FontAwesomeIcon 
                         icon={faBookmark} 
-                        className="text-red-600 ml-2 text-sm" 
+                        className="text-amber-600 mr-2 text-sm" 
                     />
                     )}
+                    <span>{label}</span>
                 </div>
             )}
             onChange={(selectedOptions) => {
