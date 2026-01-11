@@ -24,7 +24,7 @@ export const GroceryListService = {
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
-        return { fbid: docSnap.id, updatedAtSeconds: docSnap.data()?.updatedAt?.seconds || 0, ...docSnap.data() };
+        return { fbid: docSnap.id, ...docSnap.data(), updatedAt: docSnap.data()?.updatedAt?.seconds || 0 };
       } else {
         // Document does not exist
         console.log("No such document!");

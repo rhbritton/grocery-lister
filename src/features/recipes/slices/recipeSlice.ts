@@ -39,7 +39,7 @@ export interface Recipe {
   name_lowercase: string | null;
   search_keywords: any[];
   ingredients: Ingredient[];
-  updatedAtSeconds: number | undefined;
+  updatedAt: number | undefined;
 };
 
 interface RecipeState {

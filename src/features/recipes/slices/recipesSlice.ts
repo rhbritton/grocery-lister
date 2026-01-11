@@ -96,8 +96,8 @@ export const getAllFavoriteRecipesFromFirestore = createAsyncThunk(
         snapshot.docs.map(doc => ({
           fbid: doc.id,
           favorited: true,
-          updatedAtSeconds: doc.data()?.updatedAt?.seconds || 0,
-          ...doc.data()
+          ...doc.data(),
+          updatedAt: doc.data()?.updatedAt?.seconds || 0
         }))
       );
 
@@ -137,8 +137,8 @@ export const getAllRecipesFromFirestore = createAsyncThunk(
       const querySnapshot = await getDocs(q);
       let recipes = querySnapshot.docs.map(doc => ({
         fbid: doc.id,
-        updatedAtSeconds: doc.data()?.updatedAt?.seconds || 0,
-        ...doc.data()
+        ...doc.data(),
+        updatedAt: doc.data()?.updatedAt?.seconds || 0
       }));
 
       return recipes;
@@ -157,6 +157,8 @@ export const searchRecipesFromAll = createAsyncThunk(
 
       const state = getState() as RootState;
       const { allRecipes, favoriteRecipes } = state.recipes;
+      console.log('allRecipes', allRecipes)
+      console.log('favoriteRecipes', favoriteRecipes)
 
       // 1. Combine both lists and ensure uniqueness by ID
       // We prioritize favoriteRecipes because they already have the 'favorited: true' flag
@@ -196,6 +198,8 @@ export const searchRecipesFromAll = createAsyncThunk(
         const nameB = b.name_lowercase || b.name?.toLowerCase() || '';
         return nameA.localeCompare(nameB);
       });
+
+      console.log();
 
       // 4. Return the results for the reducer to put into state.recipes
       return filteredResults;
@@ -263,8 +267,8 @@ export const getRecipesFromFirestore = createAsyncThunk(
 
       let recipes = querySnapshot.docs.map(doc => ({
         fbid: doc.id,
-        updatedAtSeconds: doc.data()?.updatedAt?.seconds || 0,
-        ...doc.data()
+        ...doc.data(),
+        updatedAt: doc.data()?.updatedAt?.seconds || 0
       }));
 
       // GEMINI TODO: get state.recipes.favoriteRecipes { id: id, name: name } and sort by name, and select names that are greater than first in recipes { name: name }, and less than or equal to last in recipes, use lowercase version of names to compare
@@ -306,8 +310,8 @@ export const getRecipesFromFirestore = createAsyncThunk(
             snap.docs.map(doc => ({ 
               fbid: doc.id, 
               favorited: true, 
-              updatedAtSeconds: doc.data()?.updatedAt?.seconds || 0,
-              ...doc.data() 
+              ...doc.data(), 
+              updatedAt: doc.data()?.updatedAt?.seconds || 0
             }))
           );
         }
@@ -400,8 +404,8 @@ export const addRecipeToFirestore = createAsyncThunk(
       let name_lowercase = recipeData.name ? recipeData.name.trim().toLowerCase() : '';
       const newRecipe = {
         id: nanoid(), 
-        updatedAt: serverTimestamp(),
         ...recipeData,
+        updatedAt: serverTimestamp(),
         isDeleted: false,
         name_lowercase: name_lowercase,
         // search_keywords: generateSearchIndex(name_lowercase),

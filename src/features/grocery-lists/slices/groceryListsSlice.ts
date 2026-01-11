@@ -57,11 +57,9 @@ export const getAllGroceryListsFromFirestore = createAsyncThunk(
       const querySnapshot = await getDocs(q);
       let groceryLists = querySnapshot.docs.map(doc => ({
         fbid: doc.id,
-        updatedAtSeconds: doc.data()?.updatedAt?.seconds || 0,
-        ...doc.data()
+        ...doc.data(),
+        updatedAt: doc.data()?.updatedAt?.seconds || 0
       }));
-
-      console.log(groceryLists)
 
       return groceryLists;
     } catch (error) {
@@ -101,8 +99,8 @@ export const getGroceryListsFromFirestore = createAsyncThunk(
 
       let groceryLists = querySnapshot.docs.map(doc => ({
         fbid: doc.id,
-        updatedAtSeconds: doc.data()?.updatedAt?.seconds || 0,
-        ...doc.data()
+        ...doc.data(),
+        updatedAt: doc.data()?.updatedAt?.seconds || 0
       }));
 
       const combinedGroceryLists = [...existingGroceryLists, ...groceryLists];
@@ -120,7 +118,7 @@ export const addGroceryListToFirestore = createAsyncThunk(
     try {
       const newGroceryList = { id: nanoid(), isDeleted: false, ...groceryListData };
       const docRef = await addDoc(collection(db, 'grocery-lists'), newGroceryList);
-      return { fbid: docRef.id, updatedAt: serverTimestamp(), ...newGroceryList };
+      return { fbid: docRef.id, ...newGroceryList, updatedAt: serverTimestamp() };
     } catch (error) {
       return rejectWithValue(error.message);
     }
@@ -132,7 +130,7 @@ export const editGroceryListFromFirestore = createAsyncThunk(
   async (groceryListData, { rejectWithValue }) => {
     try {
       const docRef = doc(db, 'grocery-lists', groceryListData.fbid);
-      const updatedData = { updatedAt: serverTimestamp(), ...groceryListData };
+      const updatedData = { ...groceryListData, updatedAt: serverTimestamp() };
       delete updatedData.fbid;
       await updateDoc(docRef, updatedData);
       const updatedSnapshot = await getDoc(docRef);
