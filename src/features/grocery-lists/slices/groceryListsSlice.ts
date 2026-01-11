@@ -3,7 +3,7 @@ import { RootState } from '../../../app/store.ts';
 import { GroceryList } from './groceryListSlice.ts';
 
 import { db, auth } from '../../../auth/firebaseConfig';
-import { collection, query, where, getDocs, addDoc, doc, updateDoc, deleteDoc, limit, startAfter, orderBy, QueryDocumentSnapshot, DocumentData } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, doc, updateDoc, limit, startAfter, orderBy, QueryDocumentSnapshot, DocumentData, serverTimestamp } from 'firebase/firestore';
 
 import store from 'store2';
 
@@ -27,10 +27,48 @@ export const getAllGroceryLists = () => {
   return all_grocery_lists;
 }
 
+const sortGroceryLists = (groceryLists) => {
+  groceryLists.sort((a, b) => {
+    if (a.timestamp < b.timestamp) {
+      return 1;
+    } else {
+      return -1;
+    }
+  });
+}
+
 const getGroceryListsBySearch = (state, searchTerm) => {
   let all_grocery_lists = getAllGroceryLists();
   state.groceryLists = all_grocery_lists;
 }
+
+export const getAllGroceryListsFromFirestore = createAsyncThunk(
+  'groceryLists/fetchAllGroceryLists',
+  async (userId, { rejectWithValue }) => {
+    try {
+      let q;
+      const groceryListsCollectionRef = collection(db, 'grocery-lists');
+      q = query(
+        groceryListsCollectionRef,
+        where('userId', '==', userId),
+        where('isDeleted', '==', false)
+      );
+      
+      const querySnapshot = await getDocs(q);
+      let groceryLists = querySnapshot.docs.map(doc => ({
+        fbid: doc.id,
+        updatedAtSeconds: doc.data()?.updatedAt?.seconds || 0,
+        ...doc.data()
+      }));
+
+      console.log(groceryLists)
+
+      return groceryLists;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
 
 export const getGroceryListsFromFirestore = createAsyncThunk(
   'groceryLists/fetchGroceryLists',
@@ -44,7 +82,7 @@ export const getGroceryListsFromFirestore = createAsyncThunk(
       const groceryListsCollectionRef = collection(db, 'grocery-lists');
       let queryConstraints: any[] = [
         where('userId', '==', userId),
-        orderBy('timestamp', 'desc'),
+        orderBy('timestamp', 'desc')
       ];
 
       queryConstraints.push(limit(pageCount));
@@ -63,6 +101,7 @@ export const getGroceryListsFromFirestore = createAsyncThunk(
 
       let groceryLists = querySnapshot.docs.map(doc => ({
         fbid: doc.id,
+        updatedAtSeconds: doc.data()?.updatedAt?.seconds || 0,
         ...doc.data()
       }));
 
@@ -79,9 +118,9 @@ export const addGroceryListToFirestore = createAsyncThunk(
   'groceryLists/addGroceryList',
   async (groceryListData, { rejectWithValue }) => {
     try {
-      const newGroceryList = { id: nanoid(), ...groceryListData };
+      const newGroceryList = { id: nanoid(), isDeleted: false, ...groceryListData };
       const docRef = await addDoc(collection(db, 'grocery-lists'), newGroceryList);
-      return { fbid: docRef.id, ...newGroceryList };
+      return { fbid: docRef.id, updatedAt: serverTimestamp(), ...newGroceryList };
     } catch (error) {
       return rejectWithValue(error.message);
     }
@@ -93,7 +132,7 @@ export const editGroceryListFromFirestore = createAsyncThunk(
   async (groceryListData, { rejectWithValue }) => {
     try {
       const docRef = doc(db, 'grocery-lists', groceryListData.fbid);
-      const updatedData = { ...groceryListData };
+      const updatedData = { updatedAt: serverTimestamp(), ...groceryListData };
       delete updatedData.fbid;
       await updateDoc(docRef, updatedData);
       const updatedSnapshot = await getDoc(docRef);
@@ -110,7 +149,10 @@ export const deleteGroceryListFromFirestore = createAsyncThunk(
   async (fbid, { rejectWithValue }) => {
     try {
       const docRef = doc(db, 'grocery-lists', fbid);
-      await deleteDoc(docRef);
+      await updateDoc(docRef, {
+        isDeleted: true,
+        updatedAt: serverTimestamp()
+      });
 
       return fbid;
     } catch (error) {
@@ -178,6 +220,19 @@ export const groceryListsSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      .addCase(getAllGroceryListsFromFirestore.pending, (state) => {
+      
+      })
+      .addCase(getAllGroceryListsFromFirestore.fulfilled, (state, action) => {
+        state.allGroceryLists = action.payload || [];
+
+        let allGroceryListsSorted = action.payload;
+        sortGroceryLists(allGroceryListsSorted);
+        state.allGroceryListsSorted = allGroceryListsSorted;
+      })
+      .addCase(getAllGroceryListsFromFirestore.rejected, (state, action) => {
+
+      })
       .addCase(getGroceryListsFromFirestore.pending, (state, action) => {
         state.status = 'loading';
       })

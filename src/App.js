@@ -33,6 +33,7 @@ import TestGroceryListEdit from './TestGroceryListEdit.js';
 
 
 import { getAllRecipesFromFirestore, getAllFavoriteRecipesFromFirestore } from './features/recipes/slices/recipesSlice.ts';
+import { getAllGroceryListsFromFirestore } from './features/grocery-lists/slices/groceryListsSlice.ts';
 
 import './App.css';
 
@@ -129,7 +130,8 @@ function App() {
   const fetchInitialUserData = async (dispatch, userId) => {
     await Promise.all([
       dispatch(getAllFavoriteRecipesFromFirestore(userId)),
-      dispatch(getAllRecipesFromFirestore(userId))
+      dispatch(getAllRecipesFromFirestore(userId)),
+      dispatch(getAllGroceryListsFromFirestore(userId))
     ])
   };
 

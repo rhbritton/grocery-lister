@@ -12,6 +12,7 @@ export interface GroceryList {
     recipes: Recipe[] | [];
     ingredients: Ingredient[] | [];
     timestamp: number;
+    updatedAtSeconds: number | undefined;
 };
 
 interface GroceryListState {

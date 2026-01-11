@@ -8,8 +8,8 @@ import { generateSearchIndex, generateWordIndexFromRecipe } from '../../../servi
 
 import store from 'store2';
 import { db, auth, appId } from '../../../auth/firebaseConfig';
-import { collection, query, where, getDoc, getDocs, addDoc, doc, documentId, updateDoc, setDoc, deleteDoc, limit, 
-          startAfter, orderBy, QueryDocumentSnapshot, DocumentData, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, query, where, getDoc, getDocs, addDoc, doc, documentId, updateDoc, setDoc, limit, 
+          startAfter, orderBy, QueryDocumentSnapshot, DocumentData, arrayUnion, arrayRemove, serverTimestamp } from 'firebase/firestore';
 
 interface RecipesState {
   recipes: Recipe[];
@@ -96,6 +96,7 @@ export const getAllFavoriteRecipesFromFirestore = createAsyncThunk(
         snapshot.docs.map(doc => ({
           fbid: doc.id,
           favorited: true,
+          updatedAtSeconds: doc.data()?.updatedAt?.seconds || 0,
           ...doc.data()
         }))
       );
@@ -108,6 +109,7 @@ export const getAllFavoriteRecipesFromFirestore = createAsyncThunk(
       if (missingSnippets.length > 0) {
         // Remove the dead references from Firestore so we don't fetch them next time
         await updateDoc(userFavRef, {
+          updatedAt: serverTimestamp(),
           favorites: arrayRemove(...missingSnippets)
         });
       }
@@ -128,12 +130,14 @@ export const getAllRecipesFromFirestore = createAsyncThunk(
       const recipesCollectionRef = collection(db, 'recipes');
       q = query(
         recipesCollectionRef,
-        where('userId', '==', userId)
+        where('userId', '==', userId),
+        where('isDeleted', '==', false)
       );
       
       const querySnapshot = await getDocs(q);
       let recipes = querySnapshot.docs.map(doc => ({
         fbid: doc.id,
+        updatedAtSeconds: doc.data()?.updatedAt?.seconds || 0,
         ...doc.data()
       }));
 
@@ -223,6 +227,7 @@ export const getRecipesFromFirestore = createAsyncThunk(
       const recipesCollectionRef = collection(db, 'recipes');
       let queryConstraints: any[] = [
         where('userId', '==', userId),
+        where('isDeleted', '==', false)
       ];
 
       if (isLazyLoading) {
@@ -258,6 +263,7 @@ export const getRecipesFromFirestore = createAsyncThunk(
 
       let recipes = querySnapshot.docs.map(doc => ({
         fbid: doc.id,
+        updatedAtSeconds: doc.data()?.updatedAt?.seconds || 0,
         ...doc.data()
       }));
 
@@ -297,7 +303,12 @@ export const getRecipesFromFirestore = createAsyncThunk(
 
           const favSnapshots = await Promise.all(favBatches);
           fullFavoriteRecipes = favSnapshots.flatMap(snap => 
-            snap.docs.map(doc => ({ fbid: doc.id, favorited: true, ...doc.data() }))
+            snap.docs.map(doc => ({ 
+              fbid: doc.id, 
+              favorited: true, 
+              updatedAtSeconds: doc.data()?.updatedAt?.seconds || 0,
+              ...doc.data() 
+            }))
           );
         }
 
@@ -365,9 +376,11 @@ export const addRecipesToFirestore = createAsyncThunk(
         const newRecipe = { 
           id: nanoid(), 
           ...recipeData, 
+          isDeleted: false,
+          updatedAt: serverTimestamp(),
           name_lowercase: name_lowercase,
-          search_keywords: generateSearchIndex(name_lowercase),
-          ingredient_keywords: generateWordIndexFromRecipe(recipeData),
+          // search_keywords: generateSearchIndex(name_lowercase),
+          // ingredient_keywords: generateWordIndexFromRecipe(recipeData),
         };
         const docRef = await addDoc(collection(db, 'recipes'), newRecipe);
         addedRecipes.push({ fbid: docRef.id, ...newRecipe });
@@ -387,10 +400,12 @@ export const addRecipeToFirestore = createAsyncThunk(
       let name_lowercase = recipeData.name ? recipeData.name.trim().toLowerCase() : '';
       const newRecipe = {
         id: nanoid(), 
+        updatedAt: serverTimestamp(),
         ...recipeData,
+        isDeleted: false,
         name_lowercase: name_lowercase,
-        search_keywords: generateSearchIndex(name_lowercase),
-        ingredient_keywords: generateWordIndexFromRecipe(recipeData),
+        // search_keywords: generateSearchIndex(name_lowercase),
+        // ingredient_keywords: generateWordIndexFromRecipe(recipeData),
       };
       const docRef = await addDoc(collection(db, 'recipes'), newRecipe);
       return { fbid: docRef.id, ...newRecipe };
@@ -408,6 +423,7 @@ export const editRecipeFromFirestore = createAsyncThunk(
       let name_lowercase = recipeData.name ? recipeData.name.trim().toLowerCase() : '';
       const updatedData = { 
         ...recipeData,
+        updatedAt: serverTimestamp(),
         name_lowercase: name_lowercase,
         search_keywords: generateSearchIndex(name_lowercase),
         ingredient_keywords: generateWordIndexFromRecipe(recipeData),
@@ -428,7 +444,10 @@ export const deleteRecipeFromFirestore = createAsyncThunk(
   async (fbid, { rejectWithValue }) => {
     try {
       const docRef = doc(db, 'recipes', fbid);
-      await deleteDoc(docRef);
+      await updateDoc(docRef, {
+        isDeleted: true,
+        updatedAt: serverTimestamp()
+      });
 
       return fbid;
     } catch (error) {
@@ -446,6 +465,7 @@ export const toggleFavoriteRecipeInFirestore = createAsyncThunk(
 
       await setDoc(userRef, {
         userId: userId,
+        updatedAt: serverTimestamp(),
         favorites: isAdding 
           ? arrayUnion(favoriteItem) 
           : arrayRemove(favoriteItem)
