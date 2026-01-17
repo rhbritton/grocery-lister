@@ -32,8 +32,17 @@ import TestGroceryListEdit from './TestGroceryListEdit.js';
 
 
 
-import { getAllRecipesFromFirestore, getAllFavoriteRecipesFromFirestore } from './features/recipes/slices/recipesSlice.ts';
-import { getAllGroceryListsFromFirestore } from './features/grocery-lists/slices/groceryListsSlice.ts';
+import { 
+  getAllRecipesFromFirestore, 
+  getAllFavoriteRecipesFromFirestore, 
+  selectMaxRecipeTimestamp,
+  syncRecipesFromFirestore
+} from './features/recipes/slices/recipesSlice.ts';
+import { 
+  getAllGroceryListsFromFirestore, 
+  syncGroceryListsFromFirestore,
+  selectMaxGroceryListTimestamp
+} from './features/grocery-lists/slices/groceryListsSlice.ts';
 
 import './App.css';
 
@@ -125,13 +134,14 @@ function App() {
     return () => unsubscribeSnapshot();
   }, [user?.uid, dispatch]);
 
-
+  const lastSync = useSelector(selectMaxRecipeTimestamp);
+  const lastSyncGL = useSelector(selectMaxGroceryListTimestamp);  
 
   const fetchInitialUserData = async (dispatch, userId) => {
     await Promise.all([
       dispatch(getAllFavoriteRecipesFromFirestore(userId)),
-      dispatch(getAllRecipesFromFirestore(userId)),
-      dispatch(getAllGroceryListsFromFirestore(userId))
+      dispatch(syncRecipesFromFirestore({ userId, lastSyncTimestamp: lastSync })),
+      dispatch(syncGroceryListsFromFirestore({ userId, lastSyncTimestamp: lastSyncGL }))
     ])
   };
 

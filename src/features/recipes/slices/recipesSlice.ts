@@ -9,7 +9,7 @@ import { generateSearchIndex, generateWordIndexFromRecipe } from '../../../servi
 import store from 'store2';
 import { db, auth, appId } from '../../../auth/firebaseConfig';
 import { collection, query, where, getDoc, getDocs, addDoc, doc, documentId, updateDoc, setDoc, limit, 
-          startAfter, orderBy, QueryDocumentSnapshot, DocumentData, arrayUnion, arrayRemove, serverTimestamp } from 'firebase/firestore';
+          startAfter, orderBy, QueryDocumentSnapshot, DocumentData, arrayUnion, arrayRemove, serverTimestamp, Timestamp } from 'firebase/firestore';
 
 interface RecipesState {
   recipes: Recipe[];
@@ -52,6 +52,56 @@ const sortRecipes = (recipes) => {
     return nameA.localeCompare(nameB);
   });
 }
+
+export const selectMaxRecipeTimestamp = (state: RootState) => {
+  const recipes = state.recipes.allRecipes;
+  if (!recipes || recipes.length === 0) return 0;
+  
+  // Find the highest number in your updatedAt fields
+  return Math.max(...recipes.map(r => r.updatedAt || 0));
+};
+
+export const syncRecipesFromFirestore = createAsyncThunk(
+  'recipes/sync',
+  async ({ userId, lastSyncTimestamp }, { rejectWithValue }) => {
+    try {
+      const lastSyncDate = Timestamp.fromMillis((lastSyncTimestamp + 1) * 1000);
+      
+      const recipesRef = collection(db, 'recipes');
+      let q;
+      if (lastSyncTimestamp) {
+        q = query(
+          recipesRef,
+          where('userId', '==', userId),
+          where('updatedAt', '>', lastSyncDate)
+        );
+      } else {
+        q = query(
+          recipesRef,
+          where('userId', '==', userId),
+          where('updatedAt', '>=', lastSyncDate)
+        );
+      }
+
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.docs.length) console.log('recipe reads [syncRecipesFromFirestore]: ', querySnapshot.docs.length);
+      
+      let map = querySnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          fbid: doc.id,
+          ...data,
+          updatedAt: data.updatedAt?.seconds || data.updatedAt || 0
+        };
+      })
+      
+      return map;
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
 
 const getRecipesBySearch = (state, searchTerm, searchType = 'name') => {
   let all_recipes = getAllRecipes();
@@ -157,8 +207,6 @@ export const searchRecipesFromAll = createAsyncThunk(
 
       const state = getState() as RootState;
       const { allRecipes, favoriteRecipes } = state.recipes;
-      console.log('allRecipes', allRecipes)
-      console.log('favoriteRecipes', favoriteRecipes)
 
       // 1. Combine both lists and ensure uniqueness by ID
       // We prioritize favoriteRecipes because they already have the 'favorited: true' flag
@@ -198,8 +246,6 @@ export const searchRecipesFromAll = createAsyncThunk(
         const nameB = b.name_lowercase || b.name?.toLowerCase() || '';
         return nameA.localeCompare(nameB);
       });
-
-      console.log();
 
       // 4. Return the results for the reducer to put into state.recipes
       return filteredResults;
@@ -558,6 +604,38 @@ export const recipesSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      .addCase(syncRecipesFromFirestore.fulfilled, (state, action) => {
+        const incoming = action.payload;
+        if (!incoming.length) {
+          state.status = 'succeeded';
+          return;
+        }
+
+        incoming.forEach((updatedRecipe) => {
+          // 1. Update Master Bucket (allRecipes)
+          const masterIndex = state.allRecipes.findIndex(r => r.fbid === updatedRecipe.fbid);
+          if (updatedRecipe.isDeleted) {
+            if (masterIndex !== -1) state.allRecipes.splice(masterIndex, 1);
+          } else {
+            if (masterIndex !== -1) state.allRecipes[masterIndex] = updatedRecipe;
+            else state.allRecipes.push(updatedRecipe);
+          }
+
+          // 2. Update Active UI View (recipes)
+          const uiIndex = state.recipes.findIndex(r => r.fbid === updatedRecipe.fbid);
+          if (uiIndex !== -1) {
+            if (updatedRecipe.isDeleted) state.recipes.splice(uiIndex, 1);
+            else state.recipes[uiIndex] = updatedRecipe;
+          }
+        });
+
+        // 3. Sync the Sorted Cache (allRecipesSorted)
+        const sortedCopy = [...state.allRecipes];
+        sortRecipes(sortedCopy); 
+        state.allRecipesSorted = sortedCopy;
+
+        state.status = 'succeeded';
+      })
       .addCase(getAllRecipesFromFirestore.pending, (state) => {
 
       })

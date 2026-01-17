@@ -265,7 +265,7 @@ const flashItem = (itemId, delay = 0) => {
   }, [groceryList]);
 
   useEffect(() => {
-    if (!groceryListId) return;
+    if (!groceryListId || !groceryList || props.userId == groceryList.userId) return;
 
     const docRef = doc(db, 'grocery-lists', groceryListId);
 
@@ -296,7 +296,7 @@ const flashItem = (itemId, delay = 0) => {
     });
 
     return () => unsubscribe();
-  }, [groceryListId]);
+  }, [groceryListId, groceryList?.userId]);
 
   const isSaveDisabled = useMemo(() => {
     // 1. Check for empty lists

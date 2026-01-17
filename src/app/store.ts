@@ -25,8 +25,10 @@ const appReducer = combineReducers({
 });
 
 export const rootReducer = (state, action) => {
-  if (action.type === 'USER_LOGOUT')
-    return appReducer(undefined, action);
+  if (action.type === 'USER_LOGOUT' || action.type === 'auth/userLogout') {
+    storage.removeItem('persist:root'); // This kills the disk data
+    return appReducer(undefined, action); // This kills the memory data
+  }
 
   return appReducer(state, action);
 };

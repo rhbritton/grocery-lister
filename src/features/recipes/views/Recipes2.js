@@ -25,7 +25,7 @@ function RecipesList(props) {
 
   const fileInputRef = useRef(null);
   
-  const { recipes, status, lastVisibleSearch, searchTerm, searchType, allRecipes, favoriteRecipes, allRecipesGrabbed } = useSelector(state => state.recipes);
+  const { recipes, status, lastVisibleSearch, searchTerm, searchType, allRecipes, allRecipesSorted, favoriteRecipes, allRecipesGrabbed } = useSelector(state => state.recipes);
 
   const dispatch = useDispatch();
 

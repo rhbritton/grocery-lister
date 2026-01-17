@@ -3,7 +3,7 @@ import { RootState } from '../../../app/store.ts';
 import { GroceryList } from './groceryListSlice.ts';
 
 import { db, auth } from '../../../auth/firebaseConfig';
-import { collection, query, where, getDocs, addDoc, doc, updateDoc, limit, startAfter, orderBy, QueryDocumentSnapshot, DocumentData, serverTimestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, doc, updateDoc, limit, startAfter, orderBy, QueryDocumentSnapshot, DocumentData, serverTimestamp, Timestamp } from 'firebase/firestore';
 
 import store from 'store2';
 
@@ -41,6 +41,52 @@ const getGroceryListsBySearch = (state, searchTerm) => {
   let all_grocery_lists = getAllGroceryLists();
   state.groceryLists = all_grocery_lists;
 }
+
+export const selectMaxGroceryListTimestamp = (state: RootState) => {
+  const groceryLists = state.groceryLists.allGroceryLists;
+  if (!groceryLists || groceryLists.length === 0) return 0;
+  
+  // Find the highest number in your updatedAt fields
+  return Math.max(...groceryLists.map(r => r.updatedAt || 0));
+};
+
+export const syncGroceryListsFromFirestore = createAsyncThunk(
+  'groceryLists/sync',
+  async ({ userId, lastSyncTimestamp }, { rejectWithValue }) => {
+    try {
+      // 1. Convert local numeric timestamp to Firestore Timestamp object
+      const lastSyncDate = Timestamp.fromMillis((lastSyncTimestamp + 1) * 1000); 
+
+      const glRef = collection(db, 'grocery-lists');
+      let q;
+      if (lastSyncTimestamp) {
+        q = query(
+          glRef,
+          where('userId', '==', userId),
+          where('updatedAt', '>', lastSyncDate)
+        );
+      } else {
+        q = query(
+          glRef,
+          where('userId', '==', userId),
+          where('updatedAt', '>=', lastSyncDate)
+        );
+      }
+
+      const querySnapshot = await getDocs(q);
+      if (querySnapshot.docs.length) console.log('grocery-list reads [syncGroceryListsFromFirestore]: ', querySnapshot.docs.length);
+      
+      return querySnapshot.docs.map(doc => ({
+        fbid: doc.id,
+        ...doc.data(),
+        // 2. Convert back to seconds for Redux/Phase 2 persistence
+        updatedAt: doc.data()?.updatedAt?.seconds || 0
+      }));
+    } catch (error) {
+      return rejectWithValue(error.message);
+    }
+  }
+);
 
 export const getAllGroceryListsFromFirestore = createAsyncThunk(
   'groceryLists/fetchAllGroceryLists',
@@ -90,6 +136,8 @@ export const getGroceryListsFromFirestore = createAsyncThunk(
 
       const q = query(groceryListsCollectionRef, ...queryConstraints);
       const querySnapshot = await getDocs(q);
+      if (querySnapshot.docs.length) console.log('grocery-list reads [getGroceryListsFromFirestore]: ', querySnapshot.docs.length);
+      
       const newLastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
 
       let newAllGroceryListsGrabbed = false;
@@ -118,6 +166,8 @@ export const addGroceryListToFirestore = createAsyncThunk(
     try {
       const newGroceryList = { id: nanoid(), isDeleted: false, ...groceryListData };
       const docRef = await addDoc(collection(db, 'grocery-lists'), newGroceryList);
+      console.log('grocery-list writes [addGroceryListToFirestore]: ', 1);
+
       return { fbid: docRef.id, ...newGroceryList, updatedAt: serverTimestamp() };
     } catch (error) {
       return rejectWithValue(error.message);
@@ -134,6 +184,9 @@ export const editGroceryListFromFirestore = createAsyncThunk(
       delete updatedData.fbid;
       await updateDoc(docRef, updatedData);
       const updatedSnapshot = await getDoc(docRef);
+      
+      console.log('grocery-list reads [editGroceryListFromFirestore]: ', 1);
+      console.log('grocery-list writes [editGroceryListFromFirestore]: ', 1);
 
       return updatedSnapshot.exists() ? updatedSnapshot.data() : undefined;
     } catch (error) {
@@ -151,6 +204,8 @@ export const deleteGroceryListFromFirestore = createAsyncThunk(
         isDeleted: true,
         updatedAt: serverTimestamp()
       });
+      
+      console.log('grocery-list writes [deleteGroceryListFromFirestore]: ', 1);
 
       return fbid;
     } catch (error) {
@@ -218,6 +273,50 @@ export const groceryListsSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      .addCase(syncGroceryListsFromFirestore.fulfilled, (state, action) => {
+        if (!state.allGroceryLists) state.allGroceryLists = [];
+        if (!state.groceryLists) state.groceryLists = [];
+
+        const incoming = action.payload;
+        if (!incoming.length) {
+          state.status = 'succeeded';
+          return;
+        }
+
+        incoming.forEach((updatedList) => {
+          // 1. Update allGroceryLists (The Master Bucket)
+          const masterIndex = state.allGroceryLists.findIndex(gl => gl.fbid === updatedList.fbid);
+          
+          if (updatedList.isDeleted) {
+            if (masterIndex !== -1) state.allGroceryLists.splice(masterIndex, 1);
+          } else {
+            if (masterIndex !== -1) {
+              state.allGroceryLists[masterIndex] = updatedList;
+            } else {
+              state.allGroceryLists.push(updatedList);
+            }
+          }
+
+          // 2. Update the UI view (state.groceryLists)
+          // Only update if it's already there to maintain pagination/view state
+          const uiIndex = state.groceryLists.findIndex(gl => gl.fbid === updatedList.fbid);
+          if (uiIndex !== -1) {
+            if (updatedList.isDeleted) {
+              state.groceryLists.splice(uiIndex, 1);
+            } else {
+              state.groceryLists[uiIndex] = updatedList;
+            }
+          }
+        });
+
+        // 3. Rebuild allGroceryListsSorted
+        // We recreate the sorted cache from the updated master bucket
+        const sortedCopy = [...state.allGroceryLists];
+        sortGroceryLists(sortedCopy); 
+        state.allGroceryListsSorted = sortedCopy;
+
+        state.status = 'succeeded';
+      })
       .addCase(getAllGroceryListsFromFirestore.pending, (state) => {
       
       })
