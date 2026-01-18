@@ -264,39 +264,39 @@ const flashItem = (itemId, delay = 0) => {
     setAllIngredients(all_ingredients);
   }, [groceryList]);
 
-  useEffect(() => {
-    if (!groceryListId || !groceryList || props.userId == groceryList.userId) return;
+//   useEffect(() => {
+//     if (!groceryListId || !groceryList || props.userId == groceryList.userId) return;
 
-    const docRef = doc(db, 'grocery-lists', groceryListId);
+//     const docRef = doc(db, 'grocery-lists', groceryListId);
 
-    const unsubscribe = onSnapshot(docRef, (docSnap) => {
-      if (docSnap.exists()) {
-        if (isInitialLoad.current) {
-          isInitialLoad.current = false;
-          console.log("Initial list data fetched.");
-          return;
-        }
+//     const unsubscribe = onSnapshot(docRef, (docSnap) => {
+//       if (docSnap.exists()) {
+//         if (isInitialLoad.current) {
+//           isInitialLoad.current = false;
+//           console.log("Initial list data fetched.");
+//           return;
+//         }
         
-        const isLocalSave = docSnap.metadata.hasPendingWrites; 
-        if (!isLocalSave) {
-          // This code runs only when the update comes from the server (a remote device)
-          console.log('Remote update detected on secondary device: updated');
-          props.setGroceryListHasChanged(true);
-          unsubscribe();
-        } else {
-          // This code runs when the change is from the current device (a local save)
-          console.log('Local save detected. Ignoring for "updated" notification.');
-        }
+//         const isLocalSave = docSnap.metadata.hasPendingWrites; 
+//         if (!isLocalSave) {
+//           // This code runs only when the update comes from the server (a remote device)
+//           console.log('Remote update detected on secondary device: updated');
+//           props.setGroceryListHasChanged(true);
+//           unsubscribe();
+//         } else {
+//           // This code runs when the change is from the current device (a local save)
+//           console.log('Local save detected. Ignoring for "updated" notification.');
+//         }
 
-      } else {
-        console.log("No such document (list may have been deleted)");
-      }
-    }, (error) => {
-      console.error("Error listening to document changes:", error);
-    });
+//       } else {
+//         console.log("No such document (list may have been deleted)");
+//       }
+//     }, (error) => {
+//       console.error("Error listening to document changes:", error);
+//     });
 
-    return () => unsubscribe();
-  }, [groceryListId, groceryList?.userId]);
+//     return () => unsubscribe();
+//   }, [groceryListId, groceryList?.userId]);
 
   const isSaveDisabled = useMemo(() => {
     // 1. Check for empty lists
@@ -355,6 +355,8 @@ const shareURL = async () => {
 
   let all_ingredients_by_type = getAllIngredientsByType(allIngredients);
 
+  const isOwner = props.userId == groceryList?.userId;
+
   return (
     <main className="max-w-xl mx-auto min-w-[380px] p-6">
     
@@ -380,7 +382,7 @@ const shareURL = async () => {
         </div>
     
         {/* Top Right: Action Buttons */}
-        <div className="flex gap-2 shrink-0">
+        {isOwner && <div className="flex gap-2 shrink-0">
             <button 
                 onClick={shareURL}
                 className={`w-14 h-14 flex flex-col items-center justify-center transition-all duration-300 rounded-xl border
@@ -398,7 +400,7 @@ const shareURL = async () => {
                     Copied
                 </span>
             </button>
-        </div>
+        </div>}
       </div>
     
       <div className="flex flex-col">
@@ -479,6 +481,7 @@ const shareURL = async () => {
                                             isEven={!(globalIndex % 2)}
                                             onUpdate={(newData) => updateGlobalItem(globalIndex, newData)}
                                             onEdit={() => setEditingItem({ ...item, globalIndex })}
+                                            disableEdit={!isOwner}
                                         />
                                     );
                                 })}
@@ -571,15 +574,15 @@ const shareURL = async () => {
 )}
             
             {/* Primary Floating Action Button */}
-            <button 
+            {isOwner && <button 
                 onClick={() => setIsAddModalOpen(true)}
                 className={`fixed bottom-24 right-6 w-16 h-16 rounded-2xl flex items-center justify-center transition-all z-50
                     bg-[#1976D2] text-white shadow-2xl hover:bg-blue-700 transform active:scale-95`}
                 >
                 <FontAwesomeIcon icon={faPlus} className="text-2xl" />
-            </button>
+            </button>}
 
-            <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-200 p-4 z-50">
+            {isOwner && <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-200 p-4 z-50">
                 <div className="max-w-xl mx-auto">
                     <button 
                         onClick={handleSave}
@@ -596,7 +599,7 @@ const shareURL = async () => {
                         </span>
                     </button>
                 </div>
-            </div>
+            </div>}
 
             <AddIngredientModal 
                 isOpen={isAddModalOpen} 

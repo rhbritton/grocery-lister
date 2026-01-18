@@ -58,7 +58,7 @@ function GroceryListViewItem(props) {
             </div>
             
             {/* 3. EDIT ACTION ZONE */}
-            <div className="flex items-center pr-4 relative z-40">
+            {props.disableEdit || <div className="flex items-center pr-4 relative z-40">
                 <button 
                     onClick={(e) => { e.stopPropagation(); props.onEdit(); }}
                     className={`w-10 h-10 flex items-center justify-center transition-all duration-200 rounded-xl
@@ -69,7 +69,7 @@ function GroceryListViewItem(props) {
                 >
                     <FontAwesomeIcon icon={faEdit} className="text-lg" />
                 </button>
-            </div>
+            </div>}
         </div>
     );
 }

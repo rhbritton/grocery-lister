@@ -47,8 +47,8 @@ export const getAllRecipes = async () => {
 
 const sortRecipes = (recipes) => {
   recipes.sort((a, b) => {
-    const nameA = (a.name_lowercase || a.name.toLowerCase());
-    const nameB = (b.name_lowercase || b.name.toLowerCase());
+    const nameA = a.name.toLowerCase();
+    const nameB = b.name.toLowerCase();
     return nameA.localeCompare(nameB);
   });
 }
@@ -234,16 +234,14 @@ export const searchRecipesFromAll = createAsyncThunk(
         } else {
           // Default to name/keyword search
           // Check search_keywords array
-          return recipe.search_keywords?.some(keyword => 
-            keyword.toLowerCase().includes(searchTerm)
-          );
+          return recipe.name?.toLowerCase().includes(searchTerm);
         }
       });
 
       // 3. Final Sort: Alphabetical by name_lowercase
       filteredResults.sort((a, b) => {
-        const nameA = a.name_lowercase || a.name?.toLowerCase() || '';
-        const nameB = b.name_lowercase || b.name?.toLowerCase() || '';
+        const nameA = a.name?.toLowerCase() || '';
+        const nameB = b.name?.toLowerCase() || '';
         return nameA.localeCompare(nameB);
       });
 
@@ -684,19 +682,27 @@ export const recipesSlice = createSlice({
         
       })
       .addCase(addRecipeToFirestore.fulfilled, (state, action) => {
+        if (!action.payload) return;
+
+        const newRecipe = {
+          ...action.payload,
+          updatedAt: Math.floor(Date.now() / 1000)
+        };
+
         if (!state.recipes)
           state.recipes = [];
+        
+        if (!state.allRecipes) 
+          state.allRecipes = [];
+  
+        if (!state.allRecipesSorted)
+          state.allRecipesSorted = [];
 
-        // const isLazyLoad = !state.searchTerm;
-        // if (isLazyLoad) {
-        //   const lastSearchRecipe = state.recipes[state.recipes.length-1];
-        //   if (lastSearchRecipe.name_lowercase > action.payload.name_lowercase) {
-        //     state.recipes.push(action.payload);
-        //   }
-        // } else {
-          state.recipes.push(action.payload);
-          state.allRecipes.push(action.payload);
-        // }
+        state.recipes.push(newRecipe);
+        state.allRecipes.push(newRecipe);
+        state.allRecipesSorted.push(newRecipe);
+
+        sortRecipes(state.allRecipesSorted);
       })
       .addCase(addRecipeToFirestore.rejected, (state, action) => {
       
@@ -705,7 +711,13 @@ export const recipesSlice = createSlice({
         
       })
       .addCase(editRecipeFromFirestore.fulfilled, (state, action) => {
-        const updatedRecipe = action.payload || [];
+        if (!action.payload) return;
+
+        const updatedRecipe = {
+            ...action.payload,
+            updatedAt: Math.floor(Date.now() / 1000) 
+        };
+
         if (!state.recipes)
           state.recipes = [];
 
@@ -778,7 +790,6 @@ export const recipesSlice = createSlice({
               } else {
                 // If it was already there (user's own recipe), just turn on the heart
                 existsInSearch.favorited = true;
-                console.log('existsInSearch')
               }
             }
           }

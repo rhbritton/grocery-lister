@@ -40,7 +40,7 @@ const AddGroceryList = (props) => {
   const { allRecipes, favoriteRecipes } = useSelector(state => state.recipes);
   const combinedRecipes = Array.from(
     new Map([...allRecipes, ...favoriteRecipes].map(r => [r.fbid || r.id, r])).values()
-  ).sort((a, b) => a.name_lowercase.localeCompare(b.name_lowercase));
+  ).sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 
   const recipeOptions = combinedRecipes && combinedRecipes.map((recipe) => ({
     value: recipe.id,

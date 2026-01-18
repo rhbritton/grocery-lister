@@ -21,7 +21,7 @@ function GroceryLists(props) {
   const [deleteModalID, setDeleteModalID] = useState(false);
   const [hasLoadedGroceryLists, setHasLoadedGroceryLists] = useState(false);
 
-  const { allGroceryListsSorted } = useSelector(state => state.groceryLists);
+  const { groceryLists } = useSelector(state => state.groceryLists);
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -99,7 +99,7 @@ function GroceryLists(props) {
     <>
       <main className="max-w-xl mx-auto p-6">
         <div className="space-y-4">
-          {allGroceryListsSorted && allGroceryListsSorted.length ? allGroceryListsSorted.map((gl, i) => (
+          {groceryLists && groceryLists.length ? groceryLists.map((gl, i) => (
             <GroceryListItem key={gl.fbid+i} gl={gl} setDeleteModalID={setDeleteModalID} />
           )) : <div>No grocery lists found.</div>}
         </div>

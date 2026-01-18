@@ -159,8 +159,8 @@ function Header(props) {
                         
                             <div className="absolute right-0 mt-3 w-64 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 overflow-hidden animate-in fade-in zoom-in duration-200 origin-top-right">
                                 <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/50">
-                                    <p className="text-sm font-bold text-slate-800 leading-tight">Ryan Britton</p>
-                                    <p className="text-base text-slate-500 font-medium">ryanhbritton@gmail.com</p>
+                                    <p className="text-sm font-bold text-slate-800 leading-tight">{user.displayName}</p>
+                                    <p className="text-base text-slate-500 font-medium">{user.email}</p>
                                 </div>
                         
                                 {/* Action Buttons */}

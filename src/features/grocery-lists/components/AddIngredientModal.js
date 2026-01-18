@@ -15,7 +15,7 @@ const AddIngredientModal = ({ isOpen, onClose, onAdd, groceryList }) => {
     const { allRecipesSorted, favoriteRecipes } = useSelector(state => state.recipes);
     const combinedRecipes = Array.from(
         new Map([...allRecipesSorted, ...favoriteRecipes].map(r => [r.fbid || r.id, r])).values()
-    ).sort((a, b) => a.name_lowercase.localeCompare(b.name_lowercase));
+    ).sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
     
     if (!isOpen) return null;
 

@@ -9,6 +9,7 @@ import store from 'store2';
 
 interface GroceryListsState {
   groceryLists: GroceryList[];
+  groceryListsSorted: GroceryList[];
   status: string;
   lastVisibleSearch: QueryDocumentSnapshot<DocumentData> | null;
   allGroceryListsGrabbed: boolean | null;
@@ -16,6 +17,7 @@ interface GroceryListsState {
 
 const initialState: GroceryListsState = {
   groceryLists: [],
+  groceryListsSorted: [],
   status: 'idle',
   lastVisibleSearch: null,
   allGroceryListsGrabbed: false,
@@ -43,7 +45,7 @@ const getGroceryListsBySearch = (state, searchTerm) => {
 }
 
 export const selectMaxGroceryListTimestamp = (state: RootState) => {
-  const groceryLists = state.groceryLists.allGroceryLists;
+  const groceryLists = state.groceryLists.groceryLists;
   if (!groceryLists || groceryLists.length === 0) return 0;
   
   // Find the highest number in your updatedAt fields
@@ -274,7 +276,6 @@ export const groceryListsSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(syncGroceryListsFromFirestore.fulfilled, (state, action) => {
-        if (!state.allGroceryLists) state.allGroceryLists = [];
         if (!state.groceryLists) state.groceryLists = [];
 
         const incoming = action.payload;
@@ -285,15 +286,15 @@ export const groceryListsSlice = createSlice({
 
         incoming.forEach((updatedList) => {
           // 1. Update allGroceryLists (The Master Bucket)
-          const masterIndex = state.allGroceryLists.findIndex(gl => gl.fbid === updatedList.fbid);
+          const masterIndex = state.groceryLists.findIndex(gl => gl.fbid === updatedList.fbid);
           
           if (updatedList.isDeleted) {
-            if (masterIndex !== -1) state.allGroceryLists.splice(masterIndex, 1);
+            if (masterIndex !== -1) state.groceryLists.splice(masterIndex, 1);
           } else {
             if (masterIndex !== -1) {
-              state.allGroceryLists[masterIndex] = updatedList;
+              state.groceryLists[masterIndex] = updatedList;
             } else {
-              state.allGroceryLists.push(updatedList);
+              state.groceryLists.push(updatedList);
             }
           }
 
@@ -311,9 +312,7 @@ export const groceryListsSlice = createSlice({
 
         // 3. Rebuild allGroceryListsSorted
         // We recreate the sorted cache from the updated master bucket
-        const sortedCopy = [...state.allGroceryLists];
-        sortGroceryLists(sortedCopy); 
-        state.allGroceryListsSorted = sortedCopy;
+        sortGroceryLists(state.groceryLists); 
 
         state.status = 'succeeded';
       })
@@ -321,11 +320,11 @@ export const groceryListsSlice = createSlice({
       
       })
       .addCase(getAllGroceryListsFromFirestore.fulfilled, (state, action) => {
-        state.allGroceryLists = action.payload || [];
+        state.groceryLists = action.payload || [];
 
-        let allGroceryListsSorted = action.payload;
-        sortGroceryLists(allGroceryListsSorted);
-        state.allGroceryListsSorted = allGroceryListsSorted;
+        let groceryLists = action.payload;
+        sortGroceryLists(groceryLists);
+        state.groceryLists = groceryLists;
       })
       .addCase(getAllGroceryListsFromFirestore.rejected, (state, action) => {
 
@@ -346,10 +345,17 @@ export const groceryListsSlice = createSlice({
         
       })
       .addCase(addGroceryListToFirestore.fulfilled, (state, action) => {
+        if (!action.payload) return;
+
+        const newGroceryList = {
+          ...action.payload,
+          updatedAt: Math.floor(Date.now() / 1000)
+        };
+
         if (!state.groceryLists)
           state.groceryLists = [];
 
-        state.groceryLists.unshift(action.payload);
+        state.groceryLists.unshift(newGroceryList);
       })
       .addCase(addGroceryListToFirestore.rejected, (state, action) => {
       
@@ -358,7 +364,13 @@ export const groceryListsSlice = createSlice({
               
       })
       .addCase(editGroceryListFromFirestore.fulfilled, (state, action) => {
-        const updatedGroceryList = action.payload || [];
+        if (!action.payload) return;
+
+        const updatedGroceryList = {
+            ...action.payload,
+            updatedAt: Math.floor(Date.now() / 1000) 
+        };
+
         if (!state.groceryLists)
           state.groceryLists = [];
 
