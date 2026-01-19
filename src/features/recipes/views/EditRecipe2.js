@@ -23,6 +23,7 @@ const EditRecipe = () => {
   const [name, setName] = useState('');
   const [ingredients, setIngredients] = useState([{ amount: '1', name: '', type: '' }]);
   const [instructions, setInstructions] = useState('');
+  const [recipeHasChanged, setRecipeHasChanged] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -46,16 +47,19 @@ const EditRecipe = () => {
 
 
   const handleAddIngredient = () => {
+    setRecipeHasChanged(true);
     setIngredients([...ingredients, { amount: '1', name: '', type: '' }]);
   };
 
   const handleRemoveIngredient = (index) => {
+    setRecipeHasChanged(true);
     const newIngredients = [...ingredients];
     newIngredients.splice(index, 1);
     setIngredients(newIngredients);
   };
 
   const handleIngredientChange = (index, field, value) => {
+    setRecipeHasChanged(true);
     const newIngredients = [...ingredients];
     newIngredients[index][field] = value;
     setIngredients(newIngredients);
@@ -120,7 +124,7 @@ const EditRecipe = () => {
                         type="text"
                         id="recipeName"
                         value={name}
-                        onChange={(e) => setName(e.target.value)}
+                        onChange={(e) => { setRecipeHasChanged(true); setName(e.target.value); }}
                         className="w-full text-xl font-bold text-slate-800 border-b-2 border-slate-300 focus:border-[#1976D2] outline-none pb-1 transition-all"
                         placeholder="Enter recipe name..."
                     />
@@ -214,7 +218,7 @@ const EditRecipe = () => {
                     id="instructions" 
                     className="w-full bg-slate-50 rounded-2xl p-4 text-base leading-relaxed border outline-none transition-all resize-none font-medium text-slate-700"
                     value={instructions}
-                    onChange={(e) => setInstructions(e.target.value)} 
+                    onChange={(e) => { setRecipeHasChanged(true); setInstructions(e.target.value);}} 
                     rows="12"
                     placeholder="Enter your steps here..."
 
@@ -227,20 +231,24 @@ const EditRecipe = () => {
             </p>
         </section>
 
-        
-        {/* Primary Floating Action Button */}
-        <button 
-            onClick={handleSave}
-            disabled={isSaveDisabled}
-            className={`fixed bottom-6 right-6 w-16 h-16 bg-[#1976D2] rounded-2xl shadow-2xl hover:bg-blue-700 transition-all flex items-center justify-center transform z-50
-                ${(isSaveDisabled) 
-                    ? 'bg-slate-300 text-slate-500 hover:bg-slate-300 cursor-not-allowed shadow-none' 
-                    : 'bg-[#1976D2] text-white shadow-2xl hover:bg-blue-700 transform active:scale-95'
-                }`
-            }
-        >
-            <FontAwesomeIcon icon={faSave} className="text-2xl" />
-        </button>
+        <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-200 p-4 z-50">
+            <div className="max-w-xl mx-auto">
+                <button 
+                    onClick={handleSave}
+                    disabled={isSaveDisabled || !recipeHasChanged}
+                    className={`w-full py-4 rounded-2xl flex items-center justify-center gap-3 transition-all
+                        ${(isSaveDisabled || !recipeHasChanged) 
+                          ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+                          : 'bg-emerald-600 text-white shadow-lg shadow-emerald-200 active:scale-[0.98]'
+                      }`}
+                >
+                    <FontAwesomeIcon icon={faSave} />
+                    <span className="font-black uppercase tracking-widest text-sm">
+                        Save Recipe Changes
+                    </span>
+                </button>
+            </div>
+        </div>
 
       </main>
   );

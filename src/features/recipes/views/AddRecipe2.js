@@ -9,6 +9,8 @@ import { getAuth } from 'firebase/auth';
 
 import { addRecipe, addRecipeToFirestore } from '../slices/recipesSlice.ts';
 
+import recipesConfig from '../config.json';
+
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faSave, 
@@ -16,8 +18,6 @@ import {
   faListUl, 
   faMortarPestle
 } from '@fortawesome/free-solid-svg-icons';
-
-import recipesConfig from '../config.json';
 
 const AddRecipe = (props) => {
   const { user } = props;
@@ -44,6 +44,141 @@ const AddRecipe = (props) => {
     newIngredients[index][field] = value;
     setIngredients(newIngredients);
   };
+
+  const selectStyles = {
+      control: (base, state) => ({
+        ...base,
+        fontWeight: 'bold',
+        backgroundColor: '#f8fafc',
+        borderRadius: '0.75rem',
+        borderWidth: '1px',
+        borderColor: state.isFocused ? '#1976D2' : '#777',
+        boxShadow: state.isFocused ? '0 0 0 2px rgba(25, 118, 210, 0.2)' : 'none',
+        padding: '2px',
+        '&:hover': { borderColor: '#cbd5e1' }
+      }),
+      dropdownIndicator: (base, state) => ({
+        ...base,
+        color: '#444', // Blue when active, Slate-400 when not
+        transition: 'all 0.2s ease',
+      }),
+      multiValue: (base) => ({
+        ...base,
+        backgroundColor: '#eff6ff', // bg-blue-50
+        borderRadius: '0.5rem',
+      }),
+      multiValueLabel: (base) => ({
+        ...base,
+        color: '#1976D2',
+        fontWeight: '700',
+        fontSize: '20px',
+      }),
+      multiValueRemove: (base) => ({
+        ...base,
+        color: '#1976D2',
+        '&:hover': {
+          backgroundColor: '#1976D2',
+          color: 'white',
+          borderRadius: '0.5rem',
+        },
+      }),
+      option: (base, state) => ({
+        ...base,
+        backgroundColor: state.isSelected ? '#1976D2' : state.isFocused ? '#eff6ff' : 'white',
+        color: state.isSelected ? 'white' : state.isFocused ? '#1976D2' : '#475569',
+        fontWeight: 'bold',
+        fontSize: '20px',
+        '&:active': { backgroundColor: '#1976D2' }
+      }),
+    };
+
+    const aisleStyles = {
+    control: (base, state) => ({
+    ...base,
+    fontWeight: 'bold',
+    backgroundColor: '#f8fafc',
+    borderRadius: '0.75rem',
+    borderWidth: '1px',
+    borderColor: state.isFocused ? '#1976D2' : '#777',
+    boxShadow: state.isFocused ? '0 0 0 2px rgba(25, 118, 210, 0.2)' : 'none',
+    padding: '2px',
+    '&:hover': { borderColor: '#cbd5e1' }
+  }),
+  dropdownIndicator: (base, state) => ({
+    ...base,
+    color: '#444', // Blue when active, Slate-400 when not
+    transition: 'all 0.2s ease',
+  }),
+  multiValue: (base) => ({
+    ...base,
+    backgroundColor: '#eff6ff', // bg-blue-50
+    borderRadius: '0.5rem',
+  }),
+  multiValueLabel: (base) => ({
+    ...base,
+    color: '#1976D2',
+    fontWeight: '700',
+    fontSize: '14px',
+  }),
+  multiValueRemove: (base) => ({
+    ...base,
+    color: '#1976D2',
+    '&:hover': {
+      backgroundColor: '#1976D2',
+      color: 'white',
+      borderRadius: '0.5rem',
+    },
+  }),
+  singleValue: (base) => ({
+    ...base,
+    fontSize: '14px', // Set your desired size here
+    fontWeight: 'bold',
+    color: '#1e293b',
+  }),
+  option: (base, state) => ({
+    ...base,
+    backgroundColor: state.isSelected ? '#1976D2' : state.isFocused ? '#eff6ff' : 'white',
+    color: state.isSelected ? 'white' : state.isFocused ? '#1976D2' : '#475569',
+    fontWeight: 'bold',
+    fontSize: '14px',
+    '&:active': { backgroundColor: '#1976D2' }
+  }),
+  placeholder: (base) => ({
+    ...base,
+    fontSize: '14px',
+    fontWeight: 'bold',
+    color: '#94a3b8',
+  }),
+  input: (base) => ({
+    ...base,
+    fontSize: '14px',
+  }),
+    
+
+  menuPortal: (base) => ({ 
+    ...base, 
+    zIndex: 9999 
+  }),
+
+  // 2. Give the menu a solid background and a clean shadow
+  menu: (base) => ({
+    ...base,
+    backgroundColor: 'white', // This prevents labels from showing through
+    zIndex: 9999,
+    borderRadius: '1rem',
+    marginTop: '4px',
+    border: '1px solid #e2e8f0',
+    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+  }),
+
+  // 3. Ensure the list inside the menu is also opaque
+  menuList: (base) => ({
+    ...base,
+    backgroundColor: 'white',
+    borderRadius: '1rem',
+  })
+  };
+
 
   const handleSave = async () => {
     if (name.trim() !== '' && ingredients.length > 0 && ingredients.every(ingredient => ingredient.amount !== "" && ingredient.name.trim() !== "")) {
@@ -89,11 +224,50 @@ const AddRecipe = (props) => {
 
     return recipe;
   }
+
+  const getConfigRecipeById = (id) => {
+    let recipe;
+    recipesConfig.recipes.some((r) => {
+        if (r.id == id) {
+            recipe = r;
+            return true;
+        }
+    });
+
+    return recipe;
+  }
   
   options = options.concat(allRecipesSorted.map((recipe, index) => ({
     value: recipe.id,
     label: recipe.name,
   })));
+
+    options = options.concat(recipesConfig.recipes.sort((a, b) => {
+        if (a.name.toLowerCase() > b.name.toLowerCase()) 
+            return 1;
+        else
+            return -1;
+    }).map((recipe, index) => ({
+        value: recipe.id,
+        label: recipe.name,
+        isConfig: true
+    })));
+
+    const formatOptionLabel = ({ label, isConfig, value }) => (
+        <div className="flex items-center justify-start gap-3">
+            {isConfig && value !== 'reset' ? (
+                <img 
+                    src="/gl/logo192.png"
+                    alt="GroceryLister Logo" 
+                    className="h-5 w-5 object-contain opacity-90" 
+                />
+            ) : (
+                <div className="w-5" /> 
+            )}
+            
+            <span className="font-medium text-slate-700">{label}</span>
+        </div>
+    );
 
   const typeOptions = [
     { value: '', label: 'Other'  },
@@ -120,17 +294,26 @@ const AddRecipe = (props) => {
 
         <div className="mb-4">
             <label htmlFor="recipeName" className="block font-medium text-gray-700">
-                Prefill With Pre-Built Recipe:
+                Prefill With Recipe:
             </label>
             <Select
                 options={options}
+                styles={selectStyles}
+                formatOptionLabel={formatOptionLabel}
                 onChange={(selectedOption) => {
                     if (selectedOption && selectedOption.value !== 'reset') {
-                        const recipeId = selectedOption.value;
-                        const recipe = getRecipeById(recipeId);
-                        setName(recipe.name);
-                        setIngredients(recipe.ingredients);
-                        setInstructions(recipe.instructions);
+                        const configRecipe = getConfigRecipeById(selectedOption.value)
+                        if (configRecipe) {
+                            setName(configRecipe.name);
+                            setIngredients(configRecipe.ingredients);
+                            setInstructions(configRecipe.instructions);
+                        } else {
+                            const recipeId = selectedOption.value;
+                            const recipe = getRecipeById(recipeId);
+                            setName(recipe.name);
+                            setIngredients(recipe.ingredients);
+                            setInstructions(recipe.instructions);
+                        }
                     } else {
                         setName('');
                         setIngredients([]);
@@ -256,26 +439,33 @@ const AddRecipe = (props) => {
                 />
             </div>
           
-            {/* Optional: Footer Tip */}
             <p className="mb-10 mt-3 ml-6 mr-6 text-sm text-slate-400 font-medium italic px-1">
                 Tip: Press Enter for new lines. These will appear as separate steps in the view mode.
             </p>
         </section>
 
-        
-        {/* Primary Floating Action Button */}
-        <button 
-            onClick={handleSave}
-            disabled={isSaveDisabled}
-            className={`fixed bottom-6 right-6 w-16 h-16 bg-[#1976D2] rounded-2xl shadow-2xl hover:bg-blue-700 transition-all flex items-center justify-center transform z-50
-                ${(isSaveDisabled) 
-                    ? 'bg-slate-300 text-slate-500 hover:bg-slate-300 cursor-not-allowed shadow-none' 
-                    : 'bg-[#1976D2] text-white shadow-2xl hover:bg-blue-700 transform active:scale-95'
-                }`
-            }
-        >
-            <FontAwesomeIcon icon={faSave} className="text-2xl" />
-        </button>
+        <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-200 p-4 z-50">
+            <div className="max-w-xl mx-auto flex gap-4">
+                <button 
+                    onClick={handleCancel} 
+                    className="flex-1 py-4 font-black uppercase text-[12px] tracking-widest text-slate-400"
+                >
+                    Cancel
+                </button>
+                <button
+                    onClick={handleSave}
+                    disabled={isSaveDisabled}
+                    className={`flex-[2] py-4 rounded-2xl flex items-center justify-center gap-3 transition-all
+                        ${isSaveDisabled 
+                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+                            : 'bg-emerald-600 text-white shadow-lg shadow-emerald-200 active:scale-[0.98]'
+                        }`}
+                >
+                <FontAwesomeIcon icon={faSave} />
+                <span className="font-black uppercase tracking-[0.2em] text-sm">Create Recipe</span>
+                </button>
+            </div>
+        </div>
 
       </main>
   );

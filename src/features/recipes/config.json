@@ -1,24 +1,79 @@
 {
     "recipes": [
         {
-            "name": "Spaghetti",
+            "id": 1,
+            "name": "Crockpot Pepper Steak",
             "ingredients": [
-                { "amount": "1 lb", "name": "ground beef", "type": "" },
-                { "amount": "1", "name": "32 oz can of tomato sauce", "type": "" },
-                { "amount": "1", "name": "packet of zesty seasoning", "type": "" },
-                { "amount": "8 oz", "name": "angel hair spaghetti noodles", "type": "" }
+                { "amount": "2 lbs", "name": "Beef tips", "type": "meat" },
+                { "amount": "2", "name": "Green peppers, chopped", "type": "produce" },
+                { "amount": "1", "name": "Onion (white), chopped", "type": "produce" },
+                { "amount": "3/4 tsp", "name": "Garlic powder", "type": "" },
+                { "amount": "1 cube", "name": "Beef bouillon", "type": "" },
+                { "amount": "3 tbsp", "name": "Vegetable oil", "type": "" },
+                { "amount": "1", "name": "Stewed tomatoes, 14.5oz can", "type": "" },
+                { "amount": "3 tbsp", "name": "Soy sauce", "type": "" },
+                { "amount": "1 tsp", "name": "Sugar, white", "type": "" },
+                { "amount": "1 tsp", "name": "Salt", "type": "" }
             ],
-            "instructions": "1. Boil water in pot and cook pasta\n2. Brown ground beef in large skillet on medium\n3. Heat tomato sauce on low heat in sauce pan\n4. Drain greese from beef and combine with tomato sauce\n5. Stir in zesty seasoning packet"
+            "instructions": "Season Beef: Sprinkle beef tips evenly with garlic powder.\n\nSear: Heat vegetable oil in a large skillet over medium heat. Sear beef for about 5 minutes per side until browned.\n\nPrepare Broth: In a separate container, dissolve the bouillon cube in hot water.\n\nCombine: Transfer the seared beef to the slow cooker. Pour in the bouillon broth.\n\nAdd Ingredients: Stir in the green peppers, stewed tomatoes, soy sauce, sugar, and salt.\n\nSlow Cook: Cover and cook on High for 3–4 hours or Low for 6–8 hours."
         },
         {
-          "name": "Spaghetti2",
+          "id": 2,
+          "name": "Jalapeño Popper Chicken Casserole",
           "ingredients": [
-            { "amount": "2 lb", "name": "ground beef", "type": "" },
-            { "amount": "2", "name": "32 oz can of tomato sauce", "type": "" },
-            { "amount": "2", "name": "packet of zesty seasoning", "type": "" },
-            { "amount": "16 oz", "name": "angel hair spaghetti noodles", "type": "" }
+            { "amount": "2 lb", "name": "Chicken, shredded", "type": "meat" },
+            { "amount": "8 oz", "name": "Cream cheese", "type": "dairy" },
+            { "amount": "1/2 cup", "name": "Heavy cream", "type": "dairy" },
+            { "amount": "4 oz", "name": "Cheddar cheese, shredded", "type": "dairy" },
+            { "amount": "5", "name": "Jalapenos", "type": "produce" },
+            { "amount": "1/2 tsp", "name": "Garlic powder", "type": "" },
+            { "amount": "1/4 cup", "name": "Chicken stock", "type": "" },
+            { "amount": "1/2 tsp", "name": "Paprika", "type": "" },
+            { "amount": "1/2 tsp", "name": "Black pepper", "type": "" },
+            { "amount": "5 oz", "name": "Bacon bits", "type": "" }
           ],
-          "instructions": "test"
+          "instructions": "Prepare Chicken: Cook chicken breast in a slow cooker or pressure cooker until tender. Shred the meat and spread it evenly into a casserole dish.\n\nPreheat & Season: Preheat oven to 375°F. Season the shredded chicken with garlic powder, paprika, and pepper.\n\nMake Sauce: In a separate bowl, whisk together heavy cream, cream cheese, and chicken stock. Pour over the chicken and mix well.\n\nAdd Peppers: Fold in the seeded and diced jalapeños.\n\nAdd Cheese: Sprinkle a layer of cheddar cheese over the top.\n\nBake: Bake for 20 minutes total.\n\nAdd Bacon: 5 minutes before the timer ends, remove from the oven, sprinkle with bacon bits, and return for the final 5 minutes until bubbly and hot.\n\nServe: Let cool slightly and enjoy."
+        },
+        {
+          "id": 3,
+          "name": "Southwestern Quesadillas (Vegetarian)",
+          "ingredients": [
+            { "amount": "1 pack", "name": "Tortillas", "type": "" },
+            { "amount": "1 can", "name": "Refried beans, 16 oz", "type": "" },
+            { "amount": "1", "name": "Onion, red", "type": "produce" },
+            { "amount": "1", "name": "Red pepper", "type": "produce" },
+            { "amount": "1/2 tsp", "name": "Cumin", "type": "" },
+            { "amount": "2 cups", "name": "Cheese, shredded mexican", "type": "dairy" },
+            { "amount": "1 tbsp", "name": "Lime juice", "type": "" },
+            { "amount": "1 cup", "name": "Sour cream", "type": "dairy" }
+          ],
+          "instructions": "Sauté Vegetables: Heat olive oil in a skillet over medium heat. Sauté peppers and onions seasoned with cumin, paprika, and black pepper until softened.\n\nWarm Beans: Heat the refried beans in a bowl until easy to spread.\n\nAssemble Base: For each quesadilla, spread a layer of refried beans onto two tortillas (one for the base, one for the top).\n\nBegin Grilling: Place the bottom tortilla, bean-side up, on a skillet or griddle over medium heat.\n\nLayer Fillings: Spread the sautéed peppers and onions over the beans and sprinkle with a generous amount of cheese. Place the second tortilla on top, bean-side down.\n\nSear & Flip: Cook for 1–2 minutes until the bottom is browned. Carefully flip and cook the other side for another 1–2 minutes until the cheese is melted and both sides are crisp.\n\nPrepare Sour Cream: In a small bowl, whisk together sour cream and lime juice. Set aside for topping or dipping.\n\nServe: Slice into wedges and serve with the sour cream mixture."
+        },
+        {
+          "id": 4,
+          "name": "Bangers & Mash",
+          "ingredients": [
+            { "amount": "1 pack", "name": "Sausage, 5 links", "type": "meat" },
+            { "amount": "1", "name": "Instant mashed potatoes packet", "type": "" },
+            { "amount": "1", "name": "Onion, white", "type": "produce" },
+            { "amount": "1/4 cup", "name": "Beef broth", "type": "" },
+            { "amount": "1 tbsp", "name": "Butter", "type": "dairy" },
+            { "amount": "1 tbsp", "name": "Olive oil", "type": "" },
+            { "amount": "1 tsp", "name": "Garlic powder", "type": "" },
+            { "amount": "1/2 tbsp", "name": "Flour", "type": "" },
+            { "amount": "1 tbsp", "name": "Worcestershire sauce", "type": "" }
+          ],
+          "instructions": "Roast Sausages: Preheat oven to 400°F. Place sausage links on an aluminum foil-lined baking sheet and bake for 30 minutes.\n\nSauté: While sausages roast, melt butter in a skillet over medium heat. Sauté sliced onions with garlic powder until softened.\n\nCreate Sauce: Add flour to the skillet and stir constantly for 1 minute to cook out the raw flour taste.\n\nSimmer Gravy: Gradually pour in beef broth and Worcestershire sauce. Bring to a boil, then reduce heat and simmer for 5–10 minutes until thickened.\n\nPrepare Potatoes: Prepare mashed potatoes according to the package directions.\n\nServe: Plate the sausages over the mashed potatoes and generously top with the onion gravy."
+        },
+        {
+          "id": 5,
+          "name": "Crockpot 3-Ingredient Meatballs",
+          "ingredients": [
+            { "amount": "32 oz", "name": "Meatballs, frozen", "type": "freezer" },
+            { "amount": "1", "name": "BBQ sauce, 18 oz", "type": "" },
+            { "amount": "1", "name": "Grape jelly, 18 oz", "type": "" }
+          ],
+          "instructions": "Mix Sauce: Combine the BBQ sauce and grape jelly in a slow cooker. Stir until well blended.\n\nCoat Meatballs: Add the frozen meatballs to the mixture and toss until they are evenly coated.\n\nSlow Cook: Cover and cook on High for 3 hours.\n\nServe: Stir once more before serving warm."
         }
     ]
 }

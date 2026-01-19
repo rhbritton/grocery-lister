@@ -6,6 +6,7 @@ import { auth, db } from './auth/firebaseConfig';
 import { userLogout } from './auth/authActions';
 
 import { BrowserRouter, Routes, Route, NavLink, useLocation, useSearchParams, Navigate, useNavigate } from 'react-router-dom';
+import ScrollToTop from './components/ScrollToTop';
 
 import { useSelector, useDispatch } from 'react-redux';
 
@@ -369,6 +370,8 @@ function App() {
         )}
 
         <BrowserRouter basename="/gl">
+
+        <ScrollToTop />
 
         <main className={`min-h-screen bg-[#F8FAFC] font-sans text-slate-900 ${spaceForFloatingButton}`}>
             {user && <Header user={user} handleGoogleLogin={handleGoogleLogin} handleLogout={handleLogout} hasProgressPercent={true} checkedCount={checkedCount} totalItems={totalItems} />}
