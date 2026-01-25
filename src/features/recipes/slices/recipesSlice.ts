@@ -604,6 +604,7 @@ export const recipesSlice = createSlice({
     builder
       .addCase(syncRecipesFromFirestore.fulfilled, (state, action) => {
         const incoming = action.payload;
+
         if (!incoming.length) {
           state.status = 'succeeded';
           return;

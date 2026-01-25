@@ -39,11 +39,16 @@ const AddGroceryList = (props) => {
   
   const { allRecipes, favoriteRecipes } = useSelector(state => state.recipes);
   const combinedRecipes = Array.from(
-    new Map([...allRecipes, ...favoriteRecipes].map(r => [r.fbid || r.id, r])).values()
+    new Map(
+      [...allRecipes, ...favoriteRecipes].map(r => {
+        const stableKey = String(r.fbid);
+        return [stableKey, r];
+      })
+    ).values()
   ).sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 
   const recipeOptions = combinedRecipes && combinedRecipes.map((recipe) => ({
-    value: recipe.id,
+    value: recipe.fbid,
     label: recipe.name,
     isFavorite: recipe.favorited
   }));
@@ -189,10 +194,20 @@ const AddGroceryList = (props) => {
   //   }
   // }, [dispatch, allRecipes]);
 
-  let allRecipesById = {};
-  combinedRecipes && combinedRecipes.forEach(function(r) {
-    allRecipesById[r.id] = r;
-  });
+  const allRecipesById = React.useMemo(() => {
+    const map = {};
+    
+    if (combinedRecipes) {
+      combinedRecipes.forEach((r) => {
+        // Use String() or +'' to ensure the key is a string
+        // Use fbid || id to ensure we don't get "undefined" as a key
+        const key = String(r.fbid); 
+        map[key] = r;
+      });
+    }
+    
+    return map; // This "return" is what assigns the value to allRecipesById
+  }, [combinedRecipes]); // Only re-run if combinedRecipes changes
 
   const [recipes, setRecipes] = useState([]); // { id: nano(), recipe: {} }
   const [ingredients, setIngredients] = useState([]); // { amount: '', name: '', type: '', recipeId: '' }
@@ -223,7 +238,6 @@ const AddGroceryList = (props) => {
   const customHasUnfilled = ingredients && ingredients.some(ingredient => ingredient.amount === "" || ingredient.name.trim() === "");
   
   const recipesAreZero = recipes.length === 0 || (recipes && recipes.every((r) => {
-    console.log(r)
     return !r.recipe.ingredients.length;
   }));
   const recipesAreAllCrossed = recipes && recipes.every((r) => {
@@ -317,16 +331,16 @@ const AddGroceryList = (props) => {
                 if (selectedOptions && selectedOptions.length) {
                     let updateSavedRecipes = [];
                     selectedOptions.forEach(function(option) {
-                    let alreadySaved = recipes.some(function(savedRecipe) {
-                        if (savedRecipe.id == option.value) {
-                        updateSavedRecipes.push(savedRecipe)
-                        return true;
-                        }
-                    });
+                      let alreadySaved = recipes.some(function(savedRecipe) {
+                          if (savedRecipe.fbid+'' === option.value+'') {
+                            updateSavedRecipes.push(savedRecipe)
+                            return true;
+                          }
+                      });
 
-                    if (!alreadySaved) {
-                        updateSavedRecipes.push({ id: option.value, recipe: allRecipesById[option.value] })
-                    }
+                      if (!alreadySaved) {
+                          updateSavedRecipes.push({ id: option.value, recipe: allRecipesById[String(option.value)] })
+                      }
                     });
 
                     setRecipes(updateSavedRecipes);

@@ -1,5 +1,7 @@
 import { configureStore, combineReducers } from '@reduxjs/toolkit';
 
+import store2 from 'store2';
+
 import { 
   persistStore, 
   persistReducer,
@@ -27,6 +29,7 @@ const appReducer = combineReducers({
 export const rootReducer = (state, action) => {
   if (action.type === 'USER_LOGOUT' || action.type === 'auth/userLogout') {
     storage.removeItem('persist:root'); // This kills the disk data
+    store2.clearAll();
     return appReducer(undefined, action); // This kills the memory data
   }
 
