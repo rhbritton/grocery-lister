@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Fragment } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { nanoid } from '@reduxjs/toolkit';
 import { useNavigate } from 'react-router-dom';
 import Select from 'react-select';
+import SearchableSelect from '../../../components/SearchableSelect';
+import { Combobox, Transition } from '@headlessui/react';
 
 import { getAuth } from 'firebase/auth';
 
@@ -52,6 +54,13 @@ const AddGroceryList = (props) => {
     label: recipe.name,
     isFavorite: recipe.favorited
   }));
+
+  const [query, setQuery] = useState('');
+
+  // Simple search logic
+  const filteredOptions = recipeOptions.filter(opt => 
+    opt.label.toLowerCase().includes(query.toLowerCase())
+  );
 
   const selectStyles = {
       control: (base, state) => ({
@@ -311,7 +320,7 @@ const AddGroceryList = (props) => {
             <FontAwesomeIcon icon={faUtensils} className="text-md" />
             <span className="text-md font-black uppercase tracking-widest text-slate-800">Add Recipes</span>
           </div>
-          <Select
+          {/* <Select
             isMulti
             options={recipeOptions}
             styles={selectStyles}
@@ -348,7 +357,40 @@ const AddGroceryList = (props) => {
                     setRecipes([]);
                 }
             }}
+          /> */}
+
+          <SearchableSelect
+            options={recipeOptions}
+            selectedItems={recipes.map(r => ({
+              value: r.id,
+              label: r.recipe.name,
+              isFavorite: r.recipe.favorited
+            }))}
+            valueKey='value'
+            labelKey='label'
+            onChange={(selectedOptions) => {
+                if (selectedOptions && selectedOptions.length) {
+                    let updateSavedRecipes = [];
+                    selectedOptions.forEach(function(option) {
+                      let alreadySaved = recipes.some(function(savedRecipe) {
+                          if (savedRecipe.fbid+'' === option.value+'') {
+                            updateSavedRecipes.push(savedRecipe)
+                            return true;
+                          }
+                      });
+
+                      if (!alreadySaved) {
+                          updateSavedRecipes.push({ id: option.value, recipe: allRecipesById[String(option.value)] })
+                      }
+                    });
+
+                    setRecipes(updateSavedRecipes);
+                } else {
+                    setRecipes([]);
+                }
+            }}
           />
+
         </div>
 
         {/* 3. SELECTED RECIPE TAGS (Matches View Page Style) */}

@@ -166,7 +166,6 @@ const flashItem = (itemId, delay = 0) => {
         ? `recipe-${itemToUpdate.recipe.id}-${itemToUpdate.index}` 
         : `manual-${itemToUpdate.index}`;
       
-      // 1. Update UI (flat list)
       const updatedAll = allIngredients.map((ing, index) => 
           index === globalIndex ? { ...ing, ...newData, ingredient: { ...ing.ingredient, ...newData } } : ing
       );
@@ -177,10 +176,11 @@ const flashItem = (itemId, delay = 0) => {
           let newGroceryList = { ...groceryList };
           if (itemToUpdate.recipe) {
               newGroceryList.recipes = groceryList.recipes.map((r) => {
-                  if (r.id === itemToUpdate.recipe.id) {
-                      const updatedIngs = r.recipe.ingredients.map((ing, idx) =>
-                          idx === itemToUpdate.index ? { ...ing, ...newData } : ing
-                      );
+                  if (r.id === itemToUpdate.recipe.fbid) {
+                      const updatedIngs = r.recipe.ingredients.map((ing, idx) => {
+                        
+                        return idx === itemToUpdate.index ? { ...ing, ...newData } : ing;
+                      });
                       return { ...r, recipe: { ...r.recipe, ingredients: updatedIngs } };
                   }
                   return r;
