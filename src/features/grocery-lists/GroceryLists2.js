@@ -100,7 +100,7 @@ function GroceryLists(props) {
       <main className="max-w-xl mx-auto p-6">
         <div className="space-y-4">
           {groceryLists && groceryLists.length ? groceryLists.map((gl, i) => (
-            <GroceryListItem key={gl.fbid+i} gl={gl} setDeleteModalID={setDeleteModalID} />
+            <GroceryListItem key={`${gl.fbid}_${gl.updatedAt}`} gl={gl} setDeleteModalID={setDeleteModalID} />
           )) : <div>No grocery lists found.</div>}
         </div>
       </main>

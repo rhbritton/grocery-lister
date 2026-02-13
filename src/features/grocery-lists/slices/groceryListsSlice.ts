@@ -3,7 +3,7 @@ import { RootState } from '../../../app/store.ts';
 import { GroceryList } from './groceryListSlice.ts';
 
 import { db, auth } from '../../../auth/firebaseConfig';
-import { collection, query, where, getDocs, addDoc, doc, updateDoc, limit, startAfter, orderBy, QueryDocumentSnapshot, DocumentData, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, doc, updateDoc, getDoc, limit, startAfter, orderBy, QueryDocumentSnapshot, DocumentData, serverTimestamp, Timestamp } from 'firebase/firestore';
 
 import store from 'store2';
 
@@ -189,9 +189,17 @@ export const editGroceryListFromFirestore = createAsyncThunk(
       
       console.log('grocery-list reads [editGroceryListFromFirestore]: ', 1);
       console.log('grocery-list writes [editGroceryListFromFirestore]: ', 1);
+      
+      if (!updatedSnapshot.exists()) throw new Error("Doc not found");
 
-      return updatedSnapshot.exists() ? updatedSnapshot.data() : undefined;
+      return {
+        fbid: groceryListData.fbid,
+        ...groceryListData,
+        timestamp: updatedSnapshot.data().timestamp,
+        updatedAt: updatedSnapshot.data()?.updatedAt?.seconds || Math.floor(Date.now() / 1000)
+      };
     } catch (error) {
+      console.log(error)
       return rejectWithValue(error.message);
     }
   }

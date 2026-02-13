@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { NavLink, useLinkClickHandler, useNavigate } from 'react-router-dom';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -11,6 +11,35 @@ import '../styles/GroceryListItem.css';
 function GroceryListItem(props) {
     const handleViewClick = useLinkClickHandler(`/grocery-lists/view/${props.gl.fbid}`);
     const handleEditClick = useLinkClickHandler(`/grocery-lists/edit/${props.gl.fbid}`);
+
+    const getIngredientCounts = (groceryList) => {
+        if (!groceryList) return { total: 0, crossed: 0 };
+
+        const allIngredients = [
+            ...(groceryList.ingredients || []),
+            ...(groceryList.recipes || []).flatMap(r => 
+                r.ingredients || (r.recipe && r.recipe.ingredients) || []
+            )
+        ];
+
+        return {
+            total: allIngredients.length,
+            crossed: allIngredients.filter(item => item.crossed).length
+        };
+    };
+
+
+    const [allIngredients, setAllIngredients] = useState(getIngredientCounts(props.gl));
+    const [isComplete, setIsComplete] = useState(allIngredients.total > 0 && allIngredients.crossed === allIngredients.total);
+
+    useEffect(() => {
+        const { total, crossed } = getIngredientCounts(props.gl);
+        setAllIngredients({ total, crossed });
+    }, [props.gl]);
+
+    useEffect(() => {
+        setIsComplete(allIngredients.total > 0 && allIngredients.crossed === allIngredients.total);
+    }, [allIngredients.total, allIngredients.crossed])
 
     return (
         <div onClick={handleViewClick} className="bg-white rounded-2xl border border-slate-100 p-5 flex items-center shadow-md active:shadow-sm transition-all duration-100 cursor-pointer group">
@@ -28,8 +57,14 @@ function GroceryListItem(props) {
                     {props.gl.recipes.map((r) => r?.recipe?.name.trim()).join(', ')}
                 </p>
                 
-                <span className="text-[14px] font-black px-2 py-0.5 rounded uppercase tracking-widest text-[#1976D2] bg-blue-50">
-                    {/* {list.itemCount} Items */}
+                <span 
+                    className={`text-[14px] font-black px-2 py-0.5 rounded uppercase tracking-widest transition-all duration-300 ${
+                        isComplete 
+                        ? 'bg-green-700 text-white shadow-sm shadow-emerald-200' // Green Style
+                        : 'bg-blue-50 text-[#1976D2]'                               // Blue Style
+                    }`}
+                >
+                    {allIngredients.crossed} / {allIngredients.total}
                 </span>
             </div>
 
