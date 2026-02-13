@@ -222,7 +222,7 @@ const AddGroceryList = (props) => {
   const [ingredients, setIngredients] = useState([]); // { amount: '', name: '', type: '', recipeId: '' }
 
   const handleAddIngredient = () => {
-    setIngredients([...ingredients, { amount: '1', name: '', type: '' }]);
+    setIngredients([...ingredients, { amount: '1', name: '', type: '', autoFocus: true }]);
   };
 
   const handleRemoveIngredient = (index) => {
@@ -318,7 +318,7 @@ const AddGroceryList = (props) => {
         <div className="mt-2 z-50">
           <div className="flex items-center gap-2 text-slate-600 mb-3 ml-1">
             <FontAwesomeIcon icon={faUtensils} className="text-md" />
-            <span className="text-md font-black uppercase tracking-widest text-slate-800">Add Recipes</span>
+            <span className="text-md font-black uppercase tracking-widest text-slate-800">Add Recipe(s)</span>
           </div>
           {/* <Select
             isMulti
@@ -476,9 +476,10 @@ const AddGroceryList = (props) => {
               </label>
               <input 
                 type="text" 
+                autoFocus={ingredient.autoFocus}
                 value={ingredient.name}
                 onChange={(e) => handleIngredientChange(index, 'name', e.target.value)}
-                className="w-full bg-[#f8fafc] rounded-xl px-4 py-2 text-[14px] font-bold border border-slate-500 outline-none transition-all focus:border-[#1976D2] focus:ring-4 focus:ring-blue-500/10 focus:bg-white"
+                className="w-full bg-[#f8fafc] rounded-xl px-4 py-2 text-[20px] font-bold border border-slate-500 outline-none transition-all focus:border-[#1976D2] focus:ring-4 focus:ring-blue-500/10 focus:bg-white"
                 placeholder="Item name..."
               />
             </div>
