@@ -5,6 +5,15 @@ import { GroceryList } from './groceryListSlice.ts';
 import { db, auth } from '../../../auth/firebaseConfig';
 import { collection, query, where, getDocs, addDoc, doc, updateDoc, getDoc, limit, startAfter, orderBy, QueryDocumentSnapshot, DocumentData, serverTimestamp, Timestamp } from 'firebase/firestore';
 
+import {
+  shouldQueueOffline,
+  isLocalNewer,
+  isBrowserOffline,
+  stripGroceryListPayloadForFirestore,
+  omitUndefinedFields,
+} from '../../../services/offlineSync.ts';
+import { enqueuePendingSync, dequeuePendingSync } from '../../sync/pendingSyncSlice.ts';
+
 interface GroceryListsState {
   groceryLists: GroceryList[];
   groceryListsSorted: GroceryList[];
@@ -30,6 +39,35 @@ const sortGroceryLists = (groceryLists) => {
     }
   });
 }
+
+const normalizeGroceryList = (list) => {
+  const { offlineQueued, ...rest } = list;
+  return {
+    ...rest,
+    updatedAt: rest.updatedAt || Math.floor(Date.now() / 1000),
+  };
+};
+
+export const upsertGroceryListInState = (state, list) => {
+  if (!state.groceryLists) state.groceryLists = [];
+
+  const normalized = normalizeGroceryList(list);
+  if (!normalized.fbid && !normalized.id) return;
+
+  const index = state.groceryLists.findIndex(
+    (gl) =>
+      (normalized.fbid && gl.fbid === normalized.fbid) ||
+      (normalized.id && gl.id === normalized.id)
+  );
+
+  if (index !== -1) {
+    state.groceryLists[index] = { ...state.groceryLists[index], ...normalized };
+  } else if (normalized.fbid) {
+    state.groceryLists.unshift(normalized);
+  }
+
+  sortGroceryLists(state.groceryLists);
+};
 
 export const selectMaxGroceryListTimestamp = (state: RootState) => {
   const groceryLists = state.groceryLists.groceryLists;
@@ -153,14 +191,54 @@ export const getGroceryListsFromFirestore = createAsyncThunk(
 
 export const addGroceryListToFirestore = createAsyncThunk(
   'groceryLists/addGroceryList',
-  async (groceryListData, { rejectWithValue }) => {
+  async (groceryListData, { dispatch, rejectWithValue }) => {
+    const now = Math.floor(Date.now() / 1000);
     try {
-      const newGroceryList = { id: nanoid(), isDeleted: false, ...groceryListData };
-      const docRef = await addDoc(collection(db, 'grocery-lists'), newGroceryList);
+      const newGroceryList = stripGroceryListPayloadForFirestore({
+        id: nanoid(),
+        isDeleted: false,
+        ...groceryListData,
+      });
+      if (isBrowserOffline()) {
+        const localId = newGroceryList.id;
+        dispatch(enqueuePendingSync({
+          type: 'addGroceryList',
+          id: `addGroceryList:${localId}`,
+          payload: newGroceryList,
+        }));
+        return {
+          fbid: `pending-${localId}`,
+          ...newGroceryList,
+          updatedAt: now,
+          offlineQueued: true,
+        };
+      }
+
+      const docRef = await addDoc(collection(db, 'grocery-lists'), {
+        ...newGroceryList,
+        updatedAt: serverTimestamp(),
+      });
       console.log('grocery-list writes [addGroceryListToFirestore]: ', 1);
 
-      return { fbid: docRef.id, ...newGroceryList, updatedAt: serverTimestamp() };
+      dispatch(dequeuePendingSync(`addGroceryList:${newGroceryList.id}`));
+      return { fbid: docRef.id, ...newGroceryList, updatedAt: now, offlineQueued: false };
     } catch (error) {
+      if (shouldQueueOffline(error)) {
+        const localId = groceryListData.id || nanoid();
+        dispatch(enqueuePendingSync({
+          type: 'addGroceryList',
+          id: `addGroceryList:${localId}`,
+          payload: stripGroceryListPayloadForFirestore({ ...groceryListData, id: localId }),
+        }));
+        return {
+          fbid: `pending-${localId}`,
+          id: localId,
+          isDeleted: false,
+          ...groceryListData,
+          updatedAt: now,
+          offlineQueued: true,
+        };
+      }
       return rejectWithValue(error.message);
     }
   }
@@ -168,48 +246,97 @@ export const addGroceryListToFirestore = createAsyncThunk(
 
 export const editGroceryListFromFirestore = createAsyncThunk(
   'groceryLists/editGroceryList',
-  async (groceryListData, { rejectWithValue }) => {
-    try {
-      const docRef = doc(db, 'grocery-lists', groceryListData.fbid);
-      const updatedData = { ...groceryListData, updatedAt: serverTimestamp() };
-      delete updatedData.fbid;
-      await updateDoc(docRef, updatedData);
-      const updatedSnapshot = await getDoc(docRef);
-      
-      console.log('grocery-list reads [editGroceryListFromFirestore]: ', 1);
-      console.log('grocery-list writes [editGroceryListFromFirestore]: ', 1);
-      
-      if (!updatedSnapshot.exists()) throw new Error("Doc not found");
+  async (groceryListData, { dispatch, rejectWithValue }) => {
+    const now = Math.floor(Date.now() / 1000);
+    const pendingId = `editGroceryList:${groceryListData.fbid}`;
+    const payload = stripGroceryListPayloadForFirestore(groceryListData);
 
-      const data = updatedSnapshot.data();
-      return {
-        fbid: groceryListData.fbid,
-        ...groceryListData,
-        userId: data.userId || groceryListData.userId,
-        timestamp: data.timestamp,
-        updatedAt: data?.updatedAt?.seconds || Math.floor(Date.now() / 1000)
-      };
+    const buildResult = (docData, updatedAt = now, offlineQueued = false) => ({
+      fbid: payload.fbid,
+      ...payload,
+      userId: docData?.userId || payload.userId,
+      timestamp: docData?.timestamp ?? payload.timestamp,
+      updatedAt,
+      offlineQueued,
+    });
+
+    const queueAndReturn = () => {
+      dispatch(enqueuePendingSync({
+        type: 'editGroceryList',
+        id: pendingId,
+        payload,
+      }));
+      return buildResult(null, now, true);
+    };
+
+    if (isBrowserOffline()) {
+      return queueAndReturn();
+    }
+
+    try {
+      const docRef = doc(db, 'grocery-lists', payload.fbid);
+      await updateDoc(docRef, omitUndefinedFields({
+        userId: payload.userId,
+        timestamp: payload.timestamp,
+        recipes: payload.recipes,
+        ingredients: payload.ingredients,
+        isDeleted: payload.isDeleted ?? false,
+        updatedAt: serverTimestamp(),
+      }));
+
+      dispatch(dequeuePendingSync(pendingId));
+
+      try {
+        const updatedSnapshot = await getDoc(docRef);
+        if (updatedSnapshot.exists()) {
+          const data = updatedSnapshot.data();
+          return buildResult(data, data?.updatedAt?.seconds || now, false);
+        }
+      } catch (_) {
+        // Fall back to optimistic result when read fails offline.
+      }
+
+      return buildResult(null, now, false);
     } catch (error) {
-      console.log(error)
+      if (shouldQueueOffline(error)) {
+        return queueAndReturn();
+      }
+      console.log(error);
       return rejectWithValue(error.message);
     }
   }
 );
 
 export const deleteGroceryListFromFirestore = createAsyncThunk(
-  'recipes/deleteGroceryList',
-  async (fbid, { rejectWithValue }) => {
+  'groceryLists/deleteGroceryList',
+  async (fbid, { dispatch, rejectWithValue }) => {
+    const pendingId = `deleteGroceryList:${fbid}`;
+
+    if (isBrowserOffline()) {
+      dispatch(enqueuePendingSync({ type: 'deleteGroceryList', id: pendingId, payload: fbid }));
+      return fbid;
+    }
+
     try {
       const docRef = doc(db, 'grocery-lists', fbid);
       await updateDoc(docRef, {
         isDeleted: true,
         updatedAt: serverTimestamp()
       });
-      
+
+      dispatch(dequeuePendingSync(pendingId));
       console.log('grocery-list writes [deleteGroceryListFromFirestore]: ', 1);
 
       return fbid;
     } catch (error) {
+      if (shouldQueueOffline(error)) {
+        dispatch(enqueuePendingSync({
+          type: 'deleteGroceryList',
+          id: pendingId,
+          payload: fbid,
+        }));
+        return fbid;
+      }
       return rejectWithValue(error.message);
     }
   }
@@ -244,6 +371,9 @@ export const groceryListsSlice = createSlice({
         (gl) => gl.id !== action.payload.groceryListId
       );
     },
+    upsertGroceryList: (state, action) => {
+      upsertGroceryListInState(state, action.payload);
+    },
     // searchRecipes: (state, action) => {
     //   const searchTerm = action.payload.toLowerCase();
     //   getRecipesBySearch(state, searchTerm);
@@ -261,8 +391,11 @@ export const groceryListsSlice = createSlice({
         }
 
         incoming.forEach((updatedList) => {
-          // 1. Update allGroceryLists (The Master Bucket)
           const masterIndex = state.groceryLists.findIndex(gl => gl.fbid === updatedList.fbid);
+
+          if (masterIndex !== -1 && isLocalNewer(state.groceryLists[masterIndex].updatedAt, updatedList.updatedAt)) {
+            return;
+          }
           
           if (updatedList.isDeleted) {
             if (masterIndex !== -1) state.groceryLists.splice(masterIndex, 1);
@@ -271,17 +404,6 @@ export const groceryListsSlice = createSlice({
               state.groceryLists[masterIndex] = updatedList;
             } else {
               state.groceryLists.push(updatedList);
-            }
-          }
-
-          // 2. Update the UI view (state.groceryLists)
-          // Only update if it's already there to maintain pagination/view state
-          const uiIndex = state.groceryLists.findIndex(gl => gl.fbid === updatedList.fbid);
-          if (uiIndex !== -1) {
-            if (updatedList.isDeleted) {
-              state.groceryLists.splice(uiIndex, 1);
-            } else {
-              state.groceryLists[uiIndex] = updatedList;
             }
           }
         });
@@ -323,39 +445,23 @@ export const groceryListsSlice = createSlice({
       .addCase(addGroceryListToFirestore.fulfilled, (state, action) => {
         if (!action.payload) return;
 
-        const newGroceryList = {
-          ...action.payload,
-          userId: action.payload.userId,
-          updatedAt: Math.floor(Date.now() / 1000)
-        };
+        if (action.payload.id) {
+          state.groceryLists = (state.groceryLists || []).filter(
+            (gl) => gl.fbid !== `pending-${action.payload.id}`
+          );
+        }
 
-        if (!state.groceryLists)
-          state.groceryLists = [];
-
-        state.groceryLists.unshift(newGroceryList);
+        upsertGroceryListInState(state, action.payload);
       })
       .addCase(addGroceryListToFirestore.rejected, (state, action) => {
       
       })
-      .addCase(editGroceryListFromFirestore.pending, (state) => {
-              
+      .addCase(editGroceryListFromFirestore.pending, (state, action) => {
+        upsertGroceryListInState(state, action.meta.arg);
       })
       .addCase(editGroceryListFromFirestore.fulfilled, (state, action) => {
         if (!action.payload) return;
-
-        const updatedGroceryList = {
-            ...action.payload,
-            updatedAt: Math.floor(Date.now() / 1000) 
-        };
-
-        if (!state.groceryLists)
-          state.groceryLists = [];
-
-        state.groceryLists = state.groceryLists.map(groceryList =>
-          groceryList.fbid === updatedGroceryList.fbid
-            ? { ...groceryList, ...updatedGroceryList, userId: updatedGroceryList.userId || groceryList.userId }
-            : groceryList
-        );
+        upsertGroceryListInState(state, action.payload);
       })
       .addCase(editGroceryListFromFirestore.rejected, (state, action) => {
         
@@ -372,7 +478,7 @@ export const groceryListsSlice = createSlice({
   },
 });
 
-export const { setGroceryLists, addGroceryList, editGroceryList, deleteGroceryList } = groceryListsSlice.actions
+export const { setGroceryLists, addGroceryList, editGroceryList, deleteGroceryList, upsertGroceryList } = groceryListsSlice.actions
 
 export const fetchGroceryLists = (storedGroceryLists: any) => (dispatch: any) => {
   dispatch(setGroceryLists(storedGroceryLists));

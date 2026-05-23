@@ -6,6 +6,8 @@ import recipesConfig from '../config.json';
 
 import { generateSearchIndex, generateWordIndexFromRecipe } from '../../../services/search.js';
 
+import { shouldQueueOffline, isLocalNewer, isBrowserOffline, stripRecipePayloadForFirestore, toRecipeFirestoreFields } from '../../../services/offlineSync.ts';
+import { enqueuePendingSync, dequeuePendingSync } from '../../sync/pendingSyncSlice.ts';
 import { db, auth, appId } from '../../../auth/firebaseConfig';
 import { collection, query, where, getDoc, getDocs, addDoc, doc, documentId, updateDoc, setDoc, limit, 
           startAfter, orderBy, QueryDocumentSnapshot, DocumentData, arrayUnion, arrayRemove, serverTimestamp, Timestamp } from 'firebase/firestore';
@@ -108,6 +110,44 @@ const sortRecipes = (recipes) => {
     return nameA.localeCompare(nameB);
   });
 }
+
+const normalizeRecipe = (recipe) => {
+  const { offlineQueued, ...rest } = recipe;
+  return {
+    ...rest,
+    fbid: rest.fbid || rest.id,
+    updatedAt: rest.updatedAt || Math.floor(Date.now() / 1000),
+  };
+};
+
+export const upsertRecipeInState = (state, recipe) => {
+  const normalized = normalizeRecipe(recipe);
+  if (!normalized.fbid) return;
+
+  if (!state.allRecipes) state.allRecipes = [];
+  if (!state.allRecipesSorted) state.allRecipesSorted = [];
+  if (!state.recipes) state.recipes = [];
+
+  const masterIndex = state.allRecipes.findIndex(
+    (r) => r.fbid === normalized.fbid || r.id === normalized.fbid
+  );
+  if (masterIndex !== -1) {
+    state.allRecipes[masterIndex] = { ...state.allRecipes[masterIndex], ...normalized };
+  } else {
+    state.allRecipes.push(normalized);
+  }
+
+  const sortedCopy = [...state.allRecipes];
+  sortRecipes(sortedCopy);
+  state.allRecipesSorted = sortedCopy;
+
+  const uiIndex = state.recipes.findIndex(
+    (r) => r.fbid === normalized.fbid || r.id === normalized.fbid
+  );
+  if (uiIndex !== -1) {
+    state.recipes[uiIndex] = { ...state.recipes[uiIndex], ...normalized };
+  }
+};
 
 export const getAllFavoriteRecipesFromFirestore = createAsyncThunk(
   'recipes/fetchAllFavoriteRecipes',
@@ -411,19 +451,30 @@ export const addRecipesToFirestore = createAsyncThunk(
       }
 
       const addedRecipes = [];
+      const now = Math.floor(Date.now() / 1000);
       for (const recipeData of recipesData) {
-        let name_lowercase = recipeData.name ? recipeData.name.trim().toLowerCase() : '';
-        const newRecipe = { 
-          id: nanoid(), 
-          ...recipeData, 
+        const payload = stripRecipePayloadForFirestore({
+          id: nanoid(),
           isDeleted: false,
+          ...recipeData,
+        });
+        const name_lowercase = payload.name ? String(payload.name).trim().toLowerCase() : '';
+
+        const docRef = await addDoc(collection(db, 'recipes'), {
+          ...toRecipeFirestoreFields(payload, {
+            search_keywords: generateSearchIndex(name_lowercase),
+            ingredient_keywords: generateWordIndexFromRecipe(payload),
+          }),
           updatedAt: serverTimestamp(),
-          name_lowercase: name_lowercase,
-          // search_keywords: generateSearchIndex(name_lowercase),
-          // ingredient_keywords: generateWordIndexFromRecipe(recipeData),
-        };
-        const docRef = await addDoc(collection(db, 'recipes'), newRecipe);
-        addedRecipes.push({ fbid: docRef.id, ...newRecipe });
+        });
+
+        addedRecipes.push({
+          fbid: docRef.id,
+          ...payload,
+          isDeleted: false,
+          name_lowercase,
+          updatedAt: now,
+        });
       }
 
       return addedRecipes;
@@ -435,21 +486,51 @@ export const addRecipesToFirestore = createAsyncThunk(
 
 export const addRecipeToFirestore = createAsyncThunk(
   'recipes/addRecipe',
-  async (recipeData, { rejectWithValue }) => {
-    try {
-      let name_lowercase = recipeData.name ? recipeData.name.trim().toLowerCase() : '';
-      const newRecipe = {
-        id: nanoid(), 
-        ...recipeData,
-        updatedAt: serverTimestamp(),
+  async (recipeData, { dispatch, rejectWithValue }) => {
+    const now = Math.floor(Date.now() / 1000);
+    const localId = recipeData.id || nanoid();
+    const payload = stripRecipePayloadForFirestore({ ...recipeData, id: localId });
+
+    const queueAndReturn = () => {
+      dispatch(enqueuePendingSync({
+        type: 'addRecipe',
+        id: `addRecipe:${localId}`,
+        payload,
+      }));
+      const name_lowercase = payload.name ? payload.name.trim().toLowerCase() : '';
+      return {
+        fbid: `pending-${localId}`,
+        ...payload,
         isDeleted: false,
-        name_lowercase: name_lowercase,
-        // search_keywords: generateSearchIndex(name_lowercase),
-        // ingredient_keywords: generateWordIndexFromRecipe(recipeData),
+        name_lowercase,
+        updatedAt: now,
+        offlineQueued: true,
       };
-      const docRef = await addDoc(collection(db, 'recipes'), newRecipe);
-      return { fbid: docRef.id, ...newRecipe };
+    };
+
+    if (isBrowserOffline()) {
+      return queueAndReturn();
+    }
+
+    try {
+      const name_lowercase = payload.name ? String(payload.name).trim().toLowerCase() : '';
+      const docRef = await addDoc(collection(db, 'recipes'), {
+        ...toRecipeFirestoreFields(payload, { name_lowercase }),
+        updatedAt: serverTimestamp(),
+      });
+      dispatch(dequeuePendingSync(`addRecipe:${localId}`));
+      return {
+        fbid: docRef.id,
+        ...payload,
+        isDeleted: false,
+        name_lowercase,
+        updatedAt: now,
+        offlineQueued: false,
+      };
     } catch (error) {
+      if (shouldQueueOffline(error)) {
+        return queueAndReturn();
+      }
       return rejectWithValue(error.message);
     }
   }
@@ -457,23 +538,76 @@ export const addRecipeToFirestore = createAsyncThunk(
 
 export const editRecipeFromFirestore = createAsyncThunk(
   'recipes/editRecipe',
-  async (recipeData, { rejectWithValue }) => {
-    try {
-      const docRef = doc(db, 'recipes', recipeData.fbid);
-      let name_lowercase = recipeData.name ? recipeData.name.trim().toLowerCase() : '';
-      const updatedData = { 
-        ...recipeData,
-        updatedAt: serverTimestamp(),
-        name_lowercase: name_lowercase,
-        search_keywords: generateSearchIndex(name_lowercase),
-        ingredient_keywords: generateWordIndexFromRecipe(recipeData),
-      };
-      delete updatedData.fbid;
-      await updateDoc(docRef, updatedData);
+  async (recipeData, { dispatch, getState, rejectWithValue }) => {
+    const now = Math.floor(Date.now() / 1000);
+    const state = getState() as RootState;
+    const cached = [...state.recipes.allRecipes, ...state.recipes.favoriteRecipes].find(
+      (r) =>
+        r.fbid === recipeData.fbid ||
+        r.id === recipeData.fbid ||
+        r.fbid === recipeData.id
+    );
 
-      return recipeData;
+    const merged = {
+      ...cached,
+      ...recipeData,
+      fbid: recipeData.fbid || cached?.fbid,
+      userId: recipeData.userId ?? cached?.userId,
+      id: recipeData.id ?? cached?.id,
+    };
+
+    const fbid = merged.fbid;
+    const pendingId = `editRecipe:${fbid}`;
+    const payload = stripRecipePayloadForFirestore(merged);
+
+    const queueAndReturn = () => {
+      dispatch(enqueuePendingSync({
+        type: 'editRecipe',
+        id: pendingId,
+        payload: { ...payload, fbid },
+      }));
+      return { ...payload, fbid, updatedAt: now, offlineQueued: true };
+    };
+
+    if (isBrowserOffline()) {
+      return queueAndReturn();
+    }
+
+    try {
+      const docRef = doc(db, 'recipes', fbid);
+      const name_lowercase = payload.name ? String(payload.name).trim().toLowerCase() : '';
+      await updateDoc(docRef, {
+        ...toRecipeFirestoreFields(payload, {
+          name_lowercase,
+          search_keywords: generateSearchIndex(name_lowercase),
+          ingredient_keywords: generateWordIndexFromRecipe(payload),
+        }),
+        updatedAt: serverTimestamp(),
+      });
+
+      dispatch(dequeuePendingSync(pendingId));
+
+      try {
+        const updatedSnapshot = await getDoc(docRef);
+        if (updatedSnapshot.exists()) {
+          const data = updatedSnapshot.data();
+          return {
+            ...payload,
+            fbid,
+            updatedAt: data?.updatedAt?.seconds || now,
+            offlineQueued: false,
+          };
+        }
+      } catch (_) {
+        // Fall back to optimistic result when read fails.
+      }
+
+      return { ...payload, fbid, updatedAt: now, offlineQueued: false };
     } catch (error) {
-      console.log('error', error)
+      if (shouldQueueOffline(error)) {
+        return queueAndReturn();
+      }
+      console.log('error', error);
       return rejectWithValue(error.message);
     }
   }
@@ -481,7 +615,14 @@ export const editRecipeFromFirestore = createAsyncThunk(
 
 export const deleteRecipeFromFirestore = createAsyncThunk(
   'recipes/deleteRecipe',
-  async (fbid, { rejectWithValue }) => {
+  async (fbid, { dispatch, rejectWithValue }) => {
+    const pendingId = `deleteRecipe:${fbid}`;
+
+    if (isBrowserOffline()) {
+      dispatch(enqueuePendingSync({ type: 'deleteRecipe', id: pendingId, payload: fbid }));
+      return fbid;
+    }
+
     try {
       const docRef = doc(db, 'recipes', fbid);
       await updateDoc(docRef, {
@@ -489,8 +630,17 @@ export const deleteRecipeFromFirestore = createAsyncThunk(
         updatedAt: serverTimestamp()
       });
 
+      dispatch(dequeuePendingSync(pendingId));
       return fbid;
     } catch (error) {
+      if (shouldQueueOffline(error)) {
+        dispatch(enqueuePendingSync({
+          type: 'deleteRecipe',
+          id: pendingId,
+          payload: fbid,
+        }));
+        return fbid;
+      }
       return rejectWithValue(error.message);
     }
   }
@@ -498,7 +648,15 @@ export const deleteRecipeFromFirestore = createAsyncThunk(
 
 export const toggleFavoriteRecipeInFirestore = createAsyncThunk(
   'user/toggleFavorite',
-  async ({ userId, recipeId, recipeName, isAdding }, { rejectWithValue }) => {
+  async ({ userId, recipeId, recipeName, isAdding }, { dispatch, getState, rejectWithValue }) => {
+    const pendingId = `toggleFavorite:${userId}:${recipeId}`;
+
+    const findRecipeInState = () => {
+      const state = getState() as RootState;
+      return [...state.recipes.favoriteRecipes, ...state.recipes.allRecipes]
+        .find((r) => r.fbid === recipeId || r.id === recipeId);
+    };
+
     try {
       const userRef = doc(db, "recipe-favorites", userId);
       const favoriteItem = { id: recipeId, name: recipeName };
@@ -511,22 +669,43 @@ export const toggleFavoriteRecipeInFirestore = createAsyncThunk(
           : arrayRemove(favoriteItem)
       }, { merge: true });
 
-      // 2. Fetch the full recipe document to return to the reducer
-      const recipeRef = doc(db, "recipes", recipeId);
-      const recipeSnap = await getDoc(recipeRef);
+      dispatch(dequeuePendingSync(pendingId));
 
-      if (!recipeSnap.exists()) {
-        throw new Error("Recipe not found");
+      try {
+        const recipeRef = doc(db, "recipes", recipeId);
+        const recipeSnap = await getDoc(recipeRef);
+        if (recipeSnap.exists()) {
+          return {
+            recipe: {
+              id: recipeSnap.id,
+              fbid: recipeSnap.id,
+              ...recipeSnap.data()
+            },
+            isAdding,
+          };
+        }
+      } catch (_) {
+        // Fall back to local recipe data when offline.
       }
 
-      const fullRecipe = {
-        id: recipeSnap.id,
-        fbid: recipeSnap.id, // Ensuring fbid is set for your search logic
-        ...recipeSnap.data()
-      };
+      const cachedRecipe = findRecipeInState();
+      if (cachedRecipe) {
+        return { recipe: cachedRecipe, isAdding };
+      }
 
-      return { recipe: fullRecipe, isAdding };
+      throw new Error("Recipe not found");
     } catch (error) {
+      if (shouldQueueOffline(error)) {
+        dispatch(enqueuePendingSync({
+          type: 'toggleFavorite',
+          id: pendingId,
+          payload: { userId, recipeId, recipeName, isAdding },
+        }));
+        const cachedRecipe = findRecipeInState();
+        if (cachedRecipe) {
+          return { recipe: cachedRecipe, isAdding, offlineQueued: true };
+        }
+      }
       return rejectWithValue(error.message);
     }
   }
@@ -577,6 +756,9 @@ export const recipesSlice = createSlice({
       const searchTerm = action.payload.searchString.toLowerCase();
       const searchType = action.payload.searchType.toLowerCase();
       filterRecipesInState(state, searchTerm, searchType);
+    },
+    upsertRecipe: (state, action) => {
+      upsertRecipeInState(state, action.payload);
     }
   },
   extraReducers: (builder) => {
@@ -590,8 +772,12 @@ export const recipesSlice = createSlice({
         }
 
         incoming.forEach((updatedRecipe) => {
-          // 1. Update Master Bucket (allRecipes)
           const masterIndex = state.allRecipes.findIndex(r => r.fbid === updatedRecipe.fbid);
+
+          if (masterIndex !== -1 && isLocalNewer(state.allRecipes[masterIndex].updatedAt, updatedRecipe.updatedAt)) {
+            return;
+          }
+
           if (updatedRecipe.isDeleted) {
             if (masterIndex !== -1) state.allRecipes.splice(masterIndex, 1);
           } else {
@@ -599,9 +785,11 @@ export const recipesSlice = createSlice({
             else state.allRecipes.push(updatedRecipe);
           }
 
-          // 2. Update Active UI View (recipes)
           const uiIndex = state.recipes.findIndex(r => r.fbid === updatedRecipe.fbid);
           if (uiIndex !== -1) {
+            if (masterIndex !== -1 && isLocalNewer(state.recipes[uiIndex].updatedAt, updatedRecipe.updatedAt)) {
+              return;
+            }
             if (updatedRecipe.isDeleted) state.recipes.splice(uiIndex, 1);
             else state.recipes[uiIndex] = updatedRecipe;
           }
@@ -664,56 +852,29 @@ export const recipesSlice = createSlice({
       .addCase(addRecipeToFirestore.fulfilled, (state, action) => {
         if (!action.payload) return;
 
-        const newRecipe = {
-          ...action.payload,
-          updatedAt: Math.floor(Date.now() / 1000)
-        };
+        if (action.payload.id) {
+          state.allRecipes = (state.allRecipes || []).filter(
+            (recipe) => recipe.fbid !== `pending-${action.payload.id}`
+          );
+          state.recipes = (state.recipes || []).filter(
+            (recipe) => recipe.fbid !== `pending-${action.payload.id}`
+          );
+          state.allRecipesSorted = (state.allRecipesSorted || []).filter(
+            (recipe) => recipe.fbid !== `pending-${action.payload.id}`
+          );
+        }
 
-        if (!state.recipes)
-          state.recipes = [];
-        
-        if (!state.allRecipes) 
-          state.allRecipes = [];
-  
-        if (!state.allRecipesSorted)
-          state.allRecipesSorted = [];
-
-        state.recipes.push(newRecipe);
-        state.allRecipes.push(newRecipe);
-        state.allRecipesSorted.push(newRecipe);
-
-        sortRecipes(state.allRecipesSorted);
+        upsertRecipeInState(state, action.payload);
       })
       .addCase(addRecipeToFirestore.rejected, (state, action) => {
       
       })
-      .addCase(editRecipeFromFirestore.pending, (state) => {
-        
+      .addCase(editRecipeFromFirestore.pending, (state, action) => {
+        upsertRecipeInState(state, action.meta.arg);
       })
       .addCase(editRecipeFromFirestore.fulfilled, (state, action) => {
         if (!action.payload) return;
-
-        const updatedRecipe = {
-            ...action.payload,
-            updatedAt: Math.floor(Date.now() / 1000) 
-        };
-
-        if (!state.recipes)
-          state.recipes = [];
-
-        state.recipes = state.recipes.map(recipe =>
-          recipe.fbid === updatedRecipe.fbid ? updatedRecipe : recipe
-        );
-
-        if (!state.allRecipes)
-          state.allRecipes = [];
-
-        state.allRecipes = state.allRecipes.map(recipe =>
-          recipe.fbid === updatedRecipe.fbid ? updatedRecipe : recipe
-        );
-        state.allRecipesSorted = state.allRecipesSorted.map(recipe =>
-          recipe.fbid === updatedRecipe.fbid ? updatedRecipe : recipe
-        );
+        upsertRecipeInState(state, action.payload);
       })
       .addCase(editRecipeFromFirestore.rejected, (state, action) => {
       
@@ -807,7 +968,7 @@ export const recipesSlice = createSlice({
   },
 });
 
-export const { setRecipeSearchParams, setRecipes, addRecipe, editRecipe, deleteRecipe, searchRecipes } = recipesSlice.actions
+export const { setRecipeSearchParams, setRecipes, addRecipe, editRecipe, deleteRecipe, searchRecipes, upsertRecipe } = recipesSlice.actions
 
 export const fetchRecipes = (storedRecipes: any) => (dispatch: any) => {
   dispatch(setRecipes(storedRecipes));

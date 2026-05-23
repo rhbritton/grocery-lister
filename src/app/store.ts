@@ -10,18 +10,20 @@ import storage from 'redux-persist/lib/storage'; // Defaults to localStorage for
 import counterReducer from '../features/counter/counterSlice.ts';
 import recipesReducer from '../features/recipes/slices/recipesSlice.ts';
 import groceryListsReducer from '../features/grocery-lists/slices/groceryListsSlice.ts';
+import pendingSyncReducer from '../features/sync/pendingSyncSlice.ts';
 
 const persistConfig = {
   key: 'root',
   version: 1,
   storage,
-  whitelist: ['recipes', 'groceryLists'], // Save these slices, ignore others
+  whitelist: ['recipes', 'groceryLists', 'pendingSync'],
 };
 
 const appReducer = combineReducers({
   counter: counterReducer,
   recipes: recipesReducer,
   groceryLists: groceryListsReducer,
+  pendingSync: pendingSyncReducer,
 });
 
 export const rootReducer = (state, action) => {

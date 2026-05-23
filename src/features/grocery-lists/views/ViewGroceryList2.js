@@ -29,9 +29,10 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 
 import { fetchGroceryListById } from '../slices/groceryListSlice.ts';
-import { editGroceryList, editGroceryListFromFirestore } from '../slices/groceryListsSlice.ts';
+import { editGroceryListFromFirestore, upsertGroceryList } from '../slices/groceryListsSlice.ts';
 
 import { formatDate, formatTime } from '../../../services/date.js';
+import { isBrowserOffline } from '../../../services/offlineSync.ts';
 
 import { typeOptions } from '../../recipes/slices/recipesSlice.ts';
 
@@ -49,6 +50,7 @@ const ViewGroceryList = (props) => {
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const { groceryLists } = useSelector((state) => state.groceryLists);
+    const rehydrated = useSelector((state) => state._persist?.rehydrated);
 
     const isInitialLoad = useRef(true);
     
@@ -262,7 +264,24 @@ const flashItem = (itemId, delay = 0) => {
     }
 
     fetchData();
-  }, [dispatch, groceryListId, groceryLists, props.userId]);
+  }, [dispatch, groceryListId, props.userId]);
+
+  // Re-load once persisted Redux data arrives (offline cold start)
+  useEffect(() => {
+    if (!rehydrated || groceryList) return;
+    if (!groceryLists?.length) return;
+
+    const fetchData = async () => {
+      const gl = (await dispatch(fetchGroceryListById(groceryListId))).payload;
+      if (gl) {
+        const listWithOwner = { ...gl, userId: gl.userId || props.userId };
+        setGroceryList(listWithOwner);
+        setOriginalAllIngredients(getAllIngredients(listWithOwner));
+      }
+    };
+
+    fetchData();
+  }, [rehydrated, groceryLists?.length, dispatch, groceryListId, props.userId, groceryList]);
 
   useEffect(() => {
     let all_ingredients = getAllIngredients(groceryList);
@@ -322,16 +341,39 @@ const flashItem = (itemId, delay = 0) => {
     });
   }, [originalAllIngredients, allIngredients]);
 
-  const handleSave = (e) => {
+  const handleSave = async () => {
     if (!isSaveDisabled) {
-        dispatch(editGroceryListFromFirestore({
+        const listToSave = {
           fbid: groceryList.fbid,
+          id: groceryList.id,
           userId: groceryList.userId || props.userId,
+          timestamp: groceryList.timestamp,
           recipes: groceryList.recipes,
-          ingredients: groceryList.ingredients
-        }));
-        
-        setOriginalAllIngredients(getAllIngredients(groceryList));
+          ingredients: groceryList.ingredients,
+          updatedAt: Math.floor(Date.now() / 1000),
+        };
+
+        const savedList = { ...groceryList, ...listToSave };
+        dispatch(upsertGroceryList(listToSave));
+        setOriginalAllIngredients(getAllIngredients(savedList));
+        setGroceryList(savedList);
+
+        try {
+          const result = await dispatch(editGroceryListFromFirestore(listToSave)).unwrap();
+
+          setGroceryList((prev) => ({ ...prev, ...result }));
+          showToast(
+            result.offlineQueued
+              ? 'Saved offline — will sync when back online'
+              : 'List saved'
+          );
+        } catch (error) {
+          if (isBrowserOffline()) {
+            showToast('Saved offline — will sync when back online');
+          } else {
+            showToast('Save failed — try again when online');
+          }
+        }
     }
   }
 
@@ -369,6 +411,8 @@ const shareURL = async () => {
     groceryList.userId === props.userId ||
     (!groceryList.userId && groceryLists.some((gl) => gl.fbid === groceryList.fbid || gl.id === groceryListId))
   );
+
+  console.log('groceryList', groceryList);
 
   return (
     <main className="max-w-xl mx-auto min-w-[380px] p-6">

@@ -44,6 +44,9 @@ import {
   syncGroceryListsFromFirestore,
   selectMaxGroceryListTimestamp
 } from './features/grocery-lists/slices/groceryListsSlice.ts';
+import { flushPendingSync } from './features/sync/flushPendingSync.ts';
+import { selectPendingSyncQueue } from './features/sync/pendingSyncSlice.ts';
+import { store } from './app/store.ts';
 
 import './App.css';
 
@@ -147,7 +150,8 @@ function App() {
   }, [user?.uid, dispatch]);
 
   const lastSync = useSelector(selectMaxRecipeTimestamp);
-  const lastSyncGL = useSelector(selectMaxGroceryListTimestamp);  
+  const lastSyncGL = useSelector(selectMaxGroceryListTimestamp);
+  const pendingQueue = useSelector(selectPendingSyncQueue);
 
   const fetchInitialUserData = async (dispatch, userId) => {
     await Promise.all([
@@ -156,6 +160,38 @@ function App() {
       dispatch(syncGroceryListsFromFirestore({ userId, lastSyncTimestamp: lastSyncGL }))
     ])
   };
+
+  const syncAfterReconnect = async (userId) => {
+    await dispatch(flushPendingSync());
+    const state = store.getState();
+    await Promise.all([
+      dispatch(getAllFavoriteRecipesFromFirestore(userId)),
+      dispatch(syncRecipesFromFirestore({
+        userId,
+        lastSyncTimestamp: selectMaxRecipeTimestamp(state),
+      })),
+      dispatch(syncGroceryListsFromFirestore({
+        userId,
+        lastSyncTimestamp: selectMaxGroceryListTimestamp(state),
+      })),
+    ]);
+  };
+
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const handleOnline = () => {
+      syncAfterReconnect(user.uid);
+    };
+
+    window.addEventListener('online', handleOnline);
+
+    if (navigator.onLine && pendingQueue.length > 0) {
+      syncAfterReconnect(user.uid);
+    }
+
+    return () => window.removeEventListener('online', handleOnline);
+  }, [user?.uid, dispatch, pendingQueue.length]);
 
   // Handle Google Sign-in
   const handleGoogleLogin = async () => {

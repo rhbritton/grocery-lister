@@ -5,7 +5,7 @@ import { useParams, useNavigate, NavLink } from 'react-router-dom';
 import EditIngredient from '../components/EditIngredient2';
 
 import { fetchRecipeById } from '../slices/recipeSlice.ts';
-import { editRecipe, editRecipeFromFirestore } from '../slices/recipesSlice.ts';
+import { editRecipeFromFirestore, upsertRecipe } from '../slices/recipesSlice.ts';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -23,6 +23,7 @@ const EditRecipe = () => {
   const [name, setName] = useState('');
   const [ingredients, setIngredients] = useState([{ amount: '1', name: '', type: '' }]);
   const [instructions, setInstructions] = useState('');
+  const [existingRecipe, setExistingRecipe] = useState(null);
   const [recipeHasChanged, setRecipeHasChanged] = useState(false);
   const { allRecipes, favoriteRecipes } = useSelector((state) => state.recipes);
 
@@ -32,9 +33,10 @@ const EditRecipe = () => {
         let recipe = (await dispatch(fetchRecipeById(recipeId))).payload;
 
         if (recipe) {
-          setName(recipe.name || '');
-          setIngredients(recipe.ingredients || []);
-          setInstructions(recipe.instructions || '');
+            setExistingRecipe(recipe);
+            setName(recipe.name || '');
+            setIngredients(recipe.ingredients || []);
+            setInstructions(recipe.instructions || '');
         }
 
       } catch (error) {
@@ -66,13 +68,21 @@ const EditRecipe = () => {
     setIngredients(newIngredients);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (name.trim() !== '' && ingredients.length > 0 && ingredients.every(ingredient => ingredient.amount !== "" && ingredient.name.trim() !== "")) {
-      dispatch(editRecipeFromFirestore({ fbid: recipeId, name, ingredients, instructions }));
-      setName('');
-      setIngredients([{ amount: '1', name: '', type: '' }]);
-      setInstructions('');
-      
+      const recipeToSave = {
+        fbid: recipeId,
+        id: existingRecipe?.id,
+        userId: existingRecipe?.userId,
+        name,
+        ingredients,
+        instructions,
+        updatedAt: Math.floor(Date.now() / 1000),
+      };
+
+      dispatch(upsertRecipe(recipeToSave));
+      await dispatch(editRecipeFromFirestore(recipeToSave));
+
       navigate('/recipes');
     }
   };
