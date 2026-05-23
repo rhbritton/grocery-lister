@@ -1,41 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { BrowserRouter, Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom';
-
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faChevronLeft, 
-  faSave, 
-  faPlus, 
-  faTrashAlt, 
-  faTag, 
-  faListUl, 
-  faHashtag,
-  faUtensils,
   faUserCircle,
   faSignOutAlt,
-  faCalendarAlt,
   faClipboardList,
-  faCheck,
   faBook
 } from '@fortawesome/free-solid-svg-icons';
-
 import { formatRelativeUpdateTime, getRemoteUpdateFadeOpacity } from '../services/date.js';
 
 function Header(props) {
   const { user } = props;
   const location = useLocation();
   const navigate = useNavigate();
-
-  const isActiveURL = (path) => {
-    if (path === '/' && location.pathname === path)
-        return true;
-    else if (path === '/')
-        return false;
-
-    return location.pathname.includes(path);
-  };
 
   const recipesListPath = {
     heading: 'Recipes',
@@ -48,27 +27,27 @@ function Header(props) {
     icon: faClipboardList
   }
   const recipesAddPath = {
-    heading: 'Recipes Add',
+    heading: 'New Recipe',
     backButton: '/recipes'
   }
   const recipesEditPath = {
-    heading: 'Recipes Edit',
+    heading: 'Edit Recipe',
     backButton: '/recipes'
   }
   const recipesViewPath = {
-    heading: 'Recipes View',
+    heading: 'Recipe',
     backButton: '/recipes'
   }
   const groceryListsAddPath = {
-    heading: 'Grocery Lists Add',
+    heading: 'New List',
     backButton: '/grocery-lists'
   }
   const groceryListsEditPath = {
-    heading: 'Grocery Lists Edit',
+    heading: 'Edit List',
     backButton: '/grocery-lists'
   }
   const groceryListsViewPath = {
-    heading: 'Grocery Lists View',
+    heading: 'Grocery List',
     backButton: '/grocery-lists'
   }
 
@@ -139,27 +118,29 @@ function Header(props) {
     <>
       {user &&
         <>
-            <header className="bg-[#1976D2] px-6 py-4 shadow-lg sticky top-0 z-[9999]">
+            <header className="bg-brand px-page pb-4 pt-safe-base shadow-lg sticky top-0 z-[9999]">
                 <div className="max-w-xl mx-auto flex items-center justify-between relative">
                     {getPathInfo().backButton && <NavLink 
                         to={getPathInfo().backButton}
-                        className="text-white/90 hover:text-white transition-all p-1 -ml-2"
+                        className="text-white/90 hover:text-white transition-all min-h-touch flex items-center -ml-1"
                     >
                         <div className="flex items-center gap-3">
                             <FontAwesomeIcon icon={faChevronLeft} className="text-xl" />
-                            <h1 className="text-white text-2xl font-bold tracking-tight"> {getPathInfo().heading}</h1>
+                            <h1 className="text-white text-title font-bold tracking-tight"> {getPathInfo().heading}</h1>
                         </div>
                     </NavLink>}
 
                     {!getPathInfo().backButton && <div className="flex items-center gap-3">
                         {getPathInfo().icon && <FontAwesomeIcon icon={getPathInfo().icon} className="text-xl text-white" />}
-                        <h1 className="text-white text-2xl font-bold tracking-tight"> {getPathInfo().heading}</h1>
+                        <h1 className="text-white text-title font-bold tracking-tight"> {getPathInfo().heading}</h1>
                     </div>}
             
                     <div className="relative">
                         <button 
                             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                            className="w-10 h-10 flex items-center justify-center text-white/90 hover:text-white transition-colors focus:outline-none"
+                            className="min-w-touch min-h-touch flex items-center justify-center text-white/90 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 rounded-full"
+                            aria-label="Account menu"
+                            aria-expanded={isDropdownOpen}
                         >
                             <FontAwesomeIcon icon={faUserCircle} className="text-3xl" />
                         </button>
@@ -203,8 +184,8 @@ function Header(props) {
                 </div>
             </header>
             {!!(props.hasProgressPercent && props.totalItems) && (
-              <div className="sticky top-[90px] z-[9998] shadow-lg">
-                <div className="bg-[#1976D2] h-6">
+              <div className="sticky top-[var(--app-header-height)] z-[9998] shadow-lg">
+                <div className="bg-brand h-6">
                   <div className="w-full h-6 bg-blue-900/20 relative flex items-center justify-center overflow-hidden">
                     
                     {/* 1. PROGRESS FILL (Stays behind everything) */}
@@ -216,7 +197,7 @@ function Header(props) {
 
                     {/* 2. TEXT WITH BLACK BACKGROUND PILL */}
                     {props.totalItems > 0 && (
-                      <span className={`${isFinished ? 'bg-green-700 text-white' : 'bg-white text-black'} relative z-10 px-3 py-0 text-[16px] font-black uppercase tracking-widest shadow-sm`}>
+                      <span className={`${isFinished ? 'bg-green-700 text-white' : 'bg-white text-black'} relative z-10 px-3 py-0 text-body-sm font-black uppercase tracking-widest shadow-sm`}>
                         {props.checkedCount} / {props.totalItems} Items Completed
                       </span>
                     )}
@@ -230,7 +211,7 @@ function Header(props) {
                   >
                     <div
                       key={props.lastRemoteUpdateAt}
-                      className="remote-update-banner flex items-center justify-center gap-2 h-8 bg-[#0D47A1] border-t border-white/25 text-xs font-black uppercase tracking-widest text-white"
+                      className="remote-update-banner flex items-center justify-center gap-2 h-8 bg-[#0D47A1] border-t border-white/25 text-label font-black uppercase tracking-widest text-white"
                       aria-live="polite"
                     >
                       <span className="remote-update-dot w-2 h-2 rounded-full bg-emerald-300 shrink-0" />
@@ -247,7 +228,7 @@ function Header(props) {
       <header className="bg-white p-6 rounded-lg shadow-md mb-4 flex justify-between items-center">
         <button
           onClick={props.handleGoogleLogin}
-          className="w-full flex items-center justify-center py-4 px-6 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900"
+          className="w-full flex items-center justify-center py-4 px-6 bg-blue-600 hover:bg-brand-dark text-white font-medium rounded-xl transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900"
         >
           GroceryLister | Sign in with Google
         </button>

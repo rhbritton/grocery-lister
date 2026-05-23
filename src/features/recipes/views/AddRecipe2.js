@@ -11,6 +11,8 @@ import { addRecipe, addRecipeToFirestore } from '../slices/recipesSlice.ts';
 
 import recipesConfig from '../config.json';
 
+import { createReactSelectStyles } from '../../../utils/reactSelectStyles.js';
+
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faSave, 
@@ -28,6 +30,7 @@ const AddRecipe = (props) => {
   const [name, setName] = useState('');
   const [ingredients, setIngredients] = useState([{ amount: '1', name: '', type: '' }]);
   const [instructions, setInstructions] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleAddIngredient = () => {
     setIngredients([...ingredients, { amount: '1', name: '', type: '' }]);
@@ -45,143 +48,12 @@ const AddRecipe = (props) => {
     setIngredients(newIngredients);
   };
 
-  const selectStyles = {
-      control: (base, state) => ({
-        ...base,
-        fontWeight: 'bold',
-        backgroundColor: '#f8fafc',
-        borderRadius: '0.75rem',
-        borderWidth: '1px',
-        borderColor: state.isFocused ? '#1976D2' : '#777',
-        boxShadow: state.isFocused ? '0 0 0 2px rgba(25, 118, 210, 0.2)' : 'none',
-        padding: '2px',
-        '&:hover': { borderColor: '#cbd5e1' }
-      }),
-      dropdownIndicator: (base, state) => ({
-        ...base,
-        color: '#444', // Blue when active, Slate-400 when not
-        transition: 'all 0.2s ease',
-      }),
-      multiValue: (base) => ({
-        ...base,
-        backgroundColor: '#eff6ff', // bg-blue-50
-        borderRadius: '0.5rem',
-      }),
-      multiValueLabel: (base) => ({
-        ...base,
-        color: '#1976D2',
-        fontWeight: '700',
-        fontSize: '20px',
-      }),
-      multiValueRemove: (base) => ({
-        ...base,
-        color: '#1976D2',
-        '&:hover': {
-          backgroundColor: '#1976D2',
-          color: 'white',
-          borderRadius: '0.5rem',
-        },
-      }),
-      option: (base, state) => ({
-        ...base,
-        backgroundColor: state.isSelected ? '#1976D2' : state.isFocused ? '#eff6ff' : 'white',
-        color: state.isSelected ? 'white' : state.isFocused ? '#1976D2' : '#475569',
-        fontWeight: 'bold',
-        fontSize: '20px',
-        '&:active': { backgroundColor: '#1976D2' }
-      }),
-    };
-
-    const aisleStyles = {
-    control: (base, state) => ({
-    ...base,
-    fontWeight: 'bold',
-    backgroundColor: '#f8fafc',
-    borderRadius: '0.75rem',
-    borderWidth: '1px',
-    borderColor: state.isFocused ? '#1976D2' : '#777',
-    boxShadow: state.isFocused ? '0 0 0 2px rgba(25, 118, 210, 0.2)' : 'none',
-    padding: '2px',
-    '&:hover': { borderColor: '#cbd5e1' }
-  }),
-  dropdownIndicator: (base, state) => ({
-    ...base,
-    color: '#444', // Blue when active, Slate-400 when not
-    transition: 'all 0.2s ease',
-  }),
-  multiValue: (base) => ({
-    ...base,
-    backgroundColor: '#eff6ff', // bg-blue-50
-    borderRadius: '0.5rem',
-  }),
-  multiValueLabel: (base) => ({
-    ...base,
-    color: '#1976D2',
-    fontWeight: '700',
-    fontSize: '14px',
-  }),
-  multiValueRemove: (base) => ({
-    ...base,
-    color: '#1976D2',
-    '&:hover': {
-      backgroundColor: '#1976D2',
-      color: 'white',
-      borderRadius: '0.5rem',
-    },
-  }),
-  singleValue: (base) => ({
-    ...base,
-    fontSize: '14px', // Set your desired size here
-    fontWeight: 'bold',
-    color: '#1e293b',
-  }),
-  option: (base, state) => ({
-    ...base,
-    backgroundColor: state.isSelected ? '#1976D2' : state.isFocused ? '#eff6ff' : 'white',
-    color: state.isSelected ? 'white' : state.isFocused ? '#1976D2' : '#475569',
-    fontWeight: 'bold',
-    fontSize: '14px',
-    '&:active': { backgroundColor: '#1976D2' }
-  }),
-  placeholder: (base) => ({
-    ...base,
-    fontSize: '14px',
-    fontWeight: 'bold',
-    color: '#94a3b8',
-  }),
-  input: (base) => ({
-    ...base,
-    fontSize: '14px',
-  }),
-    
-
-  menuPortal: (base) => ({ 
-    ...base, 
-    zIndex: 9999 
-  }),
-
-  // 2. Give the menu a solid background and a clean shadow
-  menu: (base) => ({
-    ...base,
-    backgroundColor: 'white', // This prevents labels from showing through
-    zIndex: 9999,
-    borderRadius: '1rem',
-    marginTop: '4px',
-    border: '1px solid #e2e8f0',
-    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-  }),
-
-  // 3. Ensure the list inside the menu is also opaque
-  menuList: (base) => ({
-    ...base,
-    backgroundColor: 'white',
-    borderRadius: '1rem',
-  })
-  };
-
+  const selectStyles = createReactSelectStyles({ fontSize: '20px', multiValueLabelSize: '20px' });
+  const aisleStyles = createReactSelectStyles({ fontSize: '14px', menuPortalZIndex: 9999 });
 
   const handleSave = async () => {
     if (name.trim() !== '' && ingredients.length > 0 && ingredients.every(ingredient => ingredient.amount !== "" && ingredient.name.trim() !== "")) {
+      setIsSaving(true);
       try {
         await dispatch(addRecipeToFirestore({ 
             userId, name, ingredients, instructions
@@ -193,7 +65,9 @@ const AddRecipe = (props) => {
         
         navigate('/recipes');
       } catch (error) {
-        console.error("Failed to save grocery list:", error);
+        console.error("Failed to save recipe:", error);
+      } finally {
+        setIsSaving(false);
       }
     }
   };
@@ -206,7 +80,7 @@ const AddRecipe = (props) => {
     navigate('/recipes');
   };
 
-  const isSaveDisabled = name.trim() === '' || ingredients.length === 0 || ingredients.some(ingredient => ingredient.amount === "" || ingredient.name.trim() === "");
+  const isSaveDisabled = name.trim() === '' || ingredients.length === 0 || ingredients.some(ingredient => ingredient.amount === "" || ingredient.name.trim() === "") || isSaving;
 
   let options = [{ value: 'reset', label: '--- Clear All ---' }];
 
@@ -290,7 +164,7 @@ const AddRecipe = (props) => {
   };
 
   return (
-    <main className="max-w-xl mx-auto p-6 space-y-6">
+    <main className="page-main pb-bar-clear space-y-6">
 
         <div className="mb-4">
             <label htmlFor="recipeName" className="block font-medium text-gray-700">
@@ -326,7 +200,7 @@ const AddRecipe = (props) => {
         {/* Basic Info Card */}
         <section className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden relative">
             {/* Consistency Accent Line */}
-            <div className="h-1 bg-[#1976D2]" />
+            <div className="h-1 bg-brand" />
 
             <div className="p-6 space-y-5">
                 {/* Recipe Name Field */}
@@ -339,7 +213,7 @@ const AddRecipe = (props) => {
                         id="recipeName"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="w-full text-xl font-bold text-slate-800 border-b-2 border-slate-300 focus:border-[#1976D2] outline-none pb-1 transition-all"
+                        className="w-full text-xl font-bold text-slate-800 border-b-2 border-slate-300 focus:border-brand outline-none pb-1 transition-all"
                         placeholder="Enter recipe name..."
                     />
                 </div>
@@ -356,7 +230,7 @@ const AddRecipe = (props) => {
                             type="number" 
                             value={recipe.prepTime}
                             onChange={(e) => setRecipe({...recipe, prepTime: e.target.value})}
-                            className="w-full bg-[#f8fafc] rounded-xl px-4 py-3 text-base font-bold border outline-none transition-all focus:border-[#1976D2] focus:ring-4 focus:ring-blue-500/10 focus:bg-white"
+                            className="w-full bg-[#f8fafc] rounded-xl px-4 py-3 text-base font-bold border outline-none transition-all focus:border-brand focus:ring-4 focus:ring-blue-500/10 focus:bg-white"
                         />
                     </div> */}
 
@@ -380,12 +254,12 @@ const AddRecipe = (props) => {
 
         {/* Ingredients Section (Dynamic List) */}
         <section className="bg-white rounded-3xl shadow-md border border-slate-200 overflow-hidden">
-            <div className="h-1 bg-[#1976D2]" />
+            <div className="h-1 bg-brand" />
 
             <div className="p-6">
                 {/* Section Header - Simple & Clean */}
                 <div className="flex items-center gap-2 mb-6">
-                    <FontAwesomeIcon icon={faListUl} className="text-[#1976D2]" />
+                    <FontAwesomeIcon icon={faListUl} className="text-brand" />
                     <h2 className="text-xs font-black uppercase tracking-widest text-slate-800">
                         Ingredients
                     </h2>
@@ -410,7 +284,7 @@ const AddRecipe = (props) => {
                 <div className="mt-8">
                     <button 
                         onClick={handleAddIngredient}
-                        className="w-full bg-blue-50 text-[#1976D2] py-4 rounded-2xl font-bold text-xs uppercase tracking-widest border-2 border-dashed border-blue-100 hover:bg-blue-100 hover:border-blue-200 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                        className="w-full bg-blue-50 text-brand py-4 rounded-2xl font-bold text-xs uppercase tracking-widest border-2 border-dashed border-blue-100 hover:bg-blue-100 hover:border-blue-200 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
                     >
                         <FontAwesomeIcon icon={faPlus} />
                         Add Ingredient
@@ -421,10 +295,10 @@ const AddRecipe = (props) => {
 
         {/* Instructions Section (Large Textarea) */}
         <section className="bg-white rounded-3xl shadow-md border border-slate-200 overflow-hidden">
-            <div className="h-1 bg-[#1976D2]" />
+            <div className="h-1 bg-brand" />
             <div className="p-6 text-left">
                 <div className="flex items-center gap-2 mb-4">
-                    <FontAwesomeIcon icon={faMortarPestle} className="text-[#1976D2]" />
+                    <FontAwesomeIcon icon={faMortarPestle} className="text-brand" />
                     <h2 className="text-xs font-black uppercase tracking-widest text-slate-800 text-left">Steps</h2>
                 </div>
                 
@@ -444,11 +318,11 @@ const AddRecipe = (props) => {
             </p>
         </section>
 
-        <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-200 p-4 z-50">
+        <div className="bottom-bar">
             <div className="max-w-xl mx-auto flex gap-4">
                 <button 
                     onClick={handleCancel} 
-                    className="flex-1 py-4 font-black uppercase text-[12px] tracking-widest text-slate-400"
+                    className="flex-1 py-4 min-h-touch font-black uppercase text-label tracking-widest text-slate-400"
                 >
                     Cancel
                 </button>
@@ -462,7 +336,7 @@ const AddRecipe = (props) => {
                         }`}
                 >
                 <FontAwesomeIcon icon={faSave} />
-                <span className="font-black uppercase tracking-[0.2em] text-sm">Create Recipe</span>
+                <span className="font-black uppercase tracking-[0.2em] text-sm">{isSaving ? 'Saving…' : 'Create Recipe'}</span>
                 </button>
             </div>
         </div>

@@ -10,8 +10,9 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 
 import Select from 'react-select';
+import { createReactSelectStyles } from '../../../utils/reactSelectStyles.js';
 
-import { fetchRecipes, selectRecipes, searchRecipes, getRecipesFromFirestore, searchRecipesFromAll, setRecipeSearchParams } from '../slices/recipesSlice.ts';
+import { searchRecipesFromAll, setRecipeSearchParams } from '../slices/recipesSlice.ts';
 
 function RecipeSearch(props) {
     const categories = ['Breakfast', 'Lunch', 'Dinner', 'Snacks', 'Dessert', 'Breakfast2 & Lunch2', 'Lunch2', 'Dinner2 & Snacks2', 'Snacks2', 'Dessert2'];
@@ -21,53 +22,7 @@ function RecipeSearch(props) {
     
     const [isFiltered, setIsFiltered] = useState(false);
 
-    // Custom styles to match your #1976D2 blue and rounded-xl theme
-    const selectStyles = {
-      control: (base, state) => ({
-        ...base,
-        fontWeight: 'bold',
-        backgroundColor: '#f8fafc',
-        borderRadius: '0.75rem',
-        borderWidth: '1px',
-        borderColor: state.isFocused ? '#1976D2' : '#777',
-        boxShadow: state.isFocused ? '0 0 0 2px rgba(25, 118, 210, 0.2)' : 'none',
-        padding: '2px',
-        '&:hover': { borderColor: '#cbd5e1' }
-      }),
-      dropdownIndicator: (base, state) => ({
-        ...base,
-        color: '#444', // Blue when active, Slate-400 when not
-        transition: 'all 0.2s ease',
-      }),
-      multiValue: (base) => ({
-        ...base,
-        backgroundColor: '#eff6ff', // bg-blue-50
-        borderRadius: '0.5rem',
-      }),
-      multiValueLabel: (base) => ({
-        ...base,
-        color: '#1976D2',
-        fontWeight: '700',
-        fontSize: '12px',
-      }),
-      multiValueRemove: (base) => ({
-        ...base,
-        color: '#1976D2',
-        '&:hover': {
-          backgroundColor: '#1976D2',
-          color: 'white',
-          borderRadius: '0.5rem',
-        },
-      }),
-      option: (base, state) => ({
-        ...base,
-        backgroundColor: state.isSelected ? '#1976D2' : state.isFocused ? '#eff6ff' : 'white',
-        color: state.isSelected ? 'white' : state.isFocused ? '#1976D2' : '#475569',
-        fontWeight: 'bold',
-        fontSize: '14px',
-        '&:active': { backgroundColor: '#1976D2' }
-      }),
-    };
+    const selectStyles = createReactSelectStyles({ fontSize: '14px', multiValueLabelSize: '12px' });
     
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [maxTime, setMaxTime] = useState(125);
@@ -112,7 +67,7 @@ function RecipeSearch(props) {
     }, [dispatch, allRecipes, favoriteRecipes]);
 
     return (
-        <div className="sticky top-[90px] z-40 bg-[#F8FAFC] pt-4 pb-2 px-1 -mx-1">
+        <div className="sticky top-[var(--app-header-height)] z-40 bg-[#F8FAFC] pt-4 pb-2">
             <div className="flex gap-3 mb-4">
                 <div className="relative flex-1">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
@@ -122,7 +77,7 @@ function RecipeSearch(props) {
                         name="searchTerm"
                         type="text"
                         placeholder={`Search recipes by ${searchType?.toLowerCase() || 'name'}...`}
-                        className="w-full bg-white border-0 rounded-xl py-4 pl-12 pr-4 text-md shadow-md ring-1 ring-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-slate-400"
+                        className="w-full bg-white border-0 rounded-xl py-4 pl-12 pr-4 text-base shadow-md ring-1 ring-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all placeholder:text-slate-400"
                         value={searchTerm}
                         onChange={(e) => {
                             const newTerm = e.target.value;
@@ -137,10 +92,10 @@ function RecipeSearch(props) {
                     onClick={() => setIsFilterOpen(!isFilterOpen)}
                     className={`relative px-5 rounded-xl shadow-md border transition-all duration-300 ${
                         isFilterOpen 
-                        ? 'bg-[#1976D2] border-[#1976D2] text-white' // Open State
+                        ? 'bg-brand border-brand text-white' // Open State
                         : isFiltered 
-                            ? 'bg-blue-50 border-blue-200 text-[#1976D2]' // Closed but Active State
-                            : 'bg-white text-[#1976D2] border-slate-200 hover:text-[#1976D2] hover:bg-slate-50' // Default State
+                            ? 'bg-blue-50 border-blue-200 text-brand' // Closed but Active State
+                            : 'bg-white text-brand border-slate-200 hover:text-brand hover:bg-slate-50' // Default State
                     }`}
                 >
                     <FontAwesomeIcon icon={faFilter} />
@@ -150,7 +105,7 @@ function RecipeSearch(props) {
                         <span className="absolute -top-1 -right-1 flex h-3 w-3">
                             {/* Subtle pulse effect to grab attention once */}
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-3 w-3 bg-[#1976D2] border-2 border-white"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-brand border-2 border-white"></span>
                         </span>
                     )}
                 </button>
@@ -197,7 +152,7 @@ function RecipeSearch(props) {
                                         key={cat}
                                         className={`px-4 py-2 rounded-full text-xs font-bold transition-all border ${
                                         isSelected
-                                            ? 'bg-[#1976D2] border-[#1976D2] text-white shadow-md'
+                                            ? 'bg-brand border-brand text-white shadow-md'
                                             : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50'
                                         }`}
                                     >
@@ -233,7 +188,7 @@ function RecipeSearch(props) {
                             ></div>
 
                             <div 
-                                className="absolute w-8 h-8 bg-white border-2 border-[#1976D2] rounded-full shadow-md z-10 pointer-events-none flex items-center justify-center"
+                                className="absolute w-8 h-8 bg-white border-2 border-brand rounded-full shadow-md z-10 pointer-events-none flex items-center justify-center"
                                 style={{ left: `calc(${((maxTime - 5) / 120) * 100}% - 16px)` }}
                             >
                                 <div className="w-1 h-3 bg-slate-200 rounded-full"></div>
@@ -269,7 +224,7 @@ function RecipeSearch(props) {
                             {/* Apply Action - Primary Blue Style */}
                             <button 
                                 onClick={() => setIsFilterOpen(false)}
-                                className="flex-[2] bg-[#1976D2] text-white py-3.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-100 hover:bg-blue-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                                className="flex-[2] bg-brand text-white py-3.5 rounded-xl font-bold text-sm shadow-lg shadow-blue-100 hover:bg-brand-dark active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                             >
                                 Apply Filters
                             </button>

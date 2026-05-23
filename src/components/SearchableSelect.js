@@ -69,13 +69,13 @@ const SearchableSelect = ({
       <div 
         onClick={handleContainerClick}
         className={`relative min-h-[56px] w-full bg-[#f8fafc] rounded-xl border p-2 flex flex-wrap gap-2 items-center cursor-text transition-all ${
-          isOpen ? 'border-[#1976D2] ring-4 ring-blue-500/10' : 'border-slate-500'
+          isOpen ? 'border-brand ring-4 ring-blue-500/10' : 'border-slate-500'
         }`}
       >
         {selectedItems.map((item) => (
           <div 
             key={String(item[valueKey])}
-            className="flex items-center gap-2 bg-blue-100 text-[#1976D2] font-bold pl-3 pr-2 py-1.5 rounded-lg border border-blue-200 animate-in fade-in zoom-in duration-200"
+            className="flex items-center gap-2 bg-blue-100 text-brand font-bold pl-3 pr-2 py-1.5 rounded-lg border border-blue-200 animate-in fade-in zoom-in duration-200"
           >
             {item[isFavoriteKey] && (
               <FontAwesomeIcon icon={faBookmark} className="text-sm shrink-0" />

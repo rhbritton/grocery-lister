@@ -5,9 +5,10 @@ import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from './auth/firebaseConfig';
 import { userLogout } from './auth/authActions';
 
-import { BrowserRouter, Routes, Route, NavLink, useLocation, useSearchParams, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, NavLink, useLocation, useSearchParams, Navigate, useNavigate, useParams } from 'react-router-dom';
 import ScrollToTop from './components/ScrollToTop';
 import ConnectionStatusBanner from './components/ConnectionStatusBanner';
+import PageLoader from './components/PageLoader';
 
 import { useSelector, useDispatch } from 'react-redux';
 
@@ -15,24 +16,12 @@ import Header from './components/Header2.js';
 
 import GroceryLists from './features/grocery-lists/GroceryLists2.js';
 import AddGroceryList from './features/grocery-lists/views/AddGroceryList2.js';
-import EditGroceryList from './features/grocery-lists/views/EditGroceryList.js';
 import ViewGroceryList from './features/grocery-lists/views/ViewGroceryList2.js';
-import ViewSharedGroceryList from './features/grocery-lists/views/ViewSharedGroceryList.js';
 
 import Recipes from './features/recipes/views/Recipes2.js';
 import AddRecipe from './features/recipes/views/AddRecipe2.js';
 import EditRecipe from './features/recipes/views/EditRecipe2.js';
 import ViewRecipe from './features/recipes/views/ViewRecipe2.js';
-
-import TestRecipeList from './TestRecipeList.js';
-import TestRecipeView from './TestRecipeView.js';
-import TestRecipeEdit from './TestRecipeEdit.js';
-
-import TestGroceryListListView from './TestGroceryListList.js';
-import TestGroceryListView from './TestGroceryListView.js';
-import TestGroceryListEdit from './TestGroceryListEdit.js';
-
-
 
 import { 
   getAllRecipesFromFirestore, 
@@ -61,6 +50,11 @@ const firebaseConfig = {
 };
 
 const appId = firebaseConfig.projectId;
+
+function GroceryListEditRedirect() {
+  const { groceryListId } = useParams();
+  return <Navigate to={`/grocery-lists/view/${groceryListId}`} replace />;
+}
 
 function App() {
   const [user, setUser] = useState(null);
@@ -285,11 +279,7 @@ function App() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-100 text-gray-500">
-        <div className="text-xl font-medium">Loading...</div>
-      </div>
-    );
+    return <PageLoader message="Starting GroceryLister…" />;
   }
 
   // if (!user) {
@@ -338,7 +328,7 @@ function App() {
 
         <button
           onClick={handleGoogleLogin}
-          className="w-full flex items-center justify-center py-4 px-6 bg-[#1976D2] hover:bg-blue-700 text-white font-bold rounded-2xl transition-all duration-300 ease-in-out transform hover:scale-[1.02] shadow-lg shadow-blue-200"
+          className="w-full flex items-center justify-center py-4 px-6 bg-brand hover:bg-brand-dark text-white font-bold rounded-2xl transition-all duration-300 ease-in-out transform hover:scale-[1.02] shadow-lg shadow-blue-200"
         >
           <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
             <path
@@ -408,7 +398,7 @@ function App() {
   };
 
   return (
-    <div className="App bg-gray-100 min-h-screen">
+    <div className="App bg-[#F8FAFC] min-h-screen">
         {showBanner && !isStandalone && (
           <div className="top-0 left-0 w-full bg-slate-100 px-4 py-3 flex items-center justify-between z-[10001] border-b border-slate-200 shadow-md">
             <div className="flex items-center gap-3 overflow-hidden">
@@ -430,7 +420,7 @@ function App() {
                 href="https://apps.apple.com/app/your-app-id" 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="bg-[#1976D2] hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-full transition-colors uppercase tracking-wider"
+                className="bg-brand hover:bg-brand-dark text-white text-xs font-bold px-4 py-2 rounded-full transition-colors uppercase tracking-wider"
               >
                 Get
               </a>
@@ -461,16 +451,10 @@ function App() {
               
               {user && <Route path="/grocery-lists" element={<GroceryLists user={user} setSpaceForFloatingButton={setSpaceForFloatingButton} />} />}
               {user && <Route path="/grocery-lists/add" element={<AddGroceryList user={user} />} />}
-              {user && <Route path="/grocery-lists/edit/:groceryListId" element={<EditGroceryList />} />}
+              {user && <Route path="/grocery-lists/edit/:groceryListId" element={<GroceryListEditRedirect />} />}
               {user && <Route path="/grocery-lists/view/:groceryListId" element={<ViewGroceryList basename="/gl" userId={user.uid} setCheckedCount={setCheckedCount} setTotalItems={setTotalItems} setSpaceForFloatingButton={setSpaceForFloatingButton} setLastRemoteUpdateAt={setLastRemoteUpdateAt} onRemoteListUpdate={handleRemoteListUpdate} />} />}
               
-              <Route path="/recipes/view/:recipeId" element={<ViewRecipe basename="/gl" userId={user?.uid} Header={<Header user={user} handleGoogleLogin={handleGoogleLogin} handleLogout={handleLogout} checkedCount={checkedCount} totalItems={totalItems} />} />} />
-              <Route path="/test" element={<TestRecipeList user={user} />} />
-              <Route path="/test-recipe-view" element={<TestRecipeView user={user} />} />
-              <Route path="/test-recipe-edit" element={<TestRecipeEdit user={user} />} />
-              <Route path="/test-grocerylist-list" element={<TestGroceryListListView user={user} />} />
-              <Route path="/test-grocerylist-view" element={<TestGroceryListView user={user} />} />
-              <Route path="/test-grocerylist-edit" element={<TestGroceryListEdit user={user} />} />
+              <Route path="/recipes/view/:recipeId" element={<ViewRecipe basename="/gl" userId={user?.uid} totalItems={totalItems} setCheckedCount={setCheckedCount} setTotalItems={setTotalItems} setSpaceForFloatingButton={setSpaceForFloatingButton} setLastRemoteUpdateAt={setLastRemoteUpdateAt} />} />
               <Route path="*" element={<QueryRedirectHandler user={user} />} />
             </Routes>
         </main>

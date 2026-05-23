@@ -1,11 +1,8 @@
 import React from 'react';
-import { NavLink, useLinkClickHandler, useNavigate } from 'react-router-dom';
+import { useLinkClickHandler, useNavigate } from 'react-router-dom';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
-    faPenToSquare, 
-    faTrash, 
-    faHeart as faHeartSolid,
     faEdit,
     faTrashAlt,
     faBookmark,
@@ -59,21 +56,21 @@ function RecipeItem(props) {
       <div className="flex items-center gap-1 ml-2 shrink-0">
         {!props.recipe.favorited && (
           <>
-            {props.recipe.favorited || <button onClick={(e) => {
+            {props.recipe.favorited || <button type="button" onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
 
                     navigate('/recipes/edit/'+props.recipe.fbid);
-                }} className="w-12 h-12 flex items-center justify-center text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all active:scale-90">
-              <FontAwesomeIcon icon={faEdit} className="text-xl" />
+                }} aria-label={`Edit ${props.recipe.name}`} className="w-12 h-12 flex items-center justify-center text-slate-400 hover:text-brand hover:bg-blue-50 rounded-full transition-all active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+              <FontAwesomeIcon icon={faEdit} className="text-xl" aria-hidden="true" />
             </button>}
-            {props.recipe.favorited || <button onClick={(e) => {
+            {props.recipe.favorited || <button type="button" onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
 
                     props.setDeleteModalID(props.recipe.fbid);
-                }} className="w-12 h-12 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all active:scale-90">
-              <FontAwesomeIcon icon={faTrashAlt} className="text-xl" />
+                }} aria-label={`Delete ${props.recipe.name}`} className="w-12 h-12 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400">
+              <FontAwesomeIcon icon={faTrashAlt} className="text-xl" aria-hidden="true" />
             </button>}
           </>
         )}
@@ -91,7 +88,7 @@ function RecipeItem(props) {
                 className={`text-lg transition-colors duration-300 
                   ${props.recipe.favorited 
                     ? 'text-amber-600' 
-                    : 'text-[#1976D2]'
+                    : 'text-brand'
                   }`} 
               />
             </div>

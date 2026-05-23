@@ -45,10 +45,10 @@ function GroceryListItem(props) {
         <div onClick={handleViewClick} className="bg-white rounded-2xl border border-slate-100 p-5 flex items-center shadow-md active:shadow-sm transition-all duration-100 cursor-pointer group">
             <div className="flex-1 min-w-0 flex flex-col items-start text-left">
                 <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-lg font-black text-slate-800 leading-tight">
+                <h3 className="text-lg font-black text-slate-800 leading-none">
                     {formatDate(new Date(props.gl.timestamp))}
                 </h3>
-                <span className="text-[14px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-bold">
+                <span className="inline-flex items-center justify-center text-body-sm leading-none bg-slate-100 text-slate-500 px-2.5 py-1 rounded-full font-bold shrink-0">
                     {formatTime(new Date(props.gl.timestamp), { hour: 'numeric', minute: 'numeric'})}
                 </span>
                 </div>
@@ -61,7 +61,7 @@ function GroceryListItem(props) {
                     className={`text-[14px] font-black px-2 py-0.5 rounded uppercase tracking-widest transition-all duration-300 ${
                         isComplete 
                         ? 'bg-green-700 text-white shadow-sm shadow-emerald-200' // Green Style
-                        : 'bg-blue-50 text-[#1976D2]'                               // Blue Style
+                        : 'bg-blue-50 text-brand'                               // Blue Style
                     }`}
                 >
                     {allIngredients.crossed} / {allIngredients.total}

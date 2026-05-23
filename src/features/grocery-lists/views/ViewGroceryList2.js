@@ -23,6 +23,7 @@ import {
   faUtensils,
   faPlus,
   faTrash,
+  faClipboardList,
 } from '@fortawesome/free-solid-svg-icons';
 
 import { fetchGroceryListById } from '../slices/groceryListSlice.ts';
@@ -35,6 +36,12 @@ import { typeOptions } from '../../recipes/slices/recipesSlice.ts';
 
 import GroceryListViewItem from '../components/GroceryListViewItem2.js';
 import AddIngredientModal from '../components/AddIngredientModal';
+import PageLoader from '../../../components/PageLoader.js';
+import EmptyState from '../../../components/EmptyState.js';
+import Toast from '../../../components/Toast.js';
+import { ActionFab } from '../../../components/FabButton.js';
+import ModalShell from '../../../components/ModalShell.js';
+import { copyTextToClipboard } from '../../../utils/clipboard.js';
 
 const groceryListRecipeSeparator = ', ';
 
@@ -141,6 +148,7 @@ const ViewGroceryList = (props) => {
 
     const [editingItem, setEditingItem] = useState(null);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [loadError, setLoadError] = useState(false);
 
     useEffect(() => {
         props.setSpaceForFloatingButton && props.setSpaceForFloatingButton('');
@@ -169,7 +177,6 @@ const ViewGroceryList = (props) => {
     };
   }, [props.setLastRemoteUpdateAt]);
 
-  const [shareFeedback, setShareFeedback] = useState('');
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
   useEffect(() => {
@@ -369,6 +376,7 @@ const ViewGroceryList = (props) => {
 
   useEffect(() => {
     const fetchData = async () => {
+      setLoadError(false);
       try {
         let gl = (await dispatch(fetchGroceryListById(groceryListId))).payload;
 
@@ -381,9 +389,14 @@ const ViewGroceryList = (props) => {
 
             let all_ingredients = getAllIngredients(listWithOwner);
             setOriginalAllIngredients(all_ingredients);
+        } else if (!groceryListRef.current) {
+            setLoadError(true);
         }
       } catch (error) {
         console.error("Error fetching grocery list:", error);
+        if (!groceryListRef.current) {
+          setLoadError(true);
+        }
       }
     }
 
@@ -486,6 +499,13 @@ const ViewGroceryList = (props) => {
   }, [groceryList?.fbid, groceryListId, props.userId, dispatch]);
 
     const [isShared, setIsShared] = useState(false);
+    const [toastMessage, setToastMessage] = useState('');
+    const [toastVisible, setToastVisible] = useState(false);
+
+const showToast = (message) => {
+  setToastMessage(message);
+  setToastVisible(true);
+};
 
 const shareURL = async () => {
     const fullUrl = `${window.location.origin}${props.basename}?grocerylist=${groceryListId}`;
@@ -498,15 +518,19 @@ const shareURL = async () => {
     try {
         if (navigator.share) {
             await navigator.share(shareData);
-        } else if (navigator.clipboard) {
-            await navigator.clipboard.writeText(fullUrl);
-        } else {
-            prompt('Copy this link to share:', fullUrl);
+            setIsShared(true);
+            setTimeout(() => setIsShared(false), 2000);
+            return;
         }
-        
-        // Trigger visual success state
-        setIsShared(true);
-        setTimeout(() => setIsShared(false), 2000);
+
+        const copied = await copyTextToClipboard(fullUrl);
+        if (copied) {
+            setIsShared(true);
+            showToast('Link copied to clipboard');
+            setTimeout(() => setIsShared(false), 2000);
+        } else {
+            showToast('Unable to copy link — use your browser share menu');
+        }
     } catch (err) {
         if (err.name !== 'AbortError') console.error('Error sharing:', err);
     }
@@ -514,11 +538,28 @@ const shareURL = async () => {
 
   let all_ingredients_by_type = getAllIngredientsByType(allIngredients);
 
+  if (!groceryList) {
+    if (loadError) {
+      return (
+        <main className="page-main pb-fab-clear">
+          <EmptyState
+            icon={faClipboardList}
+            title="Couldn't load this list"
+            description="It may have been deleted or you may not have access."
+            actionLabel="Back to lists"
+            actionTo="/grocery-lists"
+          />
+        </main>
+      );
+    }
+    return <PageLoader message="Loading list…" fullScreen={false} />;
+  }
+
   return (
-    <main className="max-w-xl mx-auto min-w-[380px] p-6 pb-28">
+    <main className="page-main pb-fab-clear">
     
     {/* Header Section: Title/Actions on Top, Recipes Below */}
-    <div className="flex flex-col gap-4 mb-6 px-1">
+    <div className="flex flex-col gap-4 mb-6">
       
       {/* Row 1: Title & Metadata on Left, Actions on Right */}
       <div className="flex justify-between items-start">
@@ -542,6 +583,7 @@ const shareURL = async () => {
         {isOwner && <div className="flex gap-2 shrink-0">
             <button 
                 onClick={shareURL}
+                aria-label={isShared ? 'Link copied' : 'Share grocery list'}
                 className={`w-14 h-14 flex flex-col items-center justify-center transition-all duration-300 rounded-xl border
                     ${isShared 
                         ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-200 scale-105' 
@@ -567,13 +609,13 @@ const shareURL = async () => {
         className="flex items-center justify-between w-full group hover:bg-blue-50/30 p-2 pt-0 -ml-2 rounded-xl transition-all"
       >
         <div className="flex items-center gap-2 text-slate-600">
-          <FontAwesomeIcon icon={faUtensils} className="text-md" />
-          <span className="text-md font-black uppercase tracking-widest text-slate-800 transition-colors">
+          <FontAwesomeIcon icon={faUtensils} className="text-base" />
+          <span className="text-base font-black uppercase tracking-widest text-slate-800 transition-colors">
             Recipes
           </span>
           
           {/* Recipe Count Badge - Now Blue and more visible */}
-          <span className="text-[16px] bg-blue-50 px-2 py-0.5 rounded-full font-black text-[#1976D2] border border-blue-100 animate-in zoom-in duration-200">
+          <span className="text-[16px] bg-blue-50 px-2 py-0.5 rounded-full font-black text-brand border border-blue-100 animate-in zoom-in duration-200">
             {groceryList && groceryList.recipes && groceryList.recipes.length ? groceryList.recipes.length : 0}
           </span>
         </div>
@@ -593,7 +635,7 @@ const shareURL = async () => {
           {groceryList && groceryList.recipes && groceryList.recipes.map((recipe, i) => (
             <span 
               key={recipe.id} 
-              className="text-[16px] font-bold text-[#1976D2] bg-blue-50/50 px-3 py-1.5 rounded-xl border border-blue-100/50 uppercase tracking-tight shadow-sm"
+              className="text-[16px] font-bold text-brand bg-blue-50/50 px-3 py-1.5 rounded-xl border border-blue-100/50 uppercase tracking-tight shadow-sm"
             >
               {recipe.recipe.name} {recipe?.recipe?.duplicateCount && `(x${recipe?.recipe?.duplicateCount})`}
             </span>
@@ -649,12 +691,16 @@ const shareURL = async () => {
             </div>
 
             {editingItem && (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-        <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Header switches to red if confirming delete */}
-            <div className={`p-6 text-white text-center transition-colors duration-300 ${isConfirmingDelete ? 'bg-red-500' : 'bg-[#1976D2]'}`}>
-                <FontAwesomeIcon icon={isConfirmingDelete ? faTrash : faEdit} className="text-2xl mb-2" />
-                <h3 className="text-lg font-bold uppercase tracking-widest">
+    <ModalShell
+        titleId="edit-item-modal-title"
+        onClose={() => {
+          setEditingItem(null);
+          setIsConfirmingDelete(false);
+        }}
+    >
+            <div className={`p-6 text-white text-center transition-colors duration-300 ${isConfirmingDelete ? 'bg-red-500' : 'bg-brand'}`}>
+                <FontAwesomeIcon icon={isConfirmingDelete ? faTrash : faEdit} className="text-2xl mb-2" aria-hidden="true" />
+                <h3 id="edit-item-modal-title" className="text-lg font-bold uppercase tracking-widest">
                     {isConfirmingDelete ? 'Delete Item?' : 'Edit Item'}
                 </h3>
             </div>
@@ -662,11 +708,10 @@ const shareURL = async () => {
             <div className="p-6 space-y-4">
                 {!isConfirmingDelete ? (
                     <>
-                        {/* Standard Edit Inputs */}
                         <div>
                             <label className="text-[14px] font-black uppercase tracking-widest text-slate-400 mb-1 block">Amount</label>
                             <input 
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-[#1976D2]"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-brand focus-visible:ring-2 focus-visible:ring-brand/30"
                                 value={editingItem.ingredient.amount}
                                 onChange={(e) => setEditingItem({...editingItem, ingredient: {...editingItem.ingredient, amount: e.target.value}})}
                             />
@@ -674,7 +719,7 @@ const shareURL = async () => {
                         <div>
                             <label className="text-[14px] font-black uppercase tracking-widest text-slate-400 mb-1 block">Item Name</label>
                             <input 
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-[#1976D2]"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-brand focus-visible:ring-2 focus-visible:ring-brand/30"
                                 value={editingItem.ingredient.name}
                                 onChange={(e) => setEditingItem({...editingItem, ingredient: {...editingItem.ingredient, name: e.target.value}})}
                             />
@@ -682,41 +727,43 @@ const shareURL = async () => {
                         
                         <div className="flex flex-col gap-2 pt-2">
                             <div className="flex gap-3">
-                                <button onClick={() => setEditingItem(null)} className="flex-1 py-3 font-bold text-slate-400 uppercase text-xs">Cancel</button>
+                                <button type="button" onClick={() => setEditingItem(null)} className="flex-1 py-3 font-bold text-slate-400 uppercase text-xs">Cancel</button>
                                 <button 
+                                    type="button"
                                     onClick={() => {
                                         updateGlobalItem(editingItem.globalIndex, { name: editingItem.ingredient.name, amount: editingItem.ingredient.amount });
                                         setEditingItem(null);
                                     }}
-                                    className="flex-1 py-3 bg-[#1976D2] text-white rounded-xl font-bold shadow-lg uppercase text-xs"
+                                    className="flex-1 py-3 bg-brand text-white rounded-xl font-bold shadow-lg uppercase text-xs"
                                 >
                                     Update
                                 </button>
                             </div>
-                            {/* The Delete Trigger */}
                             <button 
+                                type="button"
                                 onClick={() => setIsConfirmingDelete(true)}
                                 className="w-full py-2 mt-4 text-red-400 font-bold uppercase text-[14px] tracking-widest hover:text-red-600 transition-colors"
                             >
-                                <FontAwesomeIcon icon={faTrash} className="mr-2" />
+                                <FontAwesomeIcon icon={faTrash} className="mr-2" aria-hidden="true" />
                                 Remove from list
                             </button>
                         </div>
                     </>
                 ) : (
-                    /* Confirmation View */
                     <div className="text-center py-2">
                         <p className="text-slate-600 mb-6 font-medium">
                             Are you sure you want to remove <span className="font-bold text-slate-900">"{editingItem.ingredient.name}"</span>?
                         </p>
                         <div className="flex gap-3">
                             <button 
+                                type="button"
                                 onClick={() => setIsConfirmingDelete(false)} 
                                 className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold uppercase text-xs"
                             >
                                 No, Keep it
                             </button>
                             <button 
+                                type="button"
                                 onClick={() => deleteGlobalItem(editingItem.globalIndex)}
                                 className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold shadow-lg shadow-red-100 uppercase text-xs"
                             >
@@ -726,18 +773,22 @@ const shareURL = async () => {
                     </div>
                 )}
             </div>
-        </div>
-    </div>
+    </ModalShell>
 )}
             
-            {/* Primary Floating Action Button */}
-            {isOwner && <button 
+            {isOwner && (
+              <ActionFab
                 onClick={() => setIsAddModalOpen(true)}
-                className={`fixed bottom-6 right-6 w-16 h-16 rounded-2xl flex items-center justify-center transition-all z-50
-                    bg-[#1976D2] text-white shadow-2xl hover:bg-blue-700 transform active:scale-95`}
-                >
-                <FontAwesomeIcon icon={faPlus} className="text-2xl" />
-            </button>}
+                icon={faPlus}
+                label="Add item to list"
+              />
+            )}
+
+            <Toast
+              message={toastMessage}
+              visible={toastVisible}
+              onDismiss={() => setToastVisible(false)}
+            />
 
             <AddIngredientModal 
                 isOpen={isAddModalOpen} 

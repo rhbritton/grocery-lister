@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 
 import Select from 'react-select';
+import { createReactSelectStyles } from '../../../utils/reactSelectStyles.js';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
@@ -11,80 +12,7 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 
 function EditIngredient(props) {
-    const selectStyles = {
-    control: (base, state) => ({
-    ...base,
-    fontWeight: 'bold',
-    backgroundColor: '#f8fafc',
-    borderRadius: '0.75rem',
-    borderWidth: '1px',
-    borderColor: state.isFocused ? '#1976D2' : '#777',
-    boxShadow: state.isFocused ? '0 0 0 2px rgba(25, 118, 210, 0.2)' : 'none',
-    padding: '2px',
-    '&:hover': { borderColor: '#cbd5e1' }
-  }),
-  dropdownIndicator: (base, state) => ({
-    ...base,
-    color: '#444', // Blue when active, Slate-400 when not
-    transition: 'all 0.2s ease',
-  }),
-  multiValue: (base) => ({
-    ...base,
-    backgroundColor: '#eff6ff', // bg-blue-50
-    borderRadius: '0.5rem',
-  }),
-  multiValueLabel: (base) => ({
-    ...base,
-    color: '#1976D2',
-    fontWeight: '700',
-    fontSize: '12px',
-  }),
-  multiValueRemove: (base) => ({
-    ...base,
-    color: '#1976D2',
-    '&:hover': {
-      backgroundColor: '#1976D2',
-      color: 'white',
-      borderRadius: '0.5rem',
-    },
-  }),
-  option: (base, state) => ({
-    ...base,
-    backgroundColor: state.isSelected ? '#1976D2' : state.isFocused ? '#eff6ff' : 'white',
-    color: state.isSelected ? 'white' : state.isFocused ? '#1976D2' : '#475569',
-    fontWeight: 'bold',
-    fontSize: '14px',
-    '&:active': { backgroundColor: '#1976D2' }
-  }),
-    
-
-  menuPortal: (base) => ({ 
-    ...base, 
-    zIndex: 9999 
-  }),
-
-  // 2. Give the menu a solid background and a clean shadow
-  menu: (base) => ({
-    ...base,
-    backgroundColor: 'white', // This prevents labels from showing through
-    zIndex: 9999,
-    borderRadius: '1rem',
-    marginTop: '4px',
-    border: '1px solid #e2e8f0',
-    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-  }),
-
-  // 3. Ensure the list inside the menu is also opaque
-  menuList: (base) => ({
-    ...base,
-    backgroundColor: 'white',
-    borderRadius: '1rem',
-  })
-  };
-
-
-    {/* Custom compact styles for the Aisle selector */}
-    const aisleSelectStyles = selectStyles;
+    const selectStyles = createReactSelectStyles({ fontSize: '14px', multiValueLabelSize: '12px', menuPortalZIndex: 9999 });
 
   return (
     <div 
@@ -105,7 +33,7 @@ function EditIngredient(props) {
                         type="text"
                         value={props.ingredient.amount}
                         onChange={(e) => props.handleIngredientChange(props.index, 'amount', e.target.value)}
-                        className="w-full bg-[#f8fafc] rounded-xl px-4 py-3 text-base font-bold border outline-none transition-all focus:border-[#1976D2] focus:ring-4 focus:ring-blue-500/10 focus:bg-white"
+                        className="w-full bg-[#f8fafc] rounded-xl px-4 py-3 text-base font-bold border outline-none transition-all focus:border-brand focus:ring-4 focus:ring-blue-500/10 focus:bg-white"
                         placeholder="1 cup"
                     />
                 </div>
@@ -121,7 +49,7 @@ function EditIngredient(props) {
                         onChange={(selectedOption) => {
                             props.handleIngredientChange(props.index, 'type', selectedOption.value);
                         }}
-                        styles={aisleSelectStyles}
+                        styles={selectStyles}
                         menuPortalTarget={document.body} 
                         menuPosition="fixed"
                     />
@@ -137,7 +65,7 @@ function EditIngredient(props) {
                     type="text" 
                     value={props.ingredient.name}
                     onChange={(e) => props.handleIngredientChange(props.index, 'name', e.target.value)}
-                    className="w-full bg-[#f8fafc] rounded-xl px-4 py-3 text-base font-bold border outline-none transition-all focus:border-[#1976D2] focus:ring-4 focus:ring-blue-500/10 focus:bg-white"
+                    className="w-full bg-[#f8fafc] rounded-xl px-4 py-3 text-base font-bold border outline-none transition-all focus:border-brand focus:ring-4 focus:ring-blue-500/10 focus:bg-white"
                     placeholder="Tomatoes, diced"
                 />
             </div>

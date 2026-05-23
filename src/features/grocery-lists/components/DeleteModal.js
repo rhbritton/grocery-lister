@@ -1,52 +1,23 @@
 import React from 'react';
 import { useDispatch } from 'react-redux';
 
-import { deleteGroceryList, deleteGroceryListFromFirestore } from '../slices/groceryListsSlice.ts';
+import { deleteGroceryListFromFirestore } from '../slices/groceryListsSlice.ts';
+import DeleteConfirmModal from '../../../components/DeleteConfirmModal.js';
 
 function DeleteModal(props) {
-    const dispatch = useDispatch();
+  const dispatch = useDispatch();
 
   return (
-    <div 
-      className="DeleteModal fixed inset-0 bg-black/50 flex items-center justify-center z-50" 
-      onClick={(e) => {
-            e.stopPropagation();
-            props.setDeleteModalID(false)
-        }}
-    >
-      <div
-        className="bg-white p-6 rounded-lg shadow-lg"
-        onClick={(e) => {
-            e.stopPropagation();
-        }}
-      >
-        <h2 className="text-lg font-bold mb-4">Delete Grocery List</h2>
-        <p className="mb-6">Are you sure you want to delete this grocery list?</p>
-        <div className="flex justify-end">
-          <button 
-            className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded mr-2"
-            onClick={(e) => {
-                e.stopPropagation();
-                props.setDeleteModalID(false);
-            }}
-          >
-            Cancel
-          </button>
-          <button 
-            className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-            onClick={(e) => {
-                e.stopPropagation();
-                
-                // dispatch(deleteGroceryList({ groceryListId: props.deleteModalID }));
-                dispatch(deleteGroceryListFromFirestore(props.deleteModalID));
-                props.setDeleteModalID(false);
-            }}
-          >
-            Delete
-          </button>
-        </div>
-      </div>
-    </div>
+    <DeleteConfirmModal
+      title="Delete grocery list?"
+      message="This list and all its items will be permanently removed. This can't be undone."
+      confirmLabel="Delete list"
+      onCancel={() => props.setDeleteModalID(false)}
+      onConfirm={() => {
+        dispatch(deleteGroceryListFromFirestore(props.deleteModalID));
+        props.setDeleteModalID(false);
+      }}
+    />
   );
 }
 

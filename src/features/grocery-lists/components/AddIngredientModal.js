@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPlus, faChevronDown, faUtensils, faBookmark } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faUtensils, faBookmark } from '@fortawesome/free-solid-svg-icons';
 
 import Select from 'react-select';
+import ModalShell from '../../../components/ModalShell.js';
+import { createReactSelectStyles } from '../../../utils/reactSelectStyles.js';
 
 const aisles = ["produce", "meat", "dairy", "freezer", "other"];
 
 const AddIngredientModal = ({ isOpen, onClose, onAdd, groceryList }) => {
-    const [mode, setMode] = useState('custom'); // 'custom' or 'recipe'
+    const [mode, setMode] = useState('custom');
     const [newItem, setNewItem] = useState({ name: '', amount: '1', type: 'other' });
     const [selectedRecipeId, setSelectedRecipeId] = useState('');
 
@@ -16,10 +18,16 @@ const AddIngredientModal = ({ isOpen, onClose, onAdd, groceryList }) => {
     const combinedRecipes = Array.from(
         new Map([...allRecipesSorted, ...favoriteRecipes].map(r => [r.fbid || r.id, r])).values()
     ).sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+
+    useEffect(() => {
+        if (!isOpen) return;
+        setMode('custom');
+        setNewItem({ name: '', amount: '1', type: 'other' });
+        setSelectedRecipeId('');
+    }, [isOpen]);
     
     if (!isOpen) return null;
 
-    
     let allRecipesById = {};
     combinedRecipes && combinedRecipes.forEach(function(r) {
         allRecipesById[r.id] = r;
@@ -32,42 +40,11 @@ const AddIngredientModal = ({ isOpen, onClose, onAdd, groceryList }) => {
         isFavorite: recipe.favorited
     })) : []));
 
-    const selectStyles = {
-      control: (base, state) => ({
-        ...base,
-        fontWeight: 'bold',
-        backgroundColor: '#f8fafc',
-        borderRadius: '0.75rem',
-        borderWidth: '1px',
-        borderColor: state.isFocused ? '#1976D2' : '#777',
-        boxShadow: state.isFocused ? '0 0 0 2px rgba(25, 118, 210, 0.2)' : 'none',
-        padding: '2px',
-        '&:hover': { borderColor: '#cbd5e1' }
-      }),
-      dropdownIndicator: (base, state) => ({
-        ...base,
-        color: '#444', // Blue when active, Slate-400 when not
-        transition: 'all 0.2s ease',
-      }),
-      option: (base, state) => ({
-        ...base,
-        backgroundColor: state.isSelected ? '#1976D2' : state.isFocused ? '#eff6ff' : 'white',
-        color: state.isSelected ? 'white' : state.isFocused ? '#1976D2' : '#475569',
-        fontWeight: 'bold',
-        fontSize: '20px',
-        '&:active': { backgroundColor: '#1976D2' }
-      }),
-      
-        menuPortal: (base) => ({ 
-            ...base, 
-            zIndex: 9999 
-        }),
-    };
+    const selectStyles = createReactSelectStyles({ fontSize: '20px', menuPortalZIndex: 9999 });
 
     const handleSubmit = () => {
         if (mode === 'custom') {
             if (!newItem.name.trim()) return;
-            // Map 'other' to empty string to match your existing data logic
             const formattedItem = { 
                 ...newItem, 
                 type: newItem.type === 'other' ? '' : newItem.type,
@@ -75,8 +52,6 @@ const AddIngredientModal = ({ isOpen, onClose, onAdd, groceryList }) => {
             };
             onAdd(formattedItem);
         } else if (mode === 'recipe') {
-            // add recipe to list
-            // count duplicate recipes duplicateCount in recipe
             let groceryListRecipe;
             let match = groceryList.recipes.some((r) => {
                 if (r?.recipe?.id === selectedRecipeId) {
@@ -98,9 +73,6 @@ const AddIngredientModal = ({ isOpen, onClose, onAdd, groceryList }) => {
             } else {
                 onAdd(undefined, { id: selectedRecipeId, recipe: allRecipesById[selectedRecipeId] });
             }
-            
-
-            // increment duplicate count and push to recipe.ingredients
         }
         
         setNewItem({ name: '', amount: '1', type: 'other' });
@@ -113,28 +85,34 @@ const AddIngredientModal = ({ isOpen, onClose, onAdd, groceryList }) => {
         onClose(e);
     };
 
+    const titleId = 'add-ingredient-modal-title';
+
     return (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-            <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl animate-in zoom-in-95 duration-200">
-                {/* Header with Tab Switcher */}
-                <div className="bg-[#1976D2] p-6 text-white text-center">
-                    <div className="flex bg-blue-700/50 rounded-xl p-1 mb-3">
+        <ModalShell onClose={onCancel} titleId={titleId}>
+                <div className="bg-brand p-6 text-white text-center">
+                    <div className="flex bg-blue-700/50 rounded-xl p-1 mb-3" role="tablist" aria-label="Add item type">
                         <button 
+                            type="button"
+                            role="tab"
+                            aria-selected={mode === 'custom'}
                             onClick={() => setMode('custom')}
-                            className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${mode === 'custom' ? 'bg-white text-[#1976D2] shadow-sm' : 'text-white/70'}`}
+                            className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${mode === 'custom' ? 'bg-white text-brand shadow-sm' : 'text-white/70'}`}
                         >
                             Custom
                         </button>
                         <button 
+                            type="button"
+                            role="tab"
+                            aria-selected={mode === 'recipe'}
                             onClick={() => setMode('recipe')}
-                            className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${mode === 'recipe' ? 'bg-white text-[#1976D2] shadow-sm' : 'text-white/70'}`}
+                            className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${mode === 'recipe' ? 'bg-white text-brand shadow-sm' : 'text-white/70'}`}
                         >
                             Recipe
                         </button>
                     </div>
                     <div className="text-center">
-                        <FontAwesomeIcon icon={mode === 'custom' ? faPlus : faUtensils} className="text-2xl mb-2" />
-                        <h3 className="text-lg font-bold uppercase tracking-widest">
+                        <FontAwesomeIcon icon={mode === 'custom' ? faPlus : faUtensils} className="text-2xl mb-2" aria-hidden="true" />
+                        <h3 id={titleId} className="text-lg font-bold uppercase tracking-widest">
                             {mode === 'custom' ? 'Add Custom Item' : 'Add Recipe Ingredients'}
                         </h3>
                     </div>
@@ -145,19 +123,18 @@ const AddIngredientModal = ({ isOpen, onClose, onAdd, groceryList }) => {
                     <>
                     <div>
                         <label className="text-[14px] font-black uppercase tracking-widest text-slate-400 mb-1 block">Aisle / Category</label>
-                        <div className="relative">
-                            <Select
-                                styles={selectStyles}
-                                options={aisles.map(a => { return { value: a, label: a.toUpperCase() } })}
-                                onChange={(target) => setNewItem({...newItem, type: target.value})}
-                            />
-                        </div>
+                        <Select
+                            styles={selectStyles}
+                            options={aisles.map(a => { return { value: a, label: a.toUpperCase() } })}
+                            onChange={(target) => setNewItem({...newItem, type: target.value})}
+                            aria-label="Aisle or category"
+                        />
                     </div>
                     <div className="flex gap-3">
                         <div className="w-1/3">
                             <label className="text-[14px] font-black uppercase tracking-widest text-slate-400 mb-1 block">Amount</label>
                             <input 
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-[#1976D2]"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-brand focus-visible:ring-2 focus-visible:ring-brand/30"
                                 placeholder="1"
                                 value={newItem.amount}
                                 onChange={(e) => setNewItem({...newItem, amount: e.target.value})}
@@ -166,7 +143,7 @@ const AddIngredientModal = ({ isOpen, onClose, onAdd, groceryList }) => {
                         <div className="w-2/3">
                             <label className="text-[14px] font-black uppercase tracking-widest text-slate-400 mb-1 block">Ingredient</label>
                             <input 
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-[#1976D2]"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 font-bold text-slate-800 outline-none focus:border-brand focus-visible:ring-2 focus-visible:ring-brand/30"
                                 placeholder="Milk"
                                 value={newItem.name}
                                 onChange={(e) => setNewItem({...newItem, name: e.target.value})}
@@ -176,38 +153,37 @@ const AddIngredientModal = ({ isOpen, onClose, onAdd, groceryList }) => {
                     </div>
                     </>
                 ) : 
-                    <div className="">
+                    <div>
                         <label className="text-[14px] font-black uppercase tracking-widest text-slate-400 mb-1 block">Select Recipe</label>
-                        <div className="relative">
-                            <Select
-                                styles={selectStyles}
-                                options={recipeOptions}
-                                formatOptionLabel={({ label, isFavorite }) => (
-                                    <div className="flex items-center">
-                                        {isFavorite && (
-                                        <FontAwesomeIcon 
-                                            icon={faBookmark} 
-                                            className="text-amber-600 mr-2 text-sm" 
-                                        />
-                                        )}
-                                        <span>{label}</span>
-                                    </div>
-                                )}
-                                onChange={(target) => setSelectedRecipeId(target.value)}
-                            />
-                        </div>
+                        <Select
+                            styles={selectStyles}
+                            options={recipeOptions}
+                            formatOptionLabel={({ label, isFavorite }) => (
+                                <div className="flex items-center">
+                                    {isFavorite && (
+                                    <FontAwesomeIcon 
+                                        icon={faBookmark} 
+                                        className="text-amber-600 mr-2 text-sm" 
+                                        aria-hidden="true"
+                                    />
+                                    )}
+                                    <span>{label}</span>
+                                </div>
+                            )}
+                            onChange={(target) => setSelectedRecipeId(target.value)}
+                            aria-label="Select recipe"
+                        />
                     </div>
                 }
 
                     <div className="flex gap-3 pt-2">
-                        <button onClick={onCancel} className="flex-1 py-3 font-bold text-slate-400 uppercase text-xs tracking-widest">Cancel</button>
-                        <button onClick={handleSubmit} className="flex-1 py-3 bg-[#1976D2] text-white rounded-xl font-bold shadow-lg uppercase text-xs tracking-widest">
+                        <button type="button" onClick={onCancel} className="flex-1 py-3 font-bold text-slate-400 uppercase text-xs tracking-widest">Cancel</button>
+                        <button type="button" onClick={handleSubmit} className="flex-1 py-3 bg-brand text-white rounded-xl font-bold shadow-lg uppercase text-xs tracking-widest">
                             Add to List
                         </button>
                     </div>
                 </div>
-            </div>
-        </div>
+        </ModalShell>
     );
 };
 

@@ -1,18 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useParams, useNavigate, NavLink } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 
 import EditIngredient from '../components/EditIngredient2';
 
 import { fetchRecipeById } from '../slices/recipeSlice.ts';
 import { editRecipeFromFirestore, upsertRecipe } from '../slices/recipesSlice.ts';
 
+import PageLoader from '../../../components/PageLoader.js';
+import EmptyState from '../../../components/EmptyState.js';
+
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faSave, 
   faPlus, 
   faListUl, 
-  faMortarPestle
+  faMortarPestle,
+  faBook,
 } from '@fortawesome/free-solid-svg-icons';
 
 const EditRecipe = () => {
@@ -25,10 +29,15 @@ const EditRecipe = () => {
   const [instructions, setInstructions] = useState('');
   const [existingRecipe, setExistingRecipe] = useState(null);
   const [recipeHasChanged, setRecipeHasChanged] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const { allRecipes, favoriteRecipes } = useSelector((state) => state.recipes);
 
   useEffect(() => {
     const fetchData = async () => {
+      setIsLoading(true);
+      setLoadError(false);
       try {
         let recipe = (await dispatch(fetchRecipeById(recipeId))).payload;
 
@@ -37,10 +46,15 @@ const EditRecipe = () => {
             setName(recipe.name || '');
             setIngredients(recipe.ingredients || []);
             setInstructions(recipe.instructions || '');
+        } else {
+            setLoadError(true);
         }
 
       } catch (error) {
         console.error("Error fetching recipe:", error);
+        setLoadError(true);
+      } finally {
+        setIsLoading(false);
       }
     }
 
@@ -70,20 +84,27 @@ const EditRecipe = () => {
 
   const handleSave = async () => {
     if (name.trim() !== '' && ingredients.length > 0 && ingredients.every(ingredient => ingredient.amount !== "" && ingredient.name.trim() !== "")) {
-      const recipeToSave = {
-        fbid: recipeId,
-        id: existingRecipe?.id,
-        userId: existingRecipe?.userId,
-        name,
-        ingredients,
-        instructions,
-        updatedAt: Math.floor(Date.now() / 1000),
-      };
+      setIsSaving(true);
+      try {
+        const recipeToSave = {
+          fbid: recipeId,
+          id: existingRecipe?.id,
+          userId: existingRecipe?.userId,
+          name,
+          ingredients,
+          instructions,
+          updatedAt: Math.floor(Date.now() / 1000),
+        };
 
-      dispatch(upsertRecipe(recipeToSave));
-      await dispatch(editRecipeFromFirestore(recipeToSave));
+        dispatch(upsertRecipe(recipeToSave));
+        await dispatch(editRecipeFromFirestore(recipeToSave));
 
-      navigate('/recipes');
+        navigate('/recipes');
+      } catch (error) {
+        console.error("Failed to save recipe:", error);
+      } finally {
+        setIsSaving(false);
+      }
     }
   };
 
@@ -95,7 +116,7 @@ const EditRecipe = () => {
     navigate('/recipes');
   };
 
-  const isSaveDisabled = name.trim() === '' || ingredients.length === 0 || ingredients.some(ingredient => ingredient.amount === "" || ingredient.name.trim() === "");
+  const isSaveDisabled = name.trim() === '' || ingredients.length === 0 || ingredients.some(ingredient => ingredient.amount === "" || ingredient.name.trim() === "") || isSaving;
 
   const typeOptions = [
     { value: '', label: 'Other'  },
@@ -117,13 +138,31 @@ const EditRecipe = () => {
     return selectedOption;
   };
 
+  if (isLoading) {
+    return <PageLoader message="Loading recipe…" />;
+  }
+
+  if (loadError || !existingRecipe) {
+    return (
+      <main className="max-w-xl mx-auto p-6">
+        <EmptyState
+          icon={faBook}
+          title="Recipe not found"
+          description="This recipe may have been deleted or you may not have access."
+          actionLabel="Back to recipes"
+          actionTo="/recipes"
+        />
+      </main>
+    );
+  }
+
   return (
-    <main className="max-w-xl mx-auto p-6 space-y-6">
+    <main className="page-main pb-bar-clear space-y-6">
         
         {/* Basic Info Card */}
         <section className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden relative">
             {/* Consistency Accent Line */}
-            <div className="h-1 bg-[#1976D2]" />
+            <div className="h-1 bg-brand" />
 
             <div className="p-6 space-y-5">
                 {/* Recipe Name Field */}
@@ -136,7 +175,7 @@ const EditRecipe = () => {
                         id="recipeName"
                         value={name}
                         onChange={(e) => { setRecipeHasChanged(true); setName(e.target.value); }}
-                        className="w-full text-xl font-bold text-slate-800 border-b-2 border-slate-300 focus:border-[#1976D2] outline-none pb-1 transition-all"
+                        className="w-full text-xl font-bold text-slate-800 border-b-2 border-slate-300 focus:border-brand outline-none pb-1 transition-all"
                         placeholder="Enter recipe name..."
                     />
                 </div>
@@ -153,7 +192,7 @@ const EditRecipe = () => {
                             type="number" 
                             value={recipe.prepTime}
                             onChange={(e) => setRecipe({...recipe, prepTime: e.target.value})}
-                            className="w-full bg-[#f8fafc] rounded-xl px-4 py-3 text-base font-bold border outline-none transition-all focus:border-[#1976D2] focus:ring-4 focus:ring-blue-500/10 focus:bg-white"
+                            className="w-full bg-[#f8fafc] rounded-xl px-4 py-3 text-base font-bold border outline-none transition-all focus:border-brand focus:ring-4 focus:ring-blue-500/10 focus:bg-white"
                         />
                     </div> */}
 
@@ -177,12 +216,12 @@ const EditRecipe = () => {
 
         {/* Ingredients Section (Dynamic List) */}
         <section className="bg-white rounded-3xl shadow-md border border-slate-200 overflow-hidden">
-            <div className="h-1 bg-[#1976D2]" />
+            <div className="h-1 bg-brand" />
 
             <div className="p-6">
                 {/* Section Header - Simple & Clean */}
                 <div className="flex items-center gap-2 mb-6">
-                    <FontAwesomeIcon icon={faListUl} className="text-[#1976D2]" />
+                    <FontAwesomeIcon icon={faListUl} className="text-brand" />
                     <h2 className="text-xs font-black uppercase tracking-widest text-slate-800">
                         Ingredients
                     </h2>
@@ -207,7 +246,7 @@ const EditRecipe = () => {
                 <div className="mt-8">
                     <button 
                         onClick={handleAddIngredient}
-                        className="w-full bg-blue-50 text-[#1976D2] py-4 rounded-2xl font-bold text-xs uppercase tracking-widest border-2 border-dashed border-blue-100 hover:bg-blue-100 hover:border-blue-200 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                        className="w-full bg-blue-50 text-brand py-4 rounded-2xl font-bold text-xs uppercase tracking-widest border-2 border-dashed border-blue-100 hover:bg-blue-100 hover:border-blue-200 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
                     >
                         <FontAwesomeIcon icon={faPlus} />
                         Add Ingredient
@@ -218,10 +257,10 @@ const EditRecipe = () => {
 
         {/* Instructions Section (Large Textarea) */}
         <section className="bg-white rounded-3xl shadow-md border border-slate-200 overflow-hidden">
-            <div className="h-1 bg-[#1976D2]" />
+            <div className="h-1 bg-brand" />
             <div className="p-6 text-left">
                 <div className="flex items-center gap-2 mb-4">
-                    <FontAwesomeIcon icon={faMortarPestle} className="text-[#1976D2]" />
+                    <FontAwesomeIcon icon={faMortarPestle} className="text-brand" />
                     <h2 className="text-xs font-black uppercase tracking-widest text-slate-800 text-left">Steps</h2>
                 </div>
                 
@@ -242,9 +281,10 @@ const EditRecipe = () => {
             </p>
         </section>
 
-        <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-200 p-4 z-50">
+        <div className="bottom-bar">
             <div className="max-w-xl mx-auto">
                 <button 
+                    type="button"
                     onClick={handleSave}
                     disabled={isSaveDisabled || !recipeHasChanged}
                     className={`w-full py-4 rounded-2xl flex items-center justify-center gap-3 transition-all
@@ -253,9 +293,9 @@ const EditRecipe = () => {
                           : 'bg-emerald-600 text-white shadow-lg shadow-emerald-200 active:scale-[0.98]'
                       }`}
                 >
-                    <FontAwesomeIcon icon={faSave} />
+                    <FontAwesomeIcon icon={faSave} aria-hidden="true" />
                     <span className="font-black uppercase tracking-widest text-sm">
-                        Save Recipe Changes
+                        {isSaving ? 'Saving…' : 'Save Recipe Changes'}
                     </span>
                 </button>
             </div>

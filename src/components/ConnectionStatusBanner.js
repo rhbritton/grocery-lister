@@ -19,9 +19,9 @@ const BANNER_CONFIG = {
     message: 'Syncing changes',
     detail: 'Uploading your offline edits…',
     icon: faCloudArrowUp,
-    barClass: 'bg-[#1976D2]',
+    barClass: 'bg-brand',
     panelClass: 'bg-blue-50 text-blue-950 border-blue-200',
-    iconClass: 'text-[#1976D2]',
+    iconClass: 'text-brand',
   },
   online: {
     message: 'Back online',

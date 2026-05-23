@@ -28,6 +28,8 @@ import recipesConfig from '../../recipes/config.json';
 
 import GroceryRecipeListItem from '../components/GroceryRecipeListItem2.js';
 
+import { createReactSelectStyles } from '../../../utils/reactSelectStyles.js';
+
 import { formatDate, formatTime } from '../../../services/date.js';
 
 const AddGroceryList = (props) => {
@@ -54,145 +56,15 @@ const AddGroceryList = (props) => {
   }));
 
   const [query, setQuery] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Simple search logic
   const filteredOptions = recipeOptions.filter(opt => 
     opt.label.toLowerCase().includes(query.toLowerCase())
   );
 
-  const selectStyles = {
-      control: (base, state) => ({
-        ...base,
-        fontWeight: 'bold',
-        backgroundColor: '#f8fafc',
-        borderRadius: '0.75rem',
-        borderWidth: '1px',
-        borderColor: state.isFocused ? '#1976D2' : '#777',
-        boxShadow: state.isFocused ? '0 0 0 2px rgba(25, 118, 210, 0.2)' : 'none',
-        padding: '2px',
-        '&:hover': { borderColor: '#cbd5e1' }
-      }),
-      dropdownIndicator: (base, state) => ({
-        ...base,
-        color: '#444', // Blue when active, Slate-400 when not
-        transition: 'all 0.2s ease',
-      }),
-      multiValue: (base) => ({
-        ...base,
-        backgroundColor: '#eff6ff', // bg-blue-50
-        borderRadius: '0.5rem',
-      }),
-      multiValueLabel: (base) => ({
-        ...base,
-        color: '#1976D2',
-        fontWeight: '700',
-        fontSize: '20px',
-      }),
-      multiValueRemove: (base) => ({
-        ...base,
-        color: '#1976D2',
-        '&:hover': {
-          backgroundColor: '#1976D2',
-          color: 'white',
-          borderRadius: '0.5rem',
-        },
-      }),
-      option: (base, state) => ({
-        ...base,
-        backgroundColor: state.isSelected ? '#1976D2' : state.isFocused ? '#eff6ff' : 'white',
-        color: state.isSelected ? 'white' : state.isFocused ? '#1976D2' : '#475569',
-        fontWeight: 'bold',
-        fontSize: '20px',
-        '&:active': { backgroundColor: '#1976D2' }
-      }),
-    };
-
-    const aisleStyles = {
-    control: (base, state) => ({
-    ...base,
-    fontWeight: 'bold',
-    backgroundColor: '#f8fafc',
-    borderRadius: '0.75rem',
-    borderWidth: '1px',
-    borderColor: state.isFocused ? '#1976D2' : '#777',
-    boxShadow: state.isFocused ? '0 0 0 2px rgba(25, 118, 210, 0.2)' : 'none',
-    padding: '2px',
-    '&:hover': { borderColor: '#cbd5e1' }
-  }),
-  dropdownIndicator: (base, state) => ({
-    ...base,
-    color: '#444', // Blue when active, Slate-400 when not
-    transition: 'all 0.2s ease',
-  }),
-  multiValue: (base) => ({
-    ...base,
-    backgroundColor: '#eff6ff', // bg-blue-50
-    borderRadius: '0.5rem',
-  }),
-  multiValueLabel: (base) => ({
-    ...base,
-    color: '#1976D2',
-    fontWeight: '700',
-    fontSize: '14px',
-  }),
-  multiValueRemove: (base) => ({
-    ...base,
-    color: '#1976D2',
-    '&:hover': {
-      backgroundColor: '#1976D2',
-      color: 'white',
-      borderRadius: '0.5rem',
-    },
-  }),
-  singleValue: (base) => ({
-    ...base,
-    fontSize: '14px', // Set your desired size here
-    fontWeight: 'bold',
-    color: '#1e293b',
-  }),
-  option: (base, state) => ({
-    ...base,
-    backgroundColor: state.isSelected ? '#1976D2' : state.isFocused ? '#eff6ff' : 'white',
-    color: state.isSelected ? 'white' : state.isFocused ? '#1976D2' : '#475569',
-    fontWeight: 'bold',
-    fontSize: '14px',
-    '&:active': { backgroundColor: '#1976D2' }
-  }),
-  placeholder: (base) => ({
-    ...base,
-    fontSize: '14px',
-    fontWeight: 'bold',
-    color: '#94a3b8',
-  }),
-  input: (base) => ({
-    ...base,
-    fontSize: '14px',
-  }),
-    
-
-  menuPortal: (base) => ({ 
-    ...base, 
-    zIndex: 9999 
-  }),
-
-  // 2. Give the menu a solid background and a clean shadow
-  menu: (base) => ({
-    ...base,
-    backgroundColor: 'white', // This prevents labels from showing through
-    zIndex: 9999,
-    borderRadius: '1rem',
-    marginTop: '4px',
-    border: '1px solid #e2e8f0',
-    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-  }),
-
-  // 3. Ensure the list inside the menu is also opaque
-  menuList: (base) => ({
-    ...base,
-    backgroundColor: 'white',
-    borderRadius: '1rem',
-  })
-  };
+  const selectStyles = createReactSelectStyles({ fontSize: '20px', multiValueLabelSize: '20px' });
+  const aisleStyles = createReactSelectStyles({ fontSize: '14px', menuPortalZIndex: 9999 });
 
 
   // useEffect(() => {
@@ -253,10 +125,11 @@ const AddGroceryList = (props) => {
     });
   });
 
-  const isSaveDisabled = (customIsZero && recipesAreZero) || customHasUnfilled || (recipesAreAllCrossed && customIsZero);
+  const isSaveDisabled = (customIsZero && recipesAreZero) || customHasUnfilled || (recipesAreAllCrossed && customIsZero) || isSaving;
   
   const handleSave = async () => {
     if (!isSaveDisabled) {
+      setIsSaving(true);
       try {
         await dispatch(addGroceryListToFirestore({ 
             id: nanoid(), 
@@ -271,6 +144,8 @@ const AddGroceryList = (props) => {
         navigate('/grocery-lists');
       } catch (error) {
         console.error("Failed to save grocery list:", error);
+      } finally {
+        setIsSaving(false);
       }
     }
   };
@@ -294,10 +169,10 @@ const AddGroceryList = (props) => {
   const timeStr = formatTime(new Date(), { hour: 'numeric', minute: 'numeric'});
 
   return (
-    <main className="max-w-xl mx-auto min-w-[380px] p-6 pb-40">
+    <main className="page-main pb-bar-clear">
       
       {/* 1. HEADER (Matches View Page) */}
-      <div className="flex flex-col gap-4 mb-8 px-1">
+      <div className="flex flex-col gap-4 mb-8">
         <div className="flex justify-between items-start">
           <div className="flex-1 pr-4">
             <h1 className="text-left text-2xl font-bold text-slate-800 leading-tight">
@@ -315,8 +190,8 @@ const AddGroceryList = (props) => {
         {/* 2. RECIPE SEARCH BAR */}
         <div className="mt-2 z-50">
           <div className="flex items-center gap-2 text-slate-600 mb-3 ml-1">
-            <FontAwesomeIcon icon={faUtensils} className="text-md" />
-            <span className="text-md font-black uppercase tracking-widest text-slate-800">Add Recipe(s)</span>
+            <FontAwesomeIcon icon={faUtensils} className="text-base" />
+            <span className="text-base font-black uppercase tracking-widest text-slate-800">Add Recipe(s)</span>
           </div>
           {/* <Select
             isMulti
@@ -426,7 +301,7 @@ const AddGroceryList = (props) => {
           <div className="w-14 shrink-0 flex items-center justify-center border-r border-transparent">
             <button 
               onClick={() => handleRemoveIngredient(index)}
-              className="w-10 h-10 flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all active:scale-90"
+              className="min-w-touch min-h-touch flex items-center justify-center text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all active:scale-90"
             >
               <FontAwesomeIcon icon={faTrash} className="text-sm" />
             </button>
@@ -446,7 +321,7 @@ const AddGroceryList = (props) => {
                   type="text"
                   value={ingredient.amount}
                   onChange={(e) => handleIngredientChange(index, 'amount', e.target.value)}
-                  className="w-full bg-[#f8fafc] rounded-xl px-4 py-2 text-[14px] font-bold border border-slate-500 outline-none transition-all focus:border-[#1976D2] focus:ring-4 focus:ring-blue-500/10 focus:bg-white"
+                  className="w-full bg-[#f8fafc] rounded-xl px-4 py-2 text-[14px] font-bold border border-slate-500 outline-none transition-all focus:border-brand focus:ring-4 focus:ring-blue-500/10 focus:bg-white"
                   placeholder="1"
                 />
               </div>
@@ -477,7 +352,7 @@ const AddGroceryList = (props) => {
                 autoFocus={ingredient.autoFocus}
                 value={ingredient.name}
                 onChange={(e) => handleIngredientChange(index, 'name', e.target.value)}
-                className="w-full bg-[#f8fafc] rounded-xl px-4 py-2 text-[20px] font-bold border border-slate-500 outline-none transition-all focus:border-[#1976D2] focus:ring-4 focus:ring-blue-500/10 focus:bg-white"
+                className="w-full bg-[#f8fafc] rounded-xl px-4 py-2 text-[20px] font-bold border border-slate-500 outline-none transition-all focus:border-brand focus:ring-4 focus:ring-blue-500/10 focus:bg-white"
                 placeholder="Item name..."
               />
             </div>
@@ -497,7 +372,7 @@ const AddGroceryList = (props) => {
               <div className="flex-1 p-4 pr-6">
                   <button 
                       onClick={handleAddIngredient}
-                          className="w-full bg-blue-50 text-[#1976D2] py-4 rounded-2xl font-bold text-xs uppercase tracking-widest border-2 border-dashed border-blue-100 hover:bg-blue-100 hover:border-blue-200 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                          className="w-full bg-blue-50 text-brand py-4 rounded-2xl font-bold text-xs uppercase tracking-widest border-2 border-dashed border-blue-100 hover:bg-blue-100 hover:border-blue-200 transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
             
                   >
                       <FontAwesomeIcon icon={faPlus} className="text-[10px]" />
@@ -510,11 +385,11 @@ const AddGroceryList = (props) => {
       </div>
 
       {/* 6. FULL-WIDTH STICKY SAVE BAR */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-200 p-4 z-50">
+      <div className="bottom-bar">
         <div className="max-w-xl mx-auto flex gap-4">
           <button 
             onClick={handleCancel} 
-            className="flex-1 py-4 font-black uppercase text-[12px] tracking-widest text-slate-400"
+            className="flex-1 py-4 min-h-touch font-black uppercase text-label tracking-widest text-slate-400"
           >
             Cancel
           </button>
@@ -528,7 +403,7 @@ const AddGroceryList = (props) => {
               }`}
           >
             <FontAwesomeIcon icon={faCheck} />
-            <span className="font-black uppercase tracking-[0.2em] text-sm">Create List</span>
+            <span className="font-black uppercase tracking-[0.2em] text-sm">{isSaving ? 'Saving…' : 'Create List'}</span>
           </button>
         </div>
       </div>

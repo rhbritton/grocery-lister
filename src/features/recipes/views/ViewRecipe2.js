@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useParams, useNavigate, NavLink } from 'react-router-dom';
+import { useParams, NavLink } from 'react-router-dom';
 
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../../../auth/firebaseConfig';
@@ -13,19 +13,23 @@ import {
   faCheckCircle, 
   faCircle,
   faListUl,
-  faMortarPestle
+  faMortarPestle,
+  faBook,
 } from '@fortawesome/free-solid-svg-icons';
 
 import { fetchRecipeById } from '../slices/recipeSlice.ts';
 import { toggleFavoriteRecipeInFirestore } from '../slices/recipesSlice.ts';
 
 import UnfavoriteModal from '../components/UnfavoriteModal.js';
+import PageLoader from '../../../components/PageLoader.js';
+import EmptyState from '../../../components/EmptyState.js';
+import Toast from '../../../components/Toast.js';
+import { copyTextToClipboard } from '../../../utils/clipboard.js';
 
 import '../styles/ViewRecipe.css';
 
 const ViewRecipe = (props) => {
   const { recipeId } = useParams();
-  const navigate = useNavigate();
   const dispatch = useDispatch();
 
   const [owner, setOwner] = useState('');
@@ -33,8 +37,11 @@ const ViewRecipe = (props) => {
   const [ingredients, setIngredients] = useState([]);
   const [instructions, setInstructions] = useState('');
   const [focusedColumn, setFocusedColumn] = useState('instructions');
-    
-  const [shareFeedback, setShareFeedback] = useState('');
+
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastVisible, setToastVisible] = useState(false);
 
   const [checkedIngredients, setCheckedIngredients] = useState({});
   
@@ -52,27 +59,36 @@ const ViewRecipe = (props) => {
   // 1. Add this state near your other useState hooks
 const [isShared, setIsShared] = useState(false);
 
+const showToast = (message) => {
+  setToastMessage(message);
+  setToastVisible(true);
+};
+
 const shareURL = async () => {
   const fullUrl = `${window.location.origin}${props.basename}?recipe=${recipeId}`;
 
   const shareData = {
     title: `Recipe: ${name}`,
-    text: `Check out this recipe for ${name}!`, // Included the name here
+    text: `Check out this recipe for ${name}!`,
     url: fullUrl,
   };
 
   try {
     if (navigator.share) {
       await navigator.share(shareData);
-    } else if (navigator.clipboard) {
-      await navigator.clipboard.writeText(fullUrl);
-    } else {
-      prompt('Copy this link to share:', fullUrl);
+      setIsShared(true);
+      setTimeout(() => setIsShared(false), 2000);
+      return;
     }
-    
-    // Trigger the visual "Success" state
-    setIsShared(true);
-    setTimeout(() => setIsShared(false), 2000);
+
+    const copied = await copyTextToClipboard(fullUrl);
+    if (copied) {
+      setIsShared(true);
+      showToast('Link copied to clipboard');
+      setTimeout(() => setIsShared(false), 2000);
+    } else {
+      showToast('Unable to copy link — use your browser share menu');
+    }
   } catch (err) {
     if (err.name !== 'AbortError') console.error('Error sharing:', err);
   }
@@ -80,6 +96,8 @@ const shareURL = async () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      setIsLoading(true);
+      setLoadError(false);
       try {
         let recipe = (await dispatch(fetchRecipeById(recipeId))).payload;
 
@@ -88,9 +106,14 @@ const shareURL = async () => {
           setIngredients(recipe.ingredients || []);
           setInstructions(recipe.instructions || '');
           setOwner(recipe.userId || '');
+        } else {
+          setLoadError(true);
         }
       } catch (error) {
         console.error("Error fetching recipe:", error);
+        setLoadError(true);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -147,27 +170,47 @@ const shareURL = async () => {
   };
 
 
-  const handleColumnClick = (columnName) => {
-    setFocusedColumn(columnName);
-  };
-
-  const ingredientColumnClasses = `
-    transition-all duration-500 ease-in-out cursor-pointer
-    ${focusedColumn === 'ingredients' ? 'w-4/5' : 'w-1/5'}
-  `;
-
-  const instructionColumnClasses = `
-    transition-all duration-500 ease-in-out cursor-pointer
-    ${focusedColumn === 'instructions' ? 'w-4/5' : 'w-1/5'}
-  `;
-
   const steps = instructions.split(/\r?\n/).filter(line => line.trim() !== "");
 
+  // Pin the view below the app header so the page itself never scrolls.
+  const shellClass = props.userId
+    ? 'fixed inset-x-0 bottom-0 top-[var(--app-header-height)] z-0 overflow-hidden'
+    : 'fixed inset-x-0 bottom-0 top-0 z-0 overflow-hidden';
+
+  useEffect(() => {
+    props.setTotalItems?.(0);
+    props.setCheckedCount?.(0);
+    props.setSpaceForFloatingButton?.('');
+    props.setLastRemoteUpdateAt?.(null);
+  }, [props.setTotalItems, props.setCheckedCount, props.setSpaceForFloatingButton, props.setLastRemoteUpdateAt]);
+
+  if (isLoading && !name) {
+    return <PageLoader message="Loading recipe…" fullScreen={false} />;
+  }
+
+  if (loadError && !name) {
+    return (
+      <main className="page-main pb-8">
+        <EmptyState
+          icon={faBook}
+          title="Couldn't load this recipe"
+          description="It may have been deleted or you may not have access."
+          actionLabel="Back to recipes"
+          actionTo="/recipes"
+        />
+      </main>
+    );
+  }
+
   return (
-        <main className="max-w-xl mx-auto min-w-[380px] p-6 flex flex-col">
+        <main className={`${shellClass} px-3 sm:px-4 py-3 pb-4`}>
+            <div className="max-w-xl mx-auto w-full h-full flex flex-col min-h-0">
+
+            {/* Paper sheet: title + steps/ingredients */}
+            <div className="flex flex-col flex-1 min-h-0 bg-white rounded-3xl shadow-[0_2px_8px_rgba(15,23,42,0.06),0_12px_40px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/70 overflow-hidden">
 
             {/* Header Row: Title on Left, Actions on Right */}
-            <div className="flex justify-between items-start mb-6 px-1">
+            <div className="flex justify-between items-start shrink-0 px-5 pt-5 pb-4 border-b border-slate-100 bg-gradient-to-b from-slate-50/80 to-white">
 
                 {/* Top Left: Recipe Name & Metadata */}
                 <div className="flex-1 pr-4">
@@ -179,7 +222,7 @@ const shareURL = async () => {
                     {/* Owner Section */}
                     {/* <div className="flex items-center gap-1.5">
                         <span className="text-base font-medium text-slate-400">By</span>
-                        <span className="text-base font-bold text-slate-700 hover:text-[#1976D2] transition-colors cursor-pointer">
+                        <span className="text-base font-bold text-slate-700 hover:text-brand transition-colors cursor-pointer">
                             Kaitlin Britton
                         </span>
                     </div> */}
@@ -187,14 +230,14 @@ const shareURL = async () => {
                     {/* Metadata Row: Time, Category, and Owner */}
                     {/* <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-1.5 text-slate-500">
 
-                        <div className="flex items-center gap-1.5 text-[#1976D2]">
+                        <div className="flex items-center gap-1.5 text-brand">
                             <FontAwesomeIcon icon={faClock} className="text-[10px]" />
                             <span className="text-base font-bold uppercase tracking-wider">45 Mins</span>
                         </div>
 
                         <span className="text-slate-300 text-xs">•</span>
 
-                        <div className="flex items-center gap-1.5 text-[#1976D2]">
+                        <div className="flex items-center gap-1.5 text-brand">
                             <FontAwesomeIcon icon={faTag} className="text-[10px]" />
                             <span className="text-base font-bold uppercase tracking-wider">
                                 Dinner
@@ -210,17 +253,21 @@ const shareURL = async () => {
                 {owner && props.userId === owner && (
                     <NavLink 
                     to={`/recipes/edit/${recipeId}`}
-                    className="w-14 h-14 flex items-center justify-center bg-blue-50/50 text-[#1976D2] border border-blue-100/50 hover:bg-blue-100 hover:border-blue-200 rounded-xl transition-all active:scale-95"
+                    aria-label="Edit recipe"
+                    className="w-14 h-14 flex items-center justify-center bg-blue-50/50 text-brand border border-blue-100/50 hover:bg-blue-100 hover:border-blue-200 rounded-xl transition-all active:scale-95"
                     >
-                    <FontAwesomeIcon icon={faEdit} className="text-xl" />
+                    <FontAwesomeIcon icon={faEdit} className="text-xl" aria-hidden="true" />
                     </NavLink>
                 )}
 
                 {/* FAVORITE BUTTON (Amber Theme) */}
                 {(owner && props.userId !== owner) && (
                     <button 
-                        onClick={handleFavoriteToggle} // Trigger the conditional logic
+                        type="button"
+                        onClick={handleFavoriteToggle}
                         disabled={isFavoriteLoading}
+                        aria-label={isFavorite ? 'Remove from favorites' : 'Save to favorites'}
+                        aria-pressed={isFavorite}
                         className={`w-14 h-14 flex items-center justify-center transition-all duration-300 rounded-xl border
                             ${isFavorite 
                             ? 'bg-amber-500 border-amber-500 text-white shadow-lg shadow-amber-200 scale-105' 
@@ -237,7 +284,9 @@ const shareURL = async () => {
                 {/* SHARE BUTTON (Emerald Theme - Keep as is) */}
                 {props.userId && (
                     <button 
+                    type="button"
                     onClick={shareURL}
+                    aria-label={isShared ? 'Link copied' : 'Share recipe'}
                     className={`w-14 h-14 flex flex-col items-center justify-center transition-all duration-300 rounded-xl border
                         ${isShared 
                         ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-200 scale-105' 
@@ -257,8 +306,8 @@ const shareURL = async () => {
                 </div>
             </div>
 
-            {/* Flex Container */}
-            <div className="flex bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden h-[calc(100vh-18rem)] relative">
+            {/* Steps + ingredients fill the rest of the sheet */}
+            <div className="flex flex-1 min-h-0 relative">
 
                 {/* INSTRUCTIONS PANEL (Left) */}
                 <section 
@@ -266,21 +315,20 @@ const shareURL = async () => {
                     className={`relative transition-all duration-500 ease-in-out border-r border-slate-100 overflow-y-auto scrollbar-hide
                         ${focusedColumn === 'instructions' 
                         ? 'w-[70%] bg-white z-10 shadow-[4px_0_15px_rgba(0,0,0,0.05)]' 
-                        : 'w-[30%] bg-[#F8FAFC] cursor-pointer'}`
+                        : 'w-[30%] bg-slate-50 cursor-pointer'}`
                     }
                 >
                     {/* FIXED HEADER: Solid background prevents text overlap */}
                     <div className={`sticky top-0 z-30 transition-all duration-500 border-b border-transparent
-                            ${focusedColumn === 'instructions' ? 'bg-white border-slate-100' : 'bg-[#F8FAFC]'}`
-                        }
+                            ${focusedColumn === 'instructions' ? 'bg-white border-slate-100' : 'bg-slate-50'}`}
                     >
 
-                        <div className={`h-1 transition-colors duration-500 ${focusedColumn === 'instructions' ? 'bg-[#1976D2]' : 'bg-transparent'}`} />
+                        <div className={`h-1 transition-colors duration-500 ${focusedColumn === 'instructions' ? 'bg-brand' : 'bg-transparent'}`} />
                         
                         <div className="px-5 py-4">
                             <div className={`flex items-center gap-2 transition-all duration-500 ${focusedColumn === 'instructions' ? 'scale-100' : 'scale-90 opacity-60'}`}>
-                                <FontAwesomeIcon icon={faMortarPestle} className={focusedColumn === 'instructions' ? 'text-[#1976D2]' : 'text-slate-400'} />
-                                <h2 className={`text-base font-bold uppercase tracking-widest transition-colors ${focusedColumn === 'instructions' ? 'text-[#1976D2]' : 'text-slate-400'}`}>
+                                <FontAwesomeIcon icon={faMortarPestle} className={focusedColumn === 'instructions' ? 'text-brand' : 'text-slate-400'} />
+                                <h2 className={`text-base font-bold uppercase tracking-widest transition-colors ${focusedColumn === 'instructions' ? 'text-brand' : 'text-slate-400'}`}>
                                     Steps
                                 </h2>
                             </div>
@@ -297,7 +345,7 @@ const shareURL = async () => {
                                 steps.map((step, i) => (
                                 <div key={i} className="flex gap-3">
                                     <span className={`text-[14px] font-black h-5 w-5 rounded-full flex items-center justify-center shrink-0 mt-[0.25em] transition-colors
-                                        ${focusedColumn === 'instructions' ? 'bg-blue-50 text-[#1976D2]' : 'bg-slate-200 text-slate-400'}`}>
+                                        ${focusedColumn === 'instructions' ? 'bg-blue-50 text-brand' : 'bg-slate-200 text-slate-400'}`}>
                                     {i + 1}
                                     </span>
                                     <p className="text-base leading-relaxed text-slate-700 font-medium">{step}</p>
@@ -319,19 +367,19 @@ const shareURL = async () => {
                     className={`relative transition-all duration-500 ease-in-out overflow-y-auto scrollbar-hide
                         ${focusedColumn === 'ingredients' 
                             ? 'w-[70%] bg-white z-10 shadow-[-4px_0_15px_rgba(0,0,0,0.05)]' 
-                            : 'w-[30%] bg-[#F8FAFC] cursor-pointer'}`}
+                            : 'w-[30%] bg-slate-50 cursor-pointer'}`}
                 >
                     {/* FIXED HEADER */}
                     <div className={`sticky top-0 z-30 transition-all duration-500 border-b border-transparent
-                        ${focusedColumn === 'ingredients' ? 'bg-white border-slate-100' : 'bg-[#F8FAFC]'}`}
+                        ${focusedColumn === 'ingredients' ? 'bg-white border-slate-100' : 'bg-slate-50'}`}
                     >
 
-                        <div className={`h-1 transition-colors duration-500 ${focusedColumn === 'ingredients' ? 'bg-[#1976D2]' : 'bg-transparent'}`} />
+                        <div className={`h-1 transition-colors duration-500 ${focusedColumn === 'ingredients' ? 'bg-brand' : 'bg-transparent'}`} />
 
                         <div className="px-5 py-4">
                             <div className={`flex items-center gap-2 transition-all duration-500 ${focusedColumn === 'ingredients' ? 'scale-100' : 'scale-90 opacity-60'}`}>
-                                <FontAwesomeIcon icon={faListUl} className={focusedColumn === 'ingredients' ? 'text-[#1976D2]' : 'text-slate-400'} />
-                                <h2 className={`text-base font-bold uppercase tracking-widest transition-colors ${focusedColumn === 'ingredients' ? 'text-[#1976D2]' : 'text-slate-400'}`}>
+                                <FontAwesomeIcon icon={faListUl} className={focusedColumn === 'ingredients' ? 'text-brand' : 'text-slate-400'} />
+                                <h2 className={`text-base font-bold uppercase tracking-widest transition-colors ${focusedColumn === 'ingredients' ? 'text-brand' : 'text-slate-400'}`}>
                                     Ingredients
                                 </h2>
                             </div>
@@ -350,7 +398,7 @@ const shareURL = async () => {
                                 >
                                     <div className="mt-[0.25em] shrink-0">
                                         <FontAwesomeIcon icon={checkedIngredients[i] ? faCheckCircle : faCircle} 
-                                            className={checkedIngredients[i] && focusedColumn === 'ingredients' ? 'text-[#1976D2]' : 'text-slate-200'} />
+                                            className={checkedIngredients[i] && focusedColumn === 'ingredients' ? 'text-brand' : 'text-slate-200'} />
                                     </div>
                                     <p className="text-base text-slate-700 font-medium text-left leading-tight">{item.amount} - {item.name}</p>
                                 </div>
@@ -360,12 +408,22 @@ const shareURL = async () => {
                 </section>
             </div>
 
+            </div>
+
             {showUnfavoriteModal && (
               <UnfavoriteModal 
                 setShowModal={setShowUnfavoriteModal} 
                 onConfirm={confirmFavoriteToggle} 
               />
             )}
+
+            <Toast
+              message={toastMessage}
+              visible={toastVisible}
+              onDismiss={() => setToastVisible(false)}
+            />
+
+            </div>
 
         </main>
   );

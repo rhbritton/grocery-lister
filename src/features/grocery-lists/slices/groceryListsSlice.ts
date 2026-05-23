@@ -102,8 +102,6 @@ export const syncGroceryListsFromFirestore = createAsyncThunk(
       }
 
       const querySnapshot = await getDocs(q);
-      if (querySnapshot.docs.length) console.log('grocery-list reads [syncGroceryListsFromFirestore]: ', querySnapshot.docs.length);
-      
       return querySnapshot.docs.map(doc => ({
         fbid: doc.id,
         ...doc.data(),
@@ -165,8 +163,6 @@ export const getGroceryListsFromFirestore = createAsyncThunk(
 
       const q = query(groceryListsCollectionRef, ...queryConstraints);
       const querySnapshot = await getDocs(q);
-      if (querySnapshot.docs.length) console.log('grocery-list reads [getGroceryListsFromFirestore]: ', querySnapshot.docs.length);
-      
       const newLastVisible = querySnapshot.docs[querySnapshot.docs.length - 1];
 
       let newAllGroceryListsGrabbed = false;
@@ -219,8 +215,6 @@ export const addGroceryListToFirestore = createAsyncThunk(
         ...newGroceryList,
         updatedAt: serverTimestamp(),
       });
-      console.log('grocery-list writes [addGroceryListToFirestore]: ', 1);
-
       dispatch(dequeuePendingSync(`addGroceryList:${newGroceryList.id}`));
       return { fbid: docRef.id, ...newGroceryList, updatedAt: now, offlineQueued: false };
     } catch (error) {
@@ -342,7 +336,7 @@ export const editGroceryListFromFirestore = createAsyncThunk(
       if (shouldQueueOffline(error)) {
         return queueAndReturn();
       }
-      console.log(error);
+      console.error(error);
       return rejectWithValue(error.message);
     }
   }
@@ -366,8 +360,6 @@ export const deleteGroceryListFromFirestore = createAsyncThunk(
       });
 
       dispatch(dequeuePendingSync(pendingId));
-      console.log('grocery-list writes [deleteGroceryListFromFirestore]: ', 1);
-
       return fbid;
     } catch (error) {
       if (shouldQueueOffline(error)) {

@@ -85,8 +85,6 @@ export const syncRecipesFromFirestore = createAsyncThunk(
 
       const querySnapshot = await getDocs(q);
 
-      if (querySnapshot.docs.length) console.log('recipe reads [syncRecipesFromFirestore]: ', querySnapshot.docs.length);
-      
       let map = querySnapshot.docs.map(doc => {
         const data = doc.data();
         return {
@@ -607,7 +605,7 @@ export const editRecipeFromFirestore = createAsyncThunk(
       if (shouldQueueOffline(error)) {
         return queueAndReturn();
       }
-      console.log('error', error);
+      console.error('error', error);
       return rejectWithValue(error.message);
     }
   }

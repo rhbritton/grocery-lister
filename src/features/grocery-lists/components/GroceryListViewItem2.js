@@ -1,51 +1,44 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
-  faChevronLeft, 
-  faChevronDown, 
   faEdit, 
-  faShareAlt, 
   faCheck, 
-  faShoppingCart,
-  faCalendarAlt,
-  faUserCircle,
-  faReceipt,
-  faSave,
-  faSignOutAlt,
-  faClock,
-  faTag,
-  faBookmark,
-  faUtensils
 } from '@fortawesome/free-solid-svg-icons';
-
-import { findSelectedOption } from '../../recipes/slices/recipeSlice.ts';
 
 function GroceryListViewItem(props) {
     const { ingredient, recipe, crossed } = props.ingredient;
+    const checkLabel = crossed
+      ? `Uncheck ${ingredient.name}`
+      : `Check off ${ingredient.name}`;
 
     return (
         <div id={props.itemId} className={`GroceryListViewItem flex items-stretch group transition-all duration-500
                 ${crossed ? 'bg-slate-200/40' : props.isEven ? 'bg-white' : 'bg-blue-50/50'}`}>
             
-            {/* 1. CHECK ZONE */}
             <button 
+                type="button"
                 onClick={() => props.onUpdate({ crossed: !crossed })}
-                className={`w-14 shrink-0 flex items-center justify-center transition-all duration-500
+                aria-label={checkLabel}
+                aria-pressed={!!crossed}
+                className={`w-14 shrink-0 flex items-center justify-center transition-all duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset
                 ${crossed ? 'bg-slate-200/40' : props.isEven ? 'bg-slate-50' : 'bg-blue-50/50'}`}
             >
                 <div className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all shadow-sm z-40
-                ${crossed ? 'bg-[#1976D2] border-[#1976D2] scale-110' : 'bg-white border-slate-300'}`}>
-                    {crossed && <FontAwesomeIcon icon={faCheck} className="text-white text-xs" />}
-                    {!crossed && <div className="w-1.5 h-1.5 rounded-full bg-slate-200 group-hover:bg-blue-200 transition-colors" />}
+                ${crossed ? 'bg-brand border-brand scale-110' : 'bg-white border-slate-300'}`}>
+                    {crossed && <FontAwesomeIcon icon={faCheck} className="text-white text-xs" aria-hidden="true" />}
+                    {!crossed && <div className="w-1.5 h-1.5 rounded-full bg-slate-200 group-hover:bg-blue-200 transition-colors" aria-hidden="true" />}
                 </div>
             </button>
             
-            {/* 2. TEXT CONTENT ZONE */}
-            <div className="flex-1 text-left pl-5 pr-2 py-5 cursor-pointer relative z-40" onClick={() => props.onUpdate({ crossed: !crossed })}>
+            <button
+                type="button"
+                onClick={() => props.onUpdate({ crossed: !crossed })}
+                className="flex-1 text-left pl-5 pr-2 py-5 relative z-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset"
+            >
                 <p className={`text-base font-bold transition-all duration-300
                     ${crossed ? 'text-slate-400 line-through decoration-slate-400 decoration-2' : 'text-slate-800'}`}>
-                    <span className={`text-[14px] mr-1 font-black uppercase tracking-widest ${crossed ? 'text-slate-300' : 'text-[#1976D2]'}`}>
+                    <span className={`text-[14px] mr-1 font-black uppercase tracking-widest ${crossed ? 'text-slate-300' : 'text-brand'}`}>
                         {ingredient.amount}
                     </span>
                     {ingredient.name}
@@ -55,21 +48,24 @@ function GroceryListViewItem(props) {
                         {recipe?.name || 'Custom Item'}
                     </span>
                 </div>
-            </div>
+            </button>
             
-            {/* 3. EDIT ACTION ZONE */}
-            {props.disableEdit || <div className="flex items-center pr-4 relative z-40">
+            {!props.disableEdit && (
+              <div className="flex items-center pr-4 relative z-40">
                 <button 
+                    type="button"
                     onClick={(e) => { e.stopPropagation(); props.onEdit(); }}
-                    className={`w-10 h-10 flex items-center justify-center transition-all duration-200 rounded-xl
+                    aria-label={`Edit ${ingredient.name}`}
+                    className={`min-w-touch min-h-touch flex items-center justify-center transition-all duration-200 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand
                         ${crossed 
-                            ? 'opacity-0 pointer-events-none' // Hide edit when crossed to declutter
-                            : 'text-slate-400 hover:text-[#1976D2] hover:bg-blue-50 active:scale-90 bg-slate-50/50 border border-transparent hover:border-blue-100'
+                            ? 'opacity-0 pointer-events-none'
+                            : 'text-slate-400 hover:text-brand hover:bg-blue-50 active:scale-90 bg-slate-50/50 border border-transparent hover:border-blue-100'
                         }`}
                 >
-                    <FontAwesomeIcon icon={faEdit} className="text-lg" />
+                    <FontAwesomeIcon icon={faEdit} className="text-lg" aria-hidden="true" />
                 </button>
-            </div>}
+            </div>
+            )}
         </div>
     );
 }

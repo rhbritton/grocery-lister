@@ -113,7 +113,7 @@ function GroceryRecipeListItem(props) {
             </button> 
             
             <div className="px-3 flex flex-col items-center leading-none">
-                <span className="text-[16px] font-black text-[#1976D2]">
+                <span className="text-[16px] font-black text-brand">
                     {recipe.recipe.duplicateCount || 1}
                 </span>
                 <span className="text-[8px] font-black uppercase tracking-tighter text-slate-400">
@@ -124,7 +124,7 @@ function GroceryRecipeListItem(props) {
             <button
                 type="button"
                 onClick={(e) => { e.stopPropagation(); handleDuplication(recipe.recipe, 1); }}
-                className="w-6 h-6 flex items-center justify-center rounded-lg bg-[#1976D2] text-white shadow-md active:scale-90 transition-all"
+                className="w-6 h-6 flex items-center justify-center rounded-lg bg-brand text-white shadow-md active:scale-90 transition-all"
             >
                 <FontAwesomeIcon icon={faPlus} className="text-[12px]" />
             </button>
@@ -142,7 +142,7 @@ function GroceryRecipeListItem(props) {
                             {/* Duplicate Group Label - Integrated into paper lines */}
                             {isNewGroup && (
                                 <div className="bg-blue-50/30 px-16 py-1.5 border-b border-slate-200/40">
-                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#1976D2]/60">
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-brand/60">
                                         Batch #{ingredient.duplicate}
                                     </span>
                                 </div>
@@ -157,7 +157,7 @@ function GroceryRecipeListItem(props) {
                                 <div className="w-14 shrink-0 flex items-center justify-center">
                                     <div className={`w-8 h-8 rounded-xl border-2 flex items-center justify-center transition-all shadow-sm
                                         ${ingredient.crossed 
-                                            ? 'bg-[#1976D2] border-[#1976D2] scale-110' 
+                                            ? 'bg-brand border-brand scale-110' 
                                             : 'bg-white border-slate-200'}`}
                                     >
                                         {ingredient.crossed && <FontAwesomeIcon icon={faCheck} className="text-white text-[10px]" />}
@@ -168,7 +168,7 @@ function GroceryRecipeListItem(props) {
                                 {/* TEXT CONTENT ZONE: Right of red line */}
                                 <div className="flex-1 flex items-center gap-3 pl-5 pr-4 py-5 cursor-pointer overflow-hidden">
                                     <span className={`text-[14px] font-black uppercase tracking-tighter shrink-0 transition-all
-                                        ${ingredient.crossed ? 'text-slate-300' : 'text-[#1976D2]'}`}>
+                                        ${ingredient.crossed ? 'text-slate-300' : 'text-brand'}`}>
                                         {ingredient.amount}
                                     </span>
                                     <span className={`text-[16px] font-bold truncate transition-all

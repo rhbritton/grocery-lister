@@ -2,6 +2,7 @@ import React from 'react';
 import { PersistGate } from 'redux-persist/integration/react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
+import PageLoader from './components/PageLoader';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { Provider } from 'react-redux'; // Import Provider
@@ -12,7 +13,7 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   // <React.StrictMode>
     <Provider store={store}> {/* Wrap App with Provider */}
-      <PersistGate loading={null} persistor={persistor}>
+      <PersistGate loading={<PageLoader message="Restoring your data…" />} persistor={persistor}>
         <App />
       </PersistGate>
     </Provider>
