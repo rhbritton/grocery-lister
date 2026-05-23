@@ -12,6 +12,7 @@ import {
   stripGroceryListPayloadForFirestore,
   omitUndefinedFields,
 } from '../../../services/offlineSync.ts';
+import { mergeGroceryListOnConflict, normalizeUpdatedAt } from '../utils/groceryListMerge.ts';
 import { enqueuePendingSync, dequeuePendingSync } from '../../sync/pendingSyncSlice.ts';
 
 interface GroceryListsState {
@@ -249,22 +250,35 @@ export const editGroceryListFromFirestore = createAsyncThunk(
   async (groceryListData, { dispatch, rejectWithValue }) => {
     const now = Math.floor(Date.now() / 1000);
     const pendingId = `editGroceryList:${groceryListData.fbid}`;
+    const baseUpdatedAt = normalizeUpdatedAt(
+      groceryListData.baseUpdatedAt ?? groceryListData.updatedAt
+    );
     const payload = stripGroceryListPayloadForFirestore(groceryListData);
 
-    const buildResult = (docData, updatedAt = now, offlineQueued = false) => ({
+    const buildResult = (
+      docData: Record<string, unknown> | null,
+      updatedAt = now,
+      offlineQueued = false,
+      merged = false,
+      finalRecipes = payload.recipes,
+      finalIngredients = payload.ingredients
+    ) => ({
       fbid: payload.fbid,
-      ...payload,
+      id: payload.id,
       userId: docData?.userId || payload.userId,
       timestamp: docData?.timestamp ?? payload.timestamp,
+      recipes: docData?.recipes ?? finalRecipes,
+      ingredients: docData?.ingredients ?? finalIngredients,
       updatedAt,
       offlineQueued,
+      merged,
     });
 
     const queueAndReturn = () => {
       dispatch(enqueuePendingSync({
         type: 'editGroceryList',
         id: pendingId,
-        payload,
+        payload: { ...payload, baseUpdatedAt },
       }));
       return buildResult(null, now, true);
     };
@@ -275,11 +289,31 @@ export const editGroceryListFromFirestore = createAsyncThunk(
 
     try {
       const docRef = doc(db, 'grocery-lists', payload.fbid);
+      let recipes = payload.recipes;
+      let ingredients = payload.ingredients;
+      let wasMerged = false;
+
+      try {
+        const currentSnap = await getDoc(docRef);
+        if (currentSnap.exists()) {
+          const serverData = currentSnap.data();
+          const serverUpdatedAt = normalizeUpdatedAt(serverData.updatedAt);
+          if (serverUpdatedAt > baseUpdatedAt) {
+            const merged = mergeGroceryListOnConflict(serverData, payload);
+            recipes = merged.recipes;
+            ingredients = merged.ingredients;
+            wasMerged = true;
+          }
+        }
+      } catch (_) {
+        // If the pre-read fails, proceed with the client payload.
+      }
+
       await updateDoc(docRef, omitUndefinedFields({
         userId: payload.userId,
         timestamp: payload.timestamp,
-        recipes: payload.recipes,
-        ingredients: payload.ingredients,
+        recipes,
+        ingredients,
         isDeleted: payload.isDeleted ?? false,
         updatedAt: serverTimestamp(),
       }));
@@ -290,13 +324,20 @@ export const editGroceryListFromFirestore = createAsyncThunk(
         const updatedSnapshot = await getDoc(docRef);
         if (updatedSnapshot.exists()) {
           const data = updatedSnapshot.data();
-          return buildResult(data, data?.updatedAt?.seconds || now, false);
+          return buildResult(
+            data,
+            normalizeUpdatedAt(data.updatedAt) || now,
+            false,
+            wasMerged,
+            recipes,
+            ingredients
+          );
         }
       } catch (_) {
         // Fall back to optimistic result when read fails offline.
       }
 
-      return buildResult(null, now, false);
+      return buildResult(null, now, false, wasMerged, recipes, ingredients);
     } catch (error) {
       if (shouldQueueOffline(error)) {
         return queueAndReturn();

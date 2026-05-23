@@ -135,7 +135,12 @@ const ViewGroceryList = () => {
             newIngredients.push(ing);
         });
 
-        dispatch(editGroceryListFromFirestore({ fbid: groceryList.fbid, recipes: groceryList.recipes, ingredients: newIngredients }));
+        dispatch(editGroceryListFromFirestore({
+          fbid: groceryList.fbid,
+          recipes: groceryList.recipes,
+          ingredients: newIngredients,
+          baseUpdatedAt: groceryList.updatedAt ?? 0,
+        }));
         
         navigate('/grocery-lists');
     }

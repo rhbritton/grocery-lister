@@ -2,10 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate, NavLink, useSearchParams } from 'react-router-dom';
 
-import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
-import { auth, db } from '../../../auth/firebaseConfig';
-
-import pako from 'pako';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../../../auth/firebaseConfig';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
@@ -24,11 +22,12 @@ import {
   faBookmark,
   faUtensils,
   faPlus,
-  faTrash
+  faTrash,
 } from '@fortawesome/free-solid-svg-icons';
 
 import { fetchGroceryListById } from '../slices/groceryListSlice.ts';
 import { editGroceryListFromFirestore, upsertGroceryList } from '../slices/groceryListsSlice.ts';
+import { normalizeUpdatedAt } from '../utils/groceryListMerge.ts';
 
 import { formatDate, formatTime } from '../../../services/date.js';
 
@@ -51,6 +50,75 @@ function matchesGroceryListRecipeEntry(entry, recipeRef) {
   );
 }
 
+function getAllIngredients(gl) {
+  const all_ingredients = [];
+  gl?.recipes?.forEach((r) => {
+    r.recipe.ingredients.forEach((ing, i) => {
+      all_ingredients.push({ ingredient: ing, recipe: r.recipe, index: i, crossed: ing.crossed });
+    });
+  });
+  gl?.ingredients?.forEach((ing, i) => {
+    all_ingredients.push({ ingredient: ing, index: i, crossed: ing.crossed });
+  });
+  return all_ingredients;
+}
+
+function getIngredientKey(item) {
+  const name = item.ingredient?.name ?? '';
+  const amount = item.ingredient?.amount ?? '';
+  if (item.recipe) {
+    return `r:${item.recipe.id}:${item.recipe.fbid || ''}:${item.index}:${name}:${amount}`;
+  }
+  return `m:${item.index}:${name}:${amount}`;
+}
+
+function getItemDomId(item) {
+  return item.recipe
+    ? `recipe-${item.recipe.id}-${item.index}`
+    : `manual-${item.index}`;
+}
+
+function findChangedItemDomIds(prevList, nextList) {
+  const prevIngredients = getAllIngredients(prevList);
+  const nextIngredients = getAllIngredients(nextList);
+  const prevByKey = new Map(prevIngredients.map((ing) => [getIngredientKey(ing), ing]));
+  const changedIds = [];
+
+  nextIngredients.forEach((ing) => {
+    const key = getIngredientKey(ing);
+    const domId = getItemDomId(ing);
+    const prev = prevByKey.get(key);
+    if (
+      !prev ||
+      !!prev.crossed !== !!ing.crossed ||
+      prev.ingredient?.name !== ing.ingredient?.name ||
+      prev.ingredient?.amount !== ing.ingredient?.amount
+    ) {
+      changedIds.push(domId);
+    }
+  });
+
+  return changedIds;
+}
+
+function getListContentSignature(gl) {
+  if (!gl) return '';
+  return getAllIngredients(gl)
+    .map((item) => `${getIngredientKey(item)}:${item.crossed ? 1 : 0}`)
+    .sort()
+    .join('|');
+}
+
+function mapSnapshotToGroceryList(docSnap, userId) {
+  const data = docSnap.data();
+  return {
+    fbid: docSnap.id,
+    ...data,
+    userId: data.userId || userId,
+    updatedAt: data?.updatedAt?.seconds ?? (typeof data?.updatedAt === 'number' ? data.updatedAt : 0),
+  };
+}
+
 const ViewGroceryList = (props) => {
     const [showRecipes, setShowRecipes] = useState(false);
     const aisles = ["produce", "meat", "dairy", "freezer", "other"];
@@ -63,6 +131,9 @@ const ViewGroceryList = (props) => {
     const rehydrated = useSelector((state) => state._persist?.rehydrated);
 
     const isInitialLoad = useRef(true);
+    const groceryListRef = useRef(undefined);
+    const remoteHighlightIdsRef = useRef(null);
+    const onRemoteListUpdateRef = useRef(props.onRemoteListUpdate);
     
     const [groceryList, setGroceryList] = useState(undefined);
     const [originalAllIngredients, setOriginalAllIngredients] = useState([]);
@@ -86,23 +157,53 @@ const ViewGroceryList = (props) => {
             props.setTotalItems(0);
             props.setCheckedCount(0);
         };
-    }, [allIngredients, props]);
+    }, [allIngredients, props.setTotalItems, props.setCheckedCount]);
+
+  useEffect(() => {
+    props.setLastRemoteUpdateAt?.(null);
+  }, [groceryListId, props.setLastRemoteUpdateAt]);
+
+  useEffect(() => {
+    return () => {
+      props.setLastRemoteUpdateAt?.(null);
+    };
+  }, [props.setLastRemoteUpdateAt]);
 
   const [shareFeedback, setShareFeedback] = useState('');
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
-const flashItem = (itemId, delay = 0) => {
+  useEffect(() => {
+    onRemoteListUpdateRef.current = props.onRemoteListUpdate;
+  }, [props.onRemoteListUpdate]);
+
+  useEffect(() => {
+    groceryListRef.current = groceryList;
+  }, [groceryList]);
+
+  const highlightRow = (itemId, delay = 0) => {
     setTimeout(() => {
-        const target = document.getElementById(itemId);
-        if (target) {
-            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            target.classList.add('!bg-blue-200', 'ring-2', 'ring-blue-400', 'z-50');
-            setTimeout(() => {
-                target.classList.remove('!bg-blue-200', 'ring-2', 'ring-blue-400', 'z-50');
-            }, 1300);
-        }
-    }, delay); // Use the passed delay
-};
+      const target = document.getElementById(itemId);
+      if (target) {
+        target.classList.add('!bg-blue-200', 'ring-2', 'ring-blue-400', 'z-50');
+        setTimeout(() => {
+          target.classList.remove('!bg-blue-200', 'ring-2', 'ring-blue-400', 'z-50');
+        }, 1300);
+      }
+    }, delay);
+  };
+
+  const highlightChangedRows = (itemIds) => {
+    itemIds.forEach((itemId, i) => {
+      highlightRow(itemId, 50 + i * 80);
+    });
+  };
+
+  useEffect(() => {
+    const ids = remoteHighlightIdsRef.current;
+    if (!ids?.length) return;
+    remoteHighlightIdsRef.current = null;
+    highlightChangedRows(ids);
+  }, [groceryList]);
 
   const isOwner = props.userId && groceryList && (
     groceryList.userId === props.userId ||
@@ -119,15 +220,16 @@ const flashItem = (itemId, delay = 0) => {
       timestamp: list.timestamp,
       recipes: list.recipes,
       ingredients: list.ingredients,
-      updatedAt: Math.floor(Date.now() / 1000),
+      baseUpdatedAt: normalizeUpdatedAt(list.updatedAt),
     };
 
-    dispatch(upsertGroceryList(listToSave));
-    setOriginalAllIngredients(getAllIngredients({ ...list, ...listToSave }));
+    dispatch(upsertGroceryList({ ...list, ...listToSave }));
 
     try {
       const result = await dispatch(editGroceryListFromFirestore(listToSave)).unwrap();
-      setGroceryList((prev) => ({ ...prev, ...result }));
+      const nextList = { ...list, ...result };
+      setGroceryList(nextList);
+      setOriginalAllIngredients(getAllIngredients(nextList));
     } catch (_) {
       // Offline saves are queued by the thunk; no UI feedback needed.
     }
@@ -194,7 +296,7 @@ const flashItem = (itemId, delay = 0) => {
             setGroceryList(newList);
             setIsAddModalOpen(false);
 
-            flashItem(itemId, 200);
+            highlightRow(itemId, 200);
             persistGroceryList(newList);
         }
     }
@@ -265,21 +367,6 @@ const flashItem = (itemId, delay = 0) => {
     return all_ingredients_by_type;
   }
 
-  function getAllIngredients(gl) {
-    let all_ingredients = [];
-    gl && gl.recipes && gl.recipes.forEach(function(r, i) {
-        r.recipe.ingredients.forEach(function(ing, i) {
-            all_ingredients.push({ ingredient: ing, recipe: r.recipe, index: i, crossed: ing.crossed });
-        });
-    });
-
-    gl && gl.ingredients.forEach(function(ing, i) {
-        all_ingredients.push({ ingredient: ing, index: i, crossed: ing.crossed });
-    });
-
-    return all_ingredients
-  }
-
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -325,39 +412,78 @@ const flashItem = (itemId, delay = 0) => {
     setAllIngredients(all_ingredients);
   }, [groceryList]);
 
-//   useEffect(() => {
-//     if (!groceryListId || !groceryList || props.userId == groceryList.userId) return;
+  useEffect(() => {
+    const listFbid = groceryList?.fbid || groceryListId;
+    if (!listFbid) return;
 
-//     const docRef = doc(db, 'grocery-lists', groceryListId);
+    isInitialLoad.current = true;
+    const docRef = doc(db, 'grocery-lists', listFbid);
 
-//     const unsubscribe = onSnapshot(docRef, (docSnap) => {
-//       if (docSnap.exists()) {
-//         if (isInitialLoad.current) {
-//           isInitialLoad.current = false;
-//           console.log("Initial list data fetched.");
-//           return;
-//         }
-        
-//         const isLocalSave = docSnap.metadata.hasPendingWrites; 
-//         if (!isLocalSave) {
-//           // This code runs only when the update comes from the server (a remote device)
-//           console.log('Remote update detected on secondary device: updated');
-//           props.setGroceryListHasChanged(true);
-//           unsubscribe();
-//         } else {
-//           // This code runs when the change is from the current device (a local save)
-//           console.log('Local save detected. Ignoring for "updated" notification.');
-//         }
+    const unsubscribe = onSnapshot(
+      docRef,
+      (docSnap) => {
+        if (!docSnap.exists()) return;
 
-//       } else {
-//         console.log("No such document (list may have been deleted)");
-//       }
-//     }, (error) => {
-//       console.error("Error listening to document changes:", error);
-//     });
+        if (isInitialLoad.current) {
+          const remoteList = mapSnapshotToGroceryList(docSnap, props.userId);
+          if (remoteList.isDeleted) return;
 
-//     return () => unsubscribe();
-//   }, [groceryListId, groceryList?.userId]);
+          // When online, wait for the server snapshot — the first cache event can be stale.
+          const waitingForServer = docSnap.metadata.fromCache && navigator.onLine;
+          if (waitingForServer) {
+            if (!groceryListRef.current) {
+              dispatch(upsertGroceryList(remoteList));
+              setGroceryList(remoteList);
+              setOriginalAllIngredients(getAllIngredients(remoteList));
+            }
+            return;
+          }
+
+          isInitialLoad.current = false;
+
+          const currentList = groceryListRef.current;
+          const serverUpdatedAt = normalizeUpdatedAt(remoteList.updatedAt);
+          const localUpdatedAt = normalizeUpdatedAt(currentList?.updatedAt);
+          const serverNewer = serverUpdatedAt > localUpdatedAt;
+          const contentDiff =
+            currentList &&
+            getListContentSignature(currentList) !== getListContentSignature(remoteList);
+
+          if (!currentList || serverNewer || contentDiff) {
+            dispatch(upsertGroceryList(remoteList));
+            setGroceryList(remoteList);
+            setOriginalAllIngredients(getAllIngredients(remoteList));
+          }
+          return;
+        }
+
+        if (docSnap.metadata.hasPendingWrites) return;
+
+        const remoteList = mapSnapshotToGroceryList(docSnap, props.userId);
+        if (remoteList.isDeleted) return;
+
+        const currentList = groceryListRef.current;
+        if (!currentList) return;
+
+        if (getListContentSignature(currentList) === getListContentSignature(remoteList)) return;
+
+        const changedItemIds = findChangedItemDomIds(currentList, remoteList);
+        remoteHighlightIdsRef.current = changedItemIds;
+
+        dispatch(upsertGroceryList(remoteList));
+        setGroceryList(remoteList);
+        setOriginalAllIngredients(getAllIngredients(remoteList));
+        setEditingItem(null);
+        setIsAddModalOpen(false);
+        onRemoteListUpdateRef.current?.();
+      },
+      (error) => {
+        console.error('Error listening to grocery list changes:', error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [groceryList?.fbid, groceryListId, props.userId, dispatch]);
 
     const [isShared, setIsShared] = useState(false);
 

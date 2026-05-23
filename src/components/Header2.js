@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { BrowserRouter, Routes, Route, NavLink, useLocation, useNavigate } from 'react-router-dom';
 
@@ -20,6 +20,8 @@ import {
   faCheck,
   faBook
 } from '@fortawesome/free-solid-svg-icons';
+
+import { formatRelativeUpdateTime, getRemoteUpdateFadeOpacity } from '../services/date.js';
 
 function Header(props) {
   const { user } = props;
@@ -112,14 +114,26 @@ function Header(props) {
 
   // State to manage dropdown visibility
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [, setRelativeUpdateTick] = useState(0);
 
-  // Function to toggle dropdown
-  const toggleDropdown = () => {
-    setIsDropdownOpen(!isDropdownOpen);
-  };
+  useEffect(() => {
+    if (!props.lastRemoteUpdateAt) return;
 
-    const progressPercent = props.totalItems <= 0 ? 0 : (props.totalItems ? ((props.checkedCount / props.totalItems) * 100) : 100);
+    const interval = setInterval(() => {
+      setRelativeUpdateTick((t) => t + 1);
+      if (getRemoteUpdateFadeOpacity(props.lastRemoteUpdateAt) <= 0) {
+        props.setLastRemoteUpdateAt?.(null);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [props.lastRemoteUpdateAt, props.setLastRemoteUpdateAt]);
+
+  const progressPercent = props.totalItems <= 0 ? 0 : (props.totalItems ? ((props.checkedCount / props.totalItems) * 100) : 100);
     const isFinished = props.totalItems <= 0 ? false : (props.totalItems ? (props.totalItems > 0 && props.checkedCount === props.totalItems) : true);
+  const remoteUpdateOpacity = props.lastRemoteUpdateAt
+    ? getRemoteUpdateFadeOpacity(props.lastRemoteUpdateAt)
+    : 0;
 
   return (
     <>
@@ -189,24 +203,41 @@ function Header(props) {
                 </div>
             </header>
             {!!(props.hasProgressPercent && props.totalItems) && (
-              <div className="bg-[#1976D2] h-6 shadow-lg sticky top-[90px] z-40">
-                <div className="w-full h-6 bg-blue-900/20 relative flex items-center justify-center overflow-hidden">
-                  
-                  {/* 1. PROGRESS FILL (Stays behind everything) */}
-                  <div
-                    className={`absolute left-0 top-0 h-full transition-all duration-500 ease-out
-                                ${isFinished ? 'bg-green-700' : 'bg-white'}`}
-                    style={{ width: `${progressPercent}%` }}
-                  />
+              <div className="sticky top-[90px] z-[9998] shadow-lg">
+                <div className="bg-[#1976D2] h-6">
+                  <div className="w-full h-6 bg-blue-900/20 relative flex items-center justify-center overflow-hidden">
+                    
+                    {/* 1. PROGRESS FILL (Stays behind everything) */}
+                    <div
+                      className={`absolute left-0 top-0 h-full transition-all duration-500 ease-out
+                                  ${isFinished ? 'bg-green-700' : 'bg-white'}`}
+                      style={{ width: `${progressPercent}%` }}
+                    />
 
-                  {/* 2. TEXT WITH BLACK BACKGROUND PILL */}
-                  {props.totalItems > 0 && (
-                    <span className={`${isFinished ? 'bg-green-700 text-white' : 'bg-white text-black'} relative z-10 px-3 py-0 text-[16px] font-black uppercase tracking-widest shadow-sm`}>
-                      {props.checkedCount} / {props.totalItems} Items Completed
-                    </span>
-                  )}
-                  
+                    {/* 2. TEXT WITH BLACK BACKGROUND PILL */}
+                    {props.totalItems > 0 && (
+                      <span className={`${isFinished ? 'bg-green-700 text-white' : 'bg-white text-black'} relative z-10 px-3 py-0 text-[16px] font-black uppercase tracking-widest shadow-sm`}>
+                        {props.checkedCount} / {props.totalItems} Items Completed
+                      </span>
+                    )}
+                    
+                  </div>
                 </div>
+                {props.lastRemoteUpdateAt && remoteUpdateOpacity > 0 && (
+                  <div
+                    className="transition-opacity duration-1000 ease-out"
+                    style={{ opacity: remoteUpdateOpacity }}
+                  >
+                    <div
+                      key={props.lastRemoteUpdateAt}
+                      className="remote-update-banner flex items-center justify-center gap-2 h-8 bg-[#0D47A1] border-t border-white/25 text-xs font-black uppercase tracking-widest text-white"
+                      aria-live="polite"
+                    >
+                      <span className="remote-update-dot w-2 h-2 rounded-full bg-emerald-300 shrink-0" />
+                      {formatRelativeUpdateTime(props.lastRemoteUpdateAt)}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
         </>

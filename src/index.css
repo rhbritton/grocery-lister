@@ -43,4 +43,32 @@ input:focus, textarea:focus {
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
   }
+
+  @keyframes remote-update-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes remote-update-dot-pulse {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.45;
+      transform: scale(0.75);
+    }
+  }
+
+  .remote-update-banner {
+    animation: remote-update-fade-in 0.55s ease-out both;
+  }
+
+  .remote-update-dot {
+    animation: remote-update-dot-pulse 1.4s ease-in-out infinite;
+  }
 }

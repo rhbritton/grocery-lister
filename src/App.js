@@ -67,10 +67,13 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState(null);
   
-  const [groceryListHasChanged, setGroceryListHasChanged] = useState(false);
-  
   const [checkedCount, setCheckedCount] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
+  const [lastRemoteUpdateAt, setLastRemoteUpdateAt] = useState(null);
+
+  const handleRemoteListUpdate = useCallback(() => {
+    setLastRemoteUpdateAt(Date.now());
+  }, []);
   
   const [spaceForFloatingButton, setSpaceForFloatingButton] = useState('');
 
@@ -273,10 +276,6 @@ function App() {
     }
   };
 
-  const handleRefresh = () => {
-    window.location.reload();
-  };
-
   const handleLogout = async () => {
     if (auth) {
       dispatch(userLogout());
@@ -447,19 +446,6 @@ function App() {
           </div>
         )}
 
-        {groceryListHasChanged && (
-            <div 
-                onClick={handleRefresh}
-                className="bg-blue-100 border-t-4 border-blue-500 rounded-b text-blue-900 px-4 py-2 shadow-md flex justify-between items-center" 
-                role="alert"
-            >
-                <div className="flex items-center">
-                    <p className="font-bold">This Grocery List was updated by another user</p>
-                    <p className="text-sm ml-2">Click to refresh to see the changes.</p>
-                </div>
-            </div>
-        )}
-
         <BrowserRouter basename="/gl">
 
         <ScrollToTop />
@@ -467,7 +453,7 @@ function App() {
         {user && <ConnectionStatusBanner status={connectionStatus} />}
 
         <main className={`min-h-screen bg-[#F8FAFC] font-sans text-slate-900 ${spaceForFloatingButton} ${connectionStatus === 'offline' || connectionStatus === 'syncing' ? 'pt-[52px]' : ''}`}>
-            {user && <Header user={user} handleGoogleLogin={handleGoogleLogin} handleLogout={handleLogout} hasProgressPercent={true} checkedCount={checkedCount} totalItems={totalItems} />}
+            {user && <Header user={user} handleGoogleLogin={handleGoogleLogin} handleLogout={handleLogout} hasProgressPercent={true} checkedCount={checkedCount} totalItems={totalItems} lastRemoteUpdateAt={lastRemoteUpdateAt} setLastRemoteUpdateAt={setLastRemoteUpdateAt} />}
             <Routes>
               {user && <Route path="/recipes" element={<Recipes user={user} setSpaceForFloatingButton={setSpaceForFloatingButton} />} />}
               {user && <Route path="/recipes/add" element={<AddRecipe user={user} />} />}
@@ -476,7 +462,7 @@ function App() {
               {user && <Route path="/grocery-lists" element={<GroceryLists user={user} setSpaceForFloatingButton={setSpaceForFloatingButton} />} />}
               {user && <Route path="/grocery-lists/add" element={<AddGroceryList user={user} />} />}
               {user && <Route path="/grocery-lists/edit/:groceryListId" element={<EditGroceryList />} />}
-              {user && <Route path="/grocery-lists/view/:groceryListId" element={<ViewGroceryList basename="/gl" userId={user.uid} groceryListHasChanged={groceryListHasChanged} setGroceryListHasChanged={setGroceryListHasChanged} setCheckedCount={setCheckedCount} setTotalItems={setTotalItems} setSpaceForFloatingButton={setSpaceForFloatingButton} />} />}
+              {user && <Route path="/grocery-lists/view/:groceryListId" element={<ViewGroceryList basename="/gl" userId={user.uid} setCheckedCount={setCheckedCount} setTotalItems={setTotalItems} setSpaceForFloatingButton={setSpaceForFloatingButton} setLastRemoteUpdateAt={setLastRemoteUpdateAt} onRemoteListUpdate={handleRemoteListUpdate} />} />}
               
               <Route path="/recipes/view/:recipeId" element={<ViewRecipe basename="/gl" userId={user?.uid} Header={<Header user={user} handleGoogleLogin={handleGoogleLogin} handleLogout={handleLogout} checkedCount={checkedCount} totalItems={totalItems} />} />} />
               <Route path="/test" element={<TestRecipeList user={user} />} />
