@@ -5,8 +5,6 @@ import { GroceryList } from './groceryListSlice.ts';
 import { db, auth } from '../../../auth/firebaseConfig';
 import { collection, query, where, getDocs, addDoc, doc, updateDoc, getDoc, limit, startAfter, orderBy, QueryDocumentSnapshot, DocumentData, serverTimestamp, Timestamp } from 'firebase/firestore';
 
-import store from 'store2';
-
 interface GroceryListsState {
   groceryLists: GroceryList[];
   groceryListsSorted: GroceryList[];
@@ -23,12 +21,6 @@ const initialState: GroceryListsState = {
   allGroceryListsGrabbed: false,
 };
 
-export const getAllGroceryLists = () => {
-  let all_grocery_lists = store('grocery-lists');
-
-  return all_grocery_lists;
-}
-
 const sortGroceryLists = (groceryLists) => {
   groceryLists.sort((a, b) => {
     if (a.timestamp < b.timestamp) {
@@ -37,11 +29,6 @@ const sortGroceryLists = (groceryLists) => {
       return -1;
     }
   });
-}
-
-const getGroceryListsBySearch = (state, searchTerm) => {
-  let all_grocery_lists = getAllGroceryLists();
-  state.groceryLists = all_grocery_lists;
 }
 
 export const selectMaxGroceryListTimestamp = (state: RootState) => {
@@ -81,7 +68,7 @@ export const syncGroceryListsFromFirestore = createAsyncThunk(
       return querySnapshot.docs.map(doc => ({
         fbid: doc.id,
         ...doc.data(),
-        // 2. Convert back to seconds for Redux/Phase 2 persistence
+        userId: doc.data().userId || userId,
         updatedAt: doc.data()?.updatedAt?.seconds || 0
       }));
     } catch (error) {
@@ -106,6 +93,7 @@ export const getAllGroceryListsFromFirestore = createAsyncThunk(
       let groceryLists = querySnapshot.docs.map(doc => ({
         fbid: doc.id,
         ...doc.data(),
+        userId: doc.data().userId || userId,
         updatedAt: doc.data()?.updatedAt?.seconds || 0
       }));
 
@@ -150,6 +138,7 @@ export const getGroceryListsFromFirestore = createAsyncThunk(
       let groceryLists = querySnapshot.docs.map(doc => ({
         fbid: doc.id,
         ...doc.data(),
+        userId: doc.data().userId || userId,
         updatedAt: doc.data()?.updatedAt?.seconds || 0
       }));
 
@@ -192,11 +181,13 @@ export const editGroceryListFromFirestore = createAsyncThunk(
       
       if (!updatedSnapshot.exists()) throw new Error("Doc not found");
 
+      const data = updatedSnapshot.data();
       return {
         fbid: groceryListData.fbid,
         ...groceryListData,
-        timestamp: updatedSnapshot.data().timestamp,
-        updatedAt: updatedSnapshot.data()?.updatedAt?.seconds || Math.floor(Date.now() / 1000)
+        userId: data.userId || groceryListData.userId,
+        timestamp: data.timestamp,
+        updatedAt: data?.updatedAt?.seconds || Math.floor(Date.now() / 1000)
       };
     } catch (error) {
       console.log(error)
@@ -232,49 +223,26 @@ export const groceryListsSlice = createSlice({
       state.groceryLists = action.payload;
     },
     addGroceryList: (state, action) => {
-      let all_grocery_lists = store('grocery-lists') || [];
-      all_grocery_lists.unshift({ id: nanoid(), ...action.payload });
-      
-      store('grocery-lists', all_grocery_lists);
-      getGroceryListsBySearch(state, '');
+      state.groceryLists.unshift({ id: nanoid(), ...action.payload });
     },
     editGroceryList: (state, action) => {
-      let all_grocery_lists = store('grocery-lists');
-      let indexToChange;
-      all_grocery_lists.some(function(groceryList, i) {
-        if (groceryList.id === action.payload.groceryListId) {
-          indexToChange = i;
-          all_grocery_lists[i] = {
-            id: groceryList.id,
-            ingredients: action.payload.ingredients || groceryList.ingredients,
-            recipes: action.payload.recipes || groceryList.recipes,
-            timestamp: groceryList.timestamp,
-          };
+      const indexToChange = state.groceryLists.findIndex(
+        (groceryList) => groceryList.id === action.payload.groceryListId
+      );
 
-          return true;
-        }
-      });
-
-      if (indexToChange !== undefined) {
-        store('grocery-lists', all_grocery_lists);
-        getAllGroceryLists();
+      if (indexToChange !== -1) {
+        const groceryList = state.groceryLists[indexToChange];
+        state.groceryLists[indexToChange] = {
+          ...groceryList,
+          ingredients: action.payload.ingredients || groceryList.ingredients,
+          recipes: action.payload.recipes || groceryList.recipes,
+        };
       }
     },
     deleteGroceryList: (state, action) => {
-      let all_grocery_lists = getAllGroceryLists();
-      let indexToDelete;
-      all_grocery_lists.some(function(gl, i) {
-        if (gl.id === action.payload.groceryListId) {
-          indexToDelete = i;
-        }
-      });
-
-      all_grocery_lists.splice(indexToDelete, 1); 
-
-      if (indexToDelete !== undefined) {
-        store('grocery-lists', all_grocery_lists);
-        getGroceryListsBySearch(state, '');
-      }
+      state.groceryLists = state.groceryLists.filter(
+        (gl) => gl.id !== action.payload.groceryListId
+      );
     },
     // searchRecipes: (state, action) => {
     //   const searchTerm = action.payload.toLowerCase();
@@ -357,6 +325,7 @@ export const groceryListsSlice = createSlice({
 
         const newGroceryList = {
           ...action.payload,
+          userId: action.payload.userId,
           updatedAt: Math.floor(Date.now() / 1000)
         };
 
@@ -383,7 +352,9 @@ export const groceryListsSlice = createSlice({
           state.groceryLists = [];
 
         state.groceryLists = state.groceryLists.map(groceryList =>
-          groceryList.fbid === updatedGroceryList.fbid ? updatedGroceryList : groceryList
+          groceryList.fbid === updatedGroceryList.fbid
+            ? { ...groceryList, ...updatedGroceryList, userId: updatedGroceryList.userId || groceryList.userId }
+            : groceryList
         );
       })
       .addCase(editGroceryListFromFirestore.rejected, (state, action) => {

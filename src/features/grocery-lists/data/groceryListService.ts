@@ -1,22 +1,21 @@
-import store from 'store2';
-
-import { auth, db } from '../../../auth/firebaseConfig';
+import { db } from '../../../auth/firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 
 import { GroceryList } from '../slices/groceryListSlice.ts';
 
-export const GroceryListService = {
-  getGroceryListById: async (id: string): Promise<GroceryList | undefined> => {
-    let groceryList;
-    let all_grocery_lists = store('grocery-lists');
-    all_grocery_lists.some(function(gl) {
-        if (gl.id == id) {
-            groceryList = gl;
-            return true;
-        }
-    });
+const findGroceryListInList = (groceryLists: GroceryList[] | undefined, id: string): GroceryList | undefined => {
+  if (!groceryLists?.length) return undefined;
+  return groceryLists.find((gl) => gl.fbid === id || gl.id === id);
+};
 
-    return groceryList;
+export const GroceryListService = {
+  getGroceryList: async (id: string, localGroceryLists: GroceryList[] = []): Promise<GroceryList | undefined> => {
+    const cached = findGroceryListInList(localGroceryLists, id);
+    if (cached) return cached;
+
+    if (!navigator.onLine) return undefined;
+
+    return GroceryListService.getGroceryListByFirebaseId(id);
   },
   getGroceryListByFirebaseId: async (fbid: string) => {
     try {
@@ -26,7 +25,6 @@ export const GroceryListService = {
       if (docSnap.exists()) {
         return { fbid: docSnap.id, ...docSnap.data(), updatedAt: docSnap.data()?.updatedAt?.seconds || 0 };
       } else {
-        // Document does not exist
         console.log("No such document!");
         return undefined;
       }

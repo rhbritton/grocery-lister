@@ -4,11 +4,10 @@ import { Recipe, Ingredient } from '../../recipes/slices/recipeSlice.ts';
 
 import { GroceryListService } from '../data/groceryListService.ts';
 
-import store from 'store2';
-
 export interface GroceryList {
     fbid: string | undefined;
     id: string;
+    userId: string | undefined;
     recipes: Recipe[] | [];
     ingredients: Ingredient[] | [];
     timestamp: number;
@@ -26,16 +25,15 @@ const initialState: GroceryListState = {
 
 export const fetchGroceryListById = createAsyncThunk<
   GroceryList | undefined,
-  string 
->('groceryLists/fetchGroceryListById', async (id) => {
+  string,
+  { state: RootState }
+>('groceryLists/fetchGroceryListById', async (id, { getState }) => {
   try {
-    // const groceryList = await GroceryListService.getGroceryListById(id);
-    const groceryList = await GroceryListService.getGroceryListByFirebaseId(id);
-    return groceryList;
+    const { groceryLists } = getState().groceryLists;
+    return await GroceryListService.getGroceryList(id, groceryLists);
   } catch (error) {
-    // Handle errors appropriately (e.g., log, display error messages)
     console.error('Error fetching grocery list:', error);
-    return undefined; // Return undefined on error
+    return undefined;
   }
 });
 

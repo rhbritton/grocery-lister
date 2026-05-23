@@ -1,22 +1,21 @@
-import { auth, db } from '../../../auth/firebaseConfig';
+import { db } from '../../../auth/firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
-
-import store from 'store2';
 
 import { Recipe } from '../slices/recipeSlice.ts';
 
-export const RecipeService = {
-  getRecipeById: async (id: string): Promise<Recipe | undefined> => {
-    let recipe;
-    let all_recipes = store('recipes');
-    all_recipes.some(function(r) {
-        if (r.id == id) {
-            recipe = r;
-            return true;
-        }
-    });
+const findRecipeInList = (recipes: Recipe[] | undefined, id: string): Recipe | undefined => {
+  if (!recipes?.length) return undefined;
+  return recipes.find((r) => r.fbid === id || r.id === id);
+};
 
-    return recipe;
+export const RecipeService = {
+  getRecipe: async (id: string, localRecipes: Recipe[] = []): Promise<Recipe | undefined> => {
+    const cached = findRecipeInList(localRecipes, id);
+    if (cached) return cached;
+
+    if (!navigator.onLine) return undefined;
+
+    return RecipeService.getRecipeByFirebaseId(id);
   },
   getRecipeByFirebaseId: async (fbid: string) => {
     try {

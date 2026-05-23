@@ -48,6 +48,7 @@ const ViewGroceryList = (props) => {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const dispatch = useDispatch();
+    const { groceryLists } = useSelector((state) => state.groceryLists);
 
     const isInitialLoad = useRef(true);
     
@@ -246,9 +247,13 @@ const flashItem = (itemId, delay = 0) => {
         let gl = (await dispatch(fetchGroceryListById(groceryListId))).payload;
 
         if (gl) {
-            setGroceryList(gl);
+            const listWithOwner = {
+              ...gl,
+              userId: gl.userId || props.userId,
+            };
+            setGroceryList(listWithOwner);
 
-            let all_ingredients = getAllIngredients(gl);
+            let all_ingredients = getAllIngredients(listWithOwner);
             setOriginalAllIngredients(all_ingredients);
         }
       } catch (error) {
@@ -257,7 +262,7 @@ const flashItem = (itemId, delay = 0) => {
     }
 
     fetchData();
-  }, [dispatch, groceryListId]);
+  }, [dispatch, groceryListId, groceryLists, props.userId]);
 
   useEffect(() => {
     let all_ingredients = getAllIngredients(groceryList);
@@ -319,7 +324,12 @@ const flashItem = (itemId, delay = 0) => {
 
   const handleSave = (e) => {
     if (!isSaveDisabled) {
-        dispatch(editGroceryListFromFirestore({ fbid: groceryList.fbid, recipes: groceryList.recipes, ingredients: groceryList.ingredients }));
+        dispatch(editGroceryListFromFirestore({
+          fbid: groceryList.fbid,
+          userId: groceryList.userId || props.userId,
+          recipes: groceryList.recipes,
+          ingredients: groceryList.ingredients
+        }));
         
         setOriginalAllIngredients(getAllIngredients(groceryList));
     }
@@ -355,7 +365,10 @@ const shareURL = async () => {
 
   let all_ingredients_by_type = getAllIngredientsByType(allIngredients);
 
-  const isOwner = props.userId == groceryList?.userId;
+  const isOwner = props.userId && groceryList && (
+    groceryList.userId === props.userId ||
+    (!groceryList.userId && groceryLists.some((gl) => gl.fbid === groceryList.fbid || gl.id === groceryListId))
+  );
 
   return (
     <main className="max-w-xl mx-auto min-w-[380px] p-6">

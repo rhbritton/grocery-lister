@@ -10,8 +10,6 @@ import { getAuth } from 'firebase/auth';
 
 import { addGroceryList, addGroceryListToFirestore } from '../slices/groceryListsSlice.ts';
 
-import store from 'store2';
-
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
     faTrash,
@@ -24,7 +22,7 @@ import {
     faTag
 } from '@fortawesome/free-solid-svg-icons';
 
-import { fetchRecipes, selectRecipes, searchRecipes, getAllRecipes, getAllRecipesFromFirestore } from '../../recipes/slices/recipesSlice.ts';
+import { fetchRecipes, selectRecipes, searchRecipes, getAllRecipesFromFirestore } from '../../recipes/slices/recipesSlice.ts';
 
 import recipesConfig from '../../recipes/config.json';
 

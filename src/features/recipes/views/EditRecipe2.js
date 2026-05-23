@@ -24,6 +24,7 @@ const EditRecipe = () => {
   const [ingredients, setIngredients] = useState([{ amount: '1', name: '', type: '' }]);
   const [instructions, setInstructions] = useState('');
   const [recipeHasChanged, setRecipeHasChanged] = useState(false);
+  const { allRecipes, favoriteRecipes } = useSelector((state) => state.recipes);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -42,7 +43,7 @@ const EditRecipe = () => {
     }
 
     fetchData();
-  }, [dispatch, recipeId]);
+  }, [dispatch, recipeId, allRecipes, favoriteRecipes]);
 
 
 

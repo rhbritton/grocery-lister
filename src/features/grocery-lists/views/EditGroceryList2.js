@@ -22,6 +22,7 @@ const ViewGroceryList = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const { groceryLists } = useSelector((state) => state.groceryLists);
   
   const [groceryList, setGroceryList] = useState(undefined);
   const [originalAllIngredients, setOriginalAllIngredients] = useState([]);
@@ -116,7 +117,7 @@ const ViewGroceryList = () => {
     }
 
     fetchData();
-  }, [dispatch, groceryListId]);
+  }, [dispatch, groceryListId, groceryLists]);
 
   useEffect(() => {
     let all_ingredients = getAllIngredients(groceryList);

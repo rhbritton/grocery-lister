@@ -3,8 +3,6 @@ import { RootState } from '../../../app/store.ts';
 
 import { RecipeService } from '../data/recipeService.ts';
 
-import store from 'store2';
-
 export const typeOptions = [
   { value: 'produce', label: 'Produce' },
   { value: 'meat', label: 'Meat' },
@@ -53,11 +51,13 @@ const initialState: RecipeState = {
 
 export const fetchRecipeById = createAsyncThunk<
   Recipe | undefined,
-  string 
->('recipes/fetchRecipeById', async (id) => {
+  string,
+  { state: RootState }
+>('recipes/fetchRecipeById', async (id, { getState }) => {
   try {
-    const recipe = await RecipeService.getRecipeByFirebaseId(id);
-    return recipe;
+    const { allRecipes, favoriteRecipes } = getState().recipes;
+    const localRecipes = [...allRecipes, ...favoriteRecipes];
+    return await RecipeService.getRecipe(id, localRecipes);
   } catch (error) {
     console.error('Error fetching recipe:', error);
     return undefined;

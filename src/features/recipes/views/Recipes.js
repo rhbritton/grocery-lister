@@ -3,8 +3,6 @@ import { useSelector, useDispatch } from 'react-redux';
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
 import { getAuth } from 'firebase/auth';
 
-import store from 'store2';
-
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faClipboard, faPaste, faFileImport, faFileExport } from '@fortawesome/free-solid-svg-icons';
 
@@ -140,9 +138,8 @@ function RecipesList(props) {
 
   const handleExport = () => {
     try {
-      const storedRecipes = store('recipes');
-      if (storedRecipes) {
-        const jsonString = JSON.stringify(storedRecipes);
+      if (allRecipes?.length) {
+        const jsonString = JSON.stringify(allRecipes);
         handleDownload(jsonString);
       } else {
         alert('No recipes to export.');

@@ -4,8 +4,6 @@ import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
 
 import { getAuth } from 'firebase/auth';
 
-import store from 'store2';
-
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus, faBook, faClipboardList } from '@fortawesome/free-solid-svg-icons';
 

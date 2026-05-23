@@ -6,7 +6,6 @@ import recipesConfig from '../config.json';
 
 import { generateSearchIndex, generateWordIndexFromRecipe } from '../../../services/search.js';
 
-import store from 'store2';
 import { db, auth, appId } from '../../../auth/firebaseConfig';
 import { collection, query, where, getDoc, getDocs, addDoc, doc, documentId, updateDoc, setDoc, limit, 
           startAfter, orderBy, QueryDocumentSnapshot, DocumentData, arrayUnion, arrayRemove, serverTimestamp, Timestamp } from 'firebase/firestore';
@@ -39,19 +38,18 @@ const initialState: RecipesState = {
   favoriteRecipes: [],
 };
 
-export const getAllRecipes = async () => {
-  let all_recipes = store('recipes');
-
-  return all_recipes;
-}
-
-const sortRecipes = (recipes) => {
-  recipes.sort((a, b) => {
-    const nameA = a.name.toLowerCase();
-    const nameB = b.name.toLowerCase();
-    return nameA.localeCompare(nameB);
+const filterRecipesInState = (state: RecipesState, searchTerm: string, searchType = 'name') => {
+  state.recipes = state.allRecipes.filter((recipe) => {
+    if (searchType == 'name') {
+      return recipe.name.toLowerCase().includes(searchTerm);
+    } else if (searchType == 'ingredient') {
+      return recipe.ingredients.some(function(ing) {
+        return ing.name.toLowerCase().includes(searchTerm);
+      });
+    }
+    return true;
   });
-}
+};
 
 export const selectMaxRecipeTimestamp = (state: RootState) => {
   const recipes = state.recipes.allRecipes;
@@ -103,17 +101,11 @@ export const syncRecipesFromFirestore = createAsyncThunk(
   }
 );
 
-const getRecipesBySearch = (state, searchTerm, searchType = 'name') => {
-  let all_recipes = getAllRecipes();
-
-  state.recipes = all_recipes.filter((recipe) => {
-    if (searchType == 'name') {
-      return recipe.name.toLowerCase().includes(searchTerm);
-    } else if (searchType == 'ingredient') {
-      return recipe.ingredients.some(function(ing) {
-        return ing.name.toLowerCase().includes(searchTerm);
-      });
-    }
+const sortRecipes = (recipes) => {
+  recipes.sort((a, b) => {
+    const nameA = a.name.toLowerCase();
+    const nameB = b.name.toLowerCase();
+    return nameA.localeCompare(nameB);
   });
 }
 
@@ -552,52 +544,39 @@ export const recipesSlice = createSlice({
       state.recipes = action.payload;
     },
     addRecipe: (state, action) => {
-      let all_recipes = store('recipes');
-      all_recipes.push({ id: nanoid(), ...action.payload });
-      
-      store('recipes', all_recipes);
-      getRecipesBySearch(state, '');
+      const newRecipe = { id: nanoid(), ...action.payload };
+      state.allRecipes.push(newRecipe);
+      filterRecipesInState(state, '');
     },
     editRecipe: (state, action) => {
-      let all_recipes = store('recipes');
-      let indexToChange;
-      all_recipes.some(function(recipe, i) {
-        if (recipe.id === action.payload.recipeId) {
-          indexToChange = i;
-          all_recipes[i] = {
-            id: action.payload.recipeId,
-            name: action.payload.name,
-            ingredients: action.payload.ingredients,
-            instructions: action.payload.instructions
-          };
-        }
-      });
+      const indexToChange = state.allRecipes.findIndex(
+        (recipe) => recipe.id === action.payload.recipeId
+      );
 
-      if (indexToChange !== undefined) {
-        store('recipes', all_recipes);
-        getRecipesBySearch(state, '');
+      if (indexToChange !== -1) {
+        state.allRecipes[indexToChange] = {
+          id: action.payload.recipeId,
+          name: action.payload.name,
+          ingredients: action.payload.ingredients,
+          instructions: action.payload.instructions
+        };
+        filterRecipesInState(state, '');
       }
     },
     deleteRecipe: (state, action) => {
-      let all_recipes = store('recipes');
-      let indexToDelete;
-      all_recipes.some(function(recipe, i) {
-        if (recipe.id === action.payload.recipeId) {
-          indexToDelete = i;
-        }
-      });
+      const indexToDelete = state.allRecipes.findIndex(
+        (recipe) => recipe.id === action.payload.recipeId
+      );
 
-      all_recipes.splice(indexToDelete, 1); 
-
-      if (indexToDelete !== undefined) {
-        store('recipes', all_recipes);
-        getRecipesBySearch(state, '');
+      if (indexToDelete !== -1) {
+        state.allRecipes.splice(indexToDelete, 1);
+        filterRecipesInState(state, '');
       }
     },
     searchRecipes: (state, action) => {
       const searchTerm = action.payload.searchString.toLowerCase();
       const searchType = action.payload.searchType.toLowerCase();
-      getRecipesBySearch(state, searchTerm, searchType);
+      filterRecipesInState(state, searchTerm, searchType);
     }
   },
   extraReducers: (builder) => {

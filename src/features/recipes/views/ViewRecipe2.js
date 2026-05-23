@@ -47,6 +47,7 @@ const ViewRecipe = (props) => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [showUnfavoriteModal, setShowUnfavoriteModal] = useState(false);
   const isFavoriteLoading = useSelector((state) => state.recipes.isFavoriteLoading);
+  const { allRecipes, favoriteRecipes } = useSelector((state) => state.recipes);
 
   // 1. Add this state near your other useState hooks
 const [isShared, setIsShared] = useState(false);
@@ -94,7 +95,7 @@ const shareURL = async () => {
     };
 
     fetchData();
-  }, [dispatch, recipeId]);
+  }, [dispatch, recipeId, allRecipes, favoriteRecipes]);
 
   
 
