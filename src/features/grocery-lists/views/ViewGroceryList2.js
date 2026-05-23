@@ -39,6 +39,18 @@ import AddIngredientModal from '../components/AddIngredientModal';
 
 const groceryListRecipeSeparator = ', ';
 
+/** Grocery list recipe entries use wrapper `id` (often fbid) and nested `recipe.id`. */
+function matchesGroceryListRecipeEntry(entry, recipeRef) {
+  if (!entry?.recipe || !recipeRef) return false;
+  return (
+    entry.id === recipeRef.id ||
+    entry.id === recipeRef.fbid ||
+    entry.recipe.id === recipeRef.id ||
+    entry.recipe.fbid === recipeRef.fbid ||
+    entry.recipe.fbid === recipeRef.id
+  );
+}
+
 const ViewGroceryList = (props) => {
     const [showRecipes, setShowRecipes] = useState(false);
     const aisles = ["produce", "meat", "dairy", "freezer", "other"];
@@ -129,7 +141,7 @@ const flashItem = (itemId, delay = 0) => {
           if (itemToDelete.recipe) {
               // Remove from a specific recipe
               newGroceryList.recipes = groceryList.recipes.map((r) => {
-                  if (r.id === itemToDelete.recipe.id) {
+                  if (matchesGroceryListRecipeEntry(r, itemToDelete.recipe)) {
                       const updatedIngs = r.recipe.ingredients.filter((_, idx) => idx !== itemToDelete.index);
                       return { ...r, recipe: { ...r.recipe, ingredients: updatedIngs } };
                   }
@@ -154,7 +166,7 @@ const flashItem = (itemId, delay = 0) => {
 
             // 1. Try to update the recipe if it exists
             const updatedRecipes = groceryList.recipes.map((r) => {
-                if (r?.recipe?.id === recipe.id) {
+                if (matchesGroceryListRecipeEntry(r, recipe.recipe || recipe)) {
                     matchFound = true;
                     return recipe; 
                 }
@@ -204,7 +216,7 @@ const flashItem = (itemId, delay = 0) => {
           let newGroceryList = { ...groceryList };
           if (itemToUpdate.recipe) {
               newGroceryList.recipes = groceryList.recipes.map((r) => {
-                  if (r.id === itemToUpdate.recipe.id) {
+                  if (matchesGroceryListRecipeEntry(r, itemToUpdate.recipe)) {
                       const updatedIngs = r.recipe.ingredients.map((ing, idx) => {
                         return idx === itemToUpdate.index ? { ...ing, ...newData } : ing;
                       });
@@ -377,7 +389,7 @@ const shareURL = async () => {
   let all_ingredients_by_type = getAllIngredientsByType(allIngredients);
 
   return (
-    <main className="max-w-xl mx-auto min-w-[380px] p-6">
+    <main className="max-w-xl mx-auto min-w-[380px] p-6 pb-28">
     
     {/* Header Section: Title/Actions on Top, Recipes Below */}
     <div className="flex flex-col gap-4 mb-6 px-1">
