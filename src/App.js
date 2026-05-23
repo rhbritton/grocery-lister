@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -7,6 +7,7 @@ import { userLogout } from './auth/authActions';
 
 import { BrowserRouter, Routes, Route, NavLink, useLocation, useSearchParams, Navigate, useNavigate } from 'react-router-dom';
 import ScrollToTop from './components/ScrollToTop';
+import ConnectionStatusBanner from './components/ConnectionStatusBanner';
 
 import { useSelector, useDispatch } from 'react-redux';
 
@@ -85,6 +86,13 @@ function App() {
   const [showBanner, setShowBanner] = useState(false); // shouldShowMobileBanner
   
   const dispatch = useDispatch();
+
+  const [connectionStatus, setConnectionStatus] = useState(
+    () => (typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'hidden')
+  );
+  const onlineFlashTimeoutRef = useRef(null);
+  const syncInFlightRef = useRef(false);
+  const pendingFlushCheckedRef = useRef(false);
 
   // useEffect(() => {
   //   const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -177,21 +185,68 @@ function App() {
     ]);
   };
 
+  const runSyncAfterReconnect = useCallback(async (userId) => {
+    if (syncInFlightRef.current) return;
+    syncInFlightRef.current = true;
+    setConnectionStatus('syncing');
+
+    try {
+      await syncAfterReconnect(userId);
+      setConnectionStatus('online');
+      if (onlineFlashTimeoutRef.current) clearTimeout(onlineFlashTimeoutRef.current);
+      onlineFlashTimeoutRef.current = setTimeout(() => {
+        setConnectionStatus('hidden');
+      }, 2200);
+    } catch (error) {
+      console.warn('Reconnect sync failed:', error);
+      setConnectionStatus('online');
+      if (onlineFlashTimeoutRef.current) clearTimeout(onlineFlashTimeoutRef.current);
+      onlineFlashTimeoutRef.current = setTimeout(() => {
+        setConnectionStatus('hidden');
+      }, 2200);
+    } finally {
+      syncInFlightRef.current = false;
+    }
+  }, [dispatch]);
+
   useEffect(() => {
-    if (!user?.uid) return;
-
-    const handleOnline = () => {
-      syncAfterReconnect(user.uid);
-    };
-
-    window.addEventListener('online', handleOnline);
-
-    if (navigator.onLine && pendingQueue.length > 0) {
-      syncAfterReconnect(user.uid);
+    if (!user?.uid) {
+      setConnectionStatus('hidden');
+      pendingFlushCheckedRef.current = false;
+      return;
     }
 
-    return () => window.removeEventListener('online', handleOnline);
-  }, [user?.uid, dispatch, pendingQueue.length]);
+    const handleOffline = () => {
+      if (onlineFlashTimeoutRef.current) clearTimeout(onlineFlashTimeoutRef.current);
+      setConnectionStatus('offline');
+    };
+
+    const handleOnline = () => {
+      runSyncAfterReconnect(user.uid);
+    };
+
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+
+    if (!navigator.onLine) {
+      setConnectionStatus('offline');
+    }
+
+    return () => {
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+      if (onlineFlashTimeoutRef.current) clearTimeout(onlineFlashTimeoutRef.current);
+    };
+  }, [user?.uid, runSyncAfterReconnect]);
+
+  useEffect(() => {
+    if (!user?.uid || pendingFlushCheckedRef.current) return;
+    pendingFlushCheckedRef.current = true;
+
+    if (navigator.onLine && pendingQueue.length > 0) {
+      runSyncAfterReconnect(user.uid);
+    }
+  }, [user?.uid, pendingQueue.length, runSyncAfterReconnect]);
 
   // Handle Google Sign-in
   const handleGoogleLogin = async () => {
@@ -409,7 +464,9 @@ function App() {
 
         <ScrollToTop />
 
-        <main className={`min-h-screen bg-[#F8FAFC] font-sans text-slate-900 ${spaceForFloatingButton}`}>
+        {user && <ConnectionStatusBanner status={connectionStatus} />}
+
+        <main className={`min-h-screen bg-[#F8FAFC] font-sans text-slate-900 ${spaceForFloatingButton} ${connectionStatus === 'offline' || connectionStatus === 'syncing' ? 'pt-[52px]' : ''}`}>
             {user && <Header user={user} handleGoogleLogin={handleGoogleLogin} handleLogout={handleLogout} hasProgressPercent={true} checkedCount={checkedCount} totalItems={totalItems} />}
             <Routes>
               {user && <Route path="/recipes" element={<Recipes user={user} setSpaceForFloatingButton={setSpaceForFloatingButton} />} />}
