@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams, useNavigate, NavLink, useSearchParams } from 'react-router-dom';
 
@@ -18,7 +18,6 @@ import {
   faCalendarAlt,
   faUserCircle,
   faReceipt,
-  faSave,
   faSignOutAlt,
   faClock,
   faTag,
@@ -32,7 +31,6 @@ import { fetchGroceryListById } from '../slices/groceryListSlice.ts';
 import { editGroceryListFromFirestore, upsertGroceryList } from '../slices/groceryListsSlice.ts';
 
 import { formatDate, formatTime } from '../../../services/date.js';
-import { isBrowserOffline } from '../../../services/offlineSync.ts';
 
 import { typeOptions } from '../../recipes/slices/recipesSlice.ts';
 
@@ -62,7 +60,10 @@ const ViewGroceryList = (props) => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
     useEffect(() => {
-        props.setSpaceForFloatingButton && props.setSpaceForFloatingButton('mb-36');
+        props.setSpaceForFloatingButton && props.setSpaceForFloatingButton('');
+        return () => {
+            props.setSpaceForFloatingButton && props.setSpaceForFloatingButton('');
+        };
     }, []);
 
     useEffect(() => {
@@ -78,13 +79,6 @@ const ViewGroceryList = (props) => {
   const [shareFeedback, setShareFeedback] = useState('');
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
-  const [toast, setToast] = useState(null);
-
-const showToast = (message) => {
-    setToast(message);
-    setTimeout(() => setToast(null), 3000);
-};
-
 const flashItem = (itemId, delay = 0) => {
     setTimeout(() => {
         const target = document.getElementById(itemId);
@@ -97,6 +91,35 @@ const flashItem = (itemId, delay = 0) => {
         }
     }, delay); // Use the passed delay
 };
+
+  const isOwner = props.userId && groceryList && (
+    groceryList.userId === props.userId ||
+    (!groceryList.userId && groceryLists.some((gl) => gl.fbid === groceryList.fbid || gl.id === groceryListId))
+  );
+
+  const persistGroceryList = async (list) => {
+    if (!list?.fbid || !isOwner) return;
+
+    const listToSave = {
+      fbid: list.fbid,
+      id: list.id,
+      userId: list.userId || props.userId,
+      timestamp: list.timestamp,
+      recipes: list.recipes,
+      ingredients: list.ingredients,
+      updatedAt: Math.floor(Date.now() / 1000),
+    };
+
+    dispatch(upsertGroceryList(listToSave));
+    setOriginalAllIngredients(getAllIngredients({ ...list, ...listToSave }));
+
+    try {
+      const result = await dispatch(editGroceryListFromFirestore(listToSave)).unwrap();
+      setGroceryList((prev) => ({ ...prev, ...result }));
+    } catch (_) {
+      // Offline saves are queued by the thunk; no UI feedback needed.
+    }
+  };
 
   const deleteGlobalItem = (globalIndex) => {
       const itemToDelete = allIngredients[globalIndex];
@@ -120,6 +143,7 @@ const flashItem = (itemId, delay = 0) => {
           setGroceryList(newGroceryList);
           setEditingItem(null);
           setIsConfirmingDelete(false);
+          persistGroceryList(newGroceryList);
       }
   };
 
@@ -143,10 +167,10 @@ const flashItem = (itemId, delay = 0) => {
                 ? updatedRecipes 
                 : [...groceryList.recipes, recipe];
 
-            // 3. Update state
-            setGroceryList({ ...groceryList, recipes: finalRecipes });
+            const newList = { ...groceryList, recipes: finalRecipes };
+            setGroceryList(newList);
             setIsAddModalOpen(false);
-            showToast(`Added "${recipe?.recipe?.name}"!`);
+            persistGroceryList(newList);
             
         } else {
             // Logic for manual custom items
@@ -154,11 +178,12 @@ const flashItem = (itemId, delay = 0) => {
             const itemId = `manual-${newIndex}`;
 
             const updatedIngredients = [...groceryList.ingredients, newItem];
-            setGroceryList({ ...groceryList, ingredients: updatedIngredients });
+            const newList = { ...groceryList, ingredients: updatedIngredients };
+            setGroceryList(newList);
             setIsAddModalOpen(false);
 
-            showToast(`Added "${newItem.amount} ${newItem.name}"!`);
-            flashItem(itemId, 200); 
+            flashItem(itemId, 200);
+            persistGroceryList(newList);
         }
     }
 };
@@ -179,9 +204,8 @@ const flashItem = (itemId, delay = 0) => {
           let newGroceryList = { ...groceryList };
           if (itemToUpdate.recipe) {
               newGroceryList.recipes = groceryList.recipes.map((r) => {
-                  if (r.id === itemToUpdate.recipe.fbid) {
+                  if (r.id === itemToUpdate.recipe.id) {
                       const updatedIngs = r.recipe.ingredients.map((ing, idx) => {
-                        
                         return idx === itemToUpdate.index ? { ...ing, ...newData } : ing;
                       });
                       return { ...r, recipe: { ...r.recipe, ingredients: updatedIngs } };
@@ -194,6 +218,7 @@ const flashItem = (itemId, delay = 0) => {
               );
           }
           setGroceryList(newGroceryList);
+          persistGroceryList(newGroceryList);
       }
   };
 
@@ -322,63 +347,7 @@ const flashItem = (itemId, delay = 0) => {
 //     return () => unsubscribe();
 //   }, [groceryListId, groceryList?.userId]);
 
-  const isSaveDisabled = useMemo(() => {
-    // 1. Check for empty lists
-    if (!originalAllIngredients.length || !allIngredients.length) return true;
-
-    // 2. Check if lengths differ (quick exit)
-    if (originalAllIngredients.length !== allIngredients.length) return false;
-
-    // 3. Deep compare the specific fields
-    return originalAllIngredients.every((ing, i) => {
-      const currentIng = allIngredients[i];
-      
-      return (
-        !!ing.crossed === !!currentIng?.crossed &&
-        ing.ingredient?.name === currentIng?.ingredient?.name &&
-        ing.ingredient?.amount === currentIng?.ingredient?.amount
-      );
-    });
-  }, [originalAllIngredients, allIngredients]);
-
-  const handleSave = async () => {
-    if (!isSaveDisabled) {
-        const listToSave = {
-          fbid: groceryList.fbid,
-          id: groceryList.id,
-          userId: groceryList.userId || props.userId,
-          timestamp: groceryList.timestamp,
-          recipes: groceryList.recipes,
-          ingredients: groceryList.ingredients,
-          updatedAt: Math.floor(Date.now() / 1000),
-        };
-
-        const savedList = { ...groceryList, ...listToSave };
-        dispatch(upsertGroceryList(listToSave));
-        setOriginalAllIngredients(getAllIngredients(savedList));
-        setGroceryList(savedList);
-
-        try {
-          const result = await dispatch(editGroceryListFromFirestore(listToSave)).unwrap();
-
-          setGroceryList((prev) => ({ ...prev, ...result }));
-          showToast(
-            result.offlineQueued
-              ? 'Saved offline — will sync when back online'
-              : 'List saved'
-          );
-        } catch (error) {
-          if (isBrowserOffline()) {
-            showToast('Saved offline — will sync when back online');
-          } else {
-            showToast('Save failed — try again when online');
-          }
-        }
-    }
-  }
-
-    // Add this state near your other useState hooks
-const [isShared, setIsShared] = useState(false);
+    const [isShared, setIsShared] = useState(false);
 
 const shareURL = async () => {
     const fullUrl = `${window.location.origin}${props.basename}?grocerylist=${groceryListId}`;
@@ -406,13 +375,6 @@ const shareURL = async () => {
 };
 
   let all_ingredients_by_type = getAllIngredientsByType(allIngredients);
-
-  const isOwner = props.userId && groceryList && (
-    groceryList.userId === props.userId ||
-    (!groceryList.userId && groceryLists.some((gl) => gl.fbid === groceryList.fbid || gl.id === groceryListId))
-  );
-
-  console.log('groceryList', groceryList);
 
   return (
     <main className="max-w-xl mx-auto min-w-[380px] p-6">
@@ -633,30 +595,11 @@ const shareURL = async () => {
             {/* Primary Floating Action Button */}
             {isOwner && <button 
                 onClick={() => setIsAddModalOpen(true)}
-                className={`fixed bottom-24 right-6 w-16 h-16 rounded-2xl flex items-center justify-center transition-all z-50
+                className={`fixed bottom-6 right-6 w-16 h-16 rounded-2xl flex items-center justify-center transition-all z-50
                     bg-[#1976D2] text-white shadow-2xl hover:bg-blue-700 transform active:scale-95`}
                 >
                 <FontAwesomeIcon icon={faPlus} className="text-2xl" />
             </button>}
-
-            {isOwner && <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-slate-200 p-4 z-50">
-                <div className="max-w-xl mx-auto">
-                    <button 
-                        onClick={handleSave}
-                        disabled={isSaveDisabled || props.groceryListHasChanged}
-                        className={`w-full py-4 rounded-2xl flex items-center justify-center gap-3 transition-all
-                            ${(isSaveDisabled || props.groceryListHasChanged) 
-                              ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
-                              : 'bg-emerald-600 text-white shadow-lg shadow-emerald-200 active:scale-[0.98]'
-                          }`}
-                    >
-                        <FontAwesomeIcon icon={faSave} />
-                        <span className="font-black uppercase tracking-widest text-sm">
-                            {props.groceryListHasChanged ? 'Syncing Changes...' : 'Save List Changes'}
-                        </span>
-                    </button>
-                </div>
-            </div>}
 
             <AddIngredientModal 
                 isOpen={isAddModalOpen} 
@@ -665,14 +608,6 @@ const shareURL = async () => {
                 groceryList={groceryList}
             />
 
-            {toast && (
-                <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] animate-in fade-in slide-in-from-bottom-4 duration-300">
-                    <div className="bg-[#1976D2] text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-blue-400/30">
-                        <span className="text-sm font-bold uppercase tracking-widest w-full">{toast}</span>
-                    </div>
-                </div>
-            )}
-    
           </main>
   );
 };
