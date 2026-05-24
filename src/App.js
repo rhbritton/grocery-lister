@@ -8,6 +8,7 @@ import { userLogout } from './auth/authActions';
 import { BrowserRouter, Routes, Route, NavLink, useLocation, useSearchParams, Navigate, useNavigate, useParams } from 'react-router-dom';
 import ScrollToTop from './components/ScrollToTop';
 import ConnectionStatusBanner from './components/ConnectionStatusBanner';
+import StorePromoBanner from './components/StorePromoBanner';
 import PageLoader from './components/PageLoader';
 
 import { useSelector, useDispatch } from 'react-redux';
@@ -71,17 +72,6 @@ function App() {
   
   const [spaceForFloatingButton, setSpaceForFloatingButton] = useState('');
 
-  // 1. Check if the device is likely a phone or tablet
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-  // 2. Check if the app is running as a PWA/Standalone app
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-
-  // 3. Logic: Show banner ONLY if it's mobile AND NOT standalone
-  const shouldShowMobileBanner = isMobile && !isStandalone;
-  
-  const [showBanner, setShowBanner] = useState(false); // shouldShowMobileBanner
-  
   const dispatch = useDispatch();
 
   const [connectionStatus, setConnectionStatus] = useState(
@@ -311,11 +301,15 @@ function App() {
       <div className="w-full max-w-sm p-10 bg-white rounded-[2rem] shadow-xl border border-slate-100 text-center">
         {/* App Logo */}
         <div className="flex justify-center mb-6">
-          <img 
-            className="w-20 h-20 rounded-2xl object-contain shadow-sm" 
-            src="/gl/images/logo_color.png" 
-            alt="GroceryLister Logo" 
-          />
+          <span className="w-20 h-20 rounded-2xl overflow-hidden inline-flex">
+            <img
+              className="w-full h-full object-contain block"
+              src={`${process.env.PUBLIC_URL}/images/logo_color.png`}
+              alt="GroceryLister Logo"
+              width={80}
+              height={80}
+            />
+          </span>
         </div>
 
         <h1 className="text-3xl font-black mb-3 tracking-tight text-slate-900">
@@ -399,42 +393,7 @@ function App() {
 
   return (
     <div className="App bg-[#F8FAFC] min-h-screen">
-        {showBanner && !isStandalone && (
-          <div className="top-0 left-0 w-full bg-slate-100 px-4 py-3 flex items-center justify-between z-[10001] border-b border-slate-200 shadow-md">
-            <div className="flex items-center gap-3 overflow-hidden">
-              <div className="shrink-0">
-                <img 
-                  className="w-10 h-10 rounded-lg object-contain bg-white shadow-sm" 
-                  src="/gl/images/logo_color.png" 
-                  alt="Logo"
-                />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-bold leading-tight text-black truncate">GroceryLister App</p>
-                <p className="text-xs text-slate-600 truncate">Get the best experience on your phone</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center gap-3 shrink-0 ml-4">
-              <a 
-                href="https://apps.apple.com/app/your-app-id" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="bg-brand hover:bg-brand-dark text-white text-xs font-bold px-4 py-2 rounded-full transition-colors uppercase tracking-wider"
-              >
-                Get
-              </a>
-              <button 
-                onClick={() => setShowBanner(false)}
-                className="text-slate-400 hover:text-slate-600 p-1"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        )}
+        <StorePromoBanner />
 
         <BrowserRouter basename="/gl">
 
