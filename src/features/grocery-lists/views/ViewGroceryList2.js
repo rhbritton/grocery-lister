@@ -27,8 +27,15 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 
 import { fetchGroceryListById } from '../slices/groceryListSlice.ts';
-import { editGroceryListFromFirestore, upsertGroceryList } from '../slices/groceryListsSlice.ts';
+import { editGroceryListFromFirestore, upsertGroceryList, shareGroceryListFromFirestore } from '../slices/groceryListsSlice.ts';
 import { normalizeUpdatedAt } from '../utils/groceryListMerge.ts';
+import {
+  isShareActive,
+  buildGroceryListShareUrl,
+  formatShareExpiryDate,
+  getShareExpiresAtFromList,
+  normalizeShareTimestamp,
+} from '../utils/groceryListShare.ts';
 
 import { formatDate, formatTime } from '../../../services/date.js';
 
@@ -41,6 +48,7 @@ import EmptyState from '../../../components/EmptyState.js';
 import Toast from '../../../components/Toast.js';
 import { ActionFab } from '../../../components/FabButton.js';
 import ModalShell from '../../../components/ModalShell.js';
+import ShareGroceryListModal from '../../../components/ShareGroceryListModal.js';
 import { copyTextToClipboard } from '../../../utils/clipboard.js';
 
 const groceryListRecipeSeparator = ', ';
@@ -122,7 +130,9 @@ function mapSnapshotToGroceryList(docSnap, userId) {
     fbid: docSnap.id,
     ...data,
     userId: data.userId || userId,
-    updatedAt: data?.updatedAt?.seconds ?? (typeof data?.updatedAt === 'number' ? data.updatedAt : 0),
+    updatedAt: normalizeUpdatedAt(data?.updatedAt),
+    sharedAt: normalizeShareTimestamp(data?.sharedAt),
+    shareExpiresAt: normalizeShareTimestamp(data?.shareExpiresAt),
   };
 }
 
@@ -212,13 +222,17 @@ const ViewGroceryList = (props) => {
     highlightChangedRows(ids);
   }, [groceryList]);
 
-  const isOwner = props.userId && groceryList && (
+  const isOwner = !!(props.userId && groceryList && (
     groceryList.userId === props.userId ||
     (!groceryList.userId && groceryLists.some((gl) => gl.fbid === groceryList.fbid || gl.id === groceryListId))
-  );
+  ));
+
+  const shareActive = isShareActive(groceryList);
+  const shareExpiresAt = getShareExpiresAtFromList(groceryList);
+  const canCheckOff = isOwner || shareActive;
 
   const persistGroceryList = async (list) => {
-    if (!list?.fbid || !isOwner) return;
+    if (!list?.fbid || !canCheckOff) return;
 
     const listToSave = {
       fbid: list.fbid,
@@ -375,8 +389,11 @@ const ViewGroceryList = (props) => {
   }
 
   useEffect(() => {
+    setLoadError(false);
+  }, [groceryListId]);
+
+  useEffect(() => {
     const fetchData = async () => {
-      setLoadError(false);
       try {
         let gl = (await dispatch(fetchGroceryListById(groceryListId))).payload;
 
@@ -386,17 +403,13 @@ const ViewGroceryList = (props) => {
               userId: gl.userId || props.userId,
             };
             setGroceryList(listWithOwner);
+            setLoadError(false);
 
             let all_ingredients = getAllIngredients(listWithOwner);
             setOriginalAllIngredients(all_ingredients);
-        } else if (!groceryListRef.current) {
-            setLoadError(true);
         }
       } catch (error) {
         console.error("Error fetching grocery list:", error);
-        if (!groceryListRef.current) {
-          setLoadError(true);
-        }
       }
     }
 
@@ -426,20 +439,29 @@ const ViewGroceryList = (props) => {
   }, [groceryList]);
 
   useEffect(() => {
-    const listFbid = groceryList?.fbid || groceryListId;
+    const listFbid = groceryListId;
     if (!listFbid) return;
 
     isInitialLoad.current = true;
+    setLoadError(false);
     const docRef = doc(db, 'grocery-lists', listFbid);
 
     const unsubscribe = onSnapshot(
       docRef,
       (docSnap) => {
-        if (!docSnap.exists()) return;
+        if (!docSnap.exists()) {
+          if (!docSnap.metadata.fromCache || !navigator.onLine) {
+            setLoadError(true);
+          }
+          return;
+        }
 
         if (isInitialLoad.current) {
           const remoteList = mapSnapshotToGroceryList(docSnap, props.userId);
-          if (remoteList.isDeleted) return;
+          if (remoteList.isDeleted) {
+            setLoadError(true);
+            return;
+          }
 
           // When online, wait for the server snapshot — the first cache event can be stale.
           const waitingForServer = docSnap.metadata.fromCache && navigator.onLine;
@@ -453,6 +475,7 @@ const ViewGroceryList = (props) => {
           }
 
           isInitialLoad.current = false;
+          setLoadError(false);
 
           const currentList = groceryListRef.current;
           const serverUpdatedAt = normalizeUpdatedAt(remoteList.updatedAt);
@@ -473,7 +496,10 @@ const ViewGroceryList = (props) => {
         if (docSnap.metadata.hasPendingWrites) return;
 
         const remoteList = mapSnapshotToGroceryList(docSnap, props.userId);
-        if (remoteList.isDeleted) return;
+        if (remoteList.isDeleted) {
+          setLoadError(true);
+          return;
+        }
 
         const currentList = groceryListRef.current;
         if (!currentList) return;
@@ -492,13 +518,18 @@ const ViewGroceryList = (props) => {
       },
       (error) => {
         console.error('Error listening to grocery list changes:', error);
+        if (!groceryListRef.current) {
+          setLoadError(true);
+        }
       }
     );
 
     return () => unsubscribe();
-  }, [groceryList?.fbid, groceryListId, props.userId, dispatch]);
+  }, [groceryListId, props.userId, dispatch]);
 
     const [isShared, setIsShared] = useState(false);
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    const [isSharingLink, setIsSharingLink] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
     const [toastVisible, setToastVisible] = useState(false);
 
@@ -507,11 +538,11 @@ const showToast = (message) => {
   setToastVisible(true);
 };
 
-const shareURL = async () => {
-    const fullUrl = `${window.location.origin}${props.basename}?grocerylist=${groceryListId}`;
+const shareListLink = async () => {
+    const fullUrl = buildGroceryListShareUrl(props.basename, groceryListId);
     const shareData = {
         title: `Grocery List: ${groceryList ? formatDate(new Date(groceryList.timestamp)) : ''}`,
-        text: 'Check out this grocery list!',
+        text: 'Check off items on this grocery list while you shop.',
         url: fullUrl,
     };
 
@@ -536,18 +567,50 @@ const shareURL = async () => {
     }
 };
 
+const handleConfirmShare = async () => {
+    if (!groceryList?.fbid || !props.userId) return;
+
+    setIsSharingLink(true);
+    try {
+        const result = await dispatch(shareGroceryListFromFirestore({
+            fbid: groceryList.fbid,
+            id: groceryList.id,
+            userId: props.userId,
+        })).unwrap();
+
+        const nextList = {
+            ...groceryList,
+            sharedAt: result.sharedAt,
+            shareExpiresAt: result.shareExpiresAt,
+        };
+        setGroceryList(nextList);
+        dispatch(upsertGroceryList(nextList));
+        setIsShareModalOpen(false);
+        await shareListLink();
+    } catch (error) {
+        console.error('Error enabling share:', error);
+        showToast('Could not share this list — try again');
+    } finally {
+        setIsSharingLink(false);
+    }
+};
+
   let all_ingredients_by_type = getAllIngredientsByType(allIngredients);
 
   if (!groceryList) {
     if (loadError) {
       return (
-        <main className="page-main pb-fab-clear">
+        <main className="page-main pb-8">
           <EmptyState
             icon={faClipboardList}
             title="Couldn't load this list"
-            description="It may have been deleted or you may not have access."
-            actionLabel="Back to lists"
-            actionTo="/grocery-lists"
+            description={
+              props.userId
+                ? 'It may have been deleted or you may not have access.'
+                : 'This link may have expired or the list is no longer shared. Ask the owner to share again.'
+            }
+            actionLabel={props.userId ? 'Back to lists' : undefined}
+            actionTo={props.userId ? '/grocery-lists' : undefined}
           />
         </main>
       );
@@ -556,10 +619,30 @@ const shareURL = async () => {
   }
 
   return (
-    <main className="page-main pb-fab-clear">
+    <main className={`page-main ${isOwner ? 'pb-fab-clear' : 'pb-8'}`}>
     
     {/* Header Section: Title/Actions on Top, Recipes Below */}
     <div className="flex flex-col gap-4 mb-6">
+      
+      {(shareActive || (!isOwner && groceryList?.sharedAt)) && (
+        <div
+          className={`rounded-2xl px-4 py-3 text-body-sm font-medium border ${
+            shareActive
+              ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
+              : 'bg-slate-100 text-slate-600 border-slate-200'
+          }`}
+          role="status"
+        >
+          {shareActive ? (
+            <>
+              {isOwner ? 'Shared for shopping' : 'You can check items off on this shared list'}
+              {shareExpiresAt ? ` — link active until ${formatShareExpiryDate(shareExpiresAt)}` : ''}
+            </>
+          ) : (
+            <>This shopping link has expired. Ask the list owner to share again.</>
+          )}
+        </div>
+      )}
       
       {/* Row 1: Title & Metadata on Left, Actions on Right */}
       <div className="flex justify-between items-start">
@@ -582,14 +665,20 @@ const shareURL = async () => {
         {/* Top Right: Action Buttons */}
         {isOwner && <div className="flex gap-2 shrink-0">
             <button 
-                onClick={shareURL}
+                type="button"
+                onClick={() => setIsShareModalOpen(true)}
                 aria-label={isShared ? 'Link copied' : 'Share grocery list'}
-                className={`w-14 h-14 flex flex-col items-center justify-center transition-all duration-300 rounded-xl border
+                className={`relative w-14 h-14 flex flex-col items-center justify-center transition-all duration-300 rounded-xl border
                     ${isShared 
                         ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-200 scale-105' 
-                        : 'bg-emerald-50/50 text-emerald-600 border-emerald-100/50 hover:bg-emerald-100 hover:border-emerald-200 active:scale-95'
+                        : shareActive
+                          ? 'bg-emerald-50 text-emerald-600 border-emerald-300 hover:bg-emerald-100 hover:border-emerald-400 active:scale-95'
+                          : 'bg-emerald-50/50 text-emerald-600 border-emerald-100/50 hover:bg-emerald-100 hover:border-emerald-200 active:scale-95'
                     }`}
             >
+                {shareActive && !isShared && (
+                  <span className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white" aria-hidden="true" />
+                )}
                 <FontAwesomeIcon 
                     icon={isShared ? faCheck : faShareAlt} 
                     className={`transition-all duration-300 text-xl ${isShared ? 'scale-110' : 'scale-100'}`} 
@@ -681,6 +770,7 @@ const shareURL = async () => {
                                             onUpdate={(newData) => updateGlobalItem(globalIndex, newData)}
                                             onEdit={() => setEditingItem({ ...item, globalIndex })}
                                             disableEdit={!isOwner}
+                                            disableCheck={!canCheckOff}
                                         />
                                     );
                                 })}
@@ -796,6 +886,15 @@ const shareURL = async () => {
                 onAdd={handleAddItem}
                 groceryList={groceryList}
             />
+
+            {isShareModalOpen && (
+              <ShareGroceryListModal
+                onClose={() => setIsShareModalOpen(false)}
+                onShare={handleConfirmShare}
+                expiresAt={shareExpiresAt}
+                isSharing={isSharingLink}
+              />
+            )}
 
           </main>
   );

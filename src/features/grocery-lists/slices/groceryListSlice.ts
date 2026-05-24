@@ -11,6 +11,8 @@ export interface GroceryList {
     recipes: Recipe[] | [];
     ingredients: Ingredient[] | [];
     timestamp: number;
+    sharedAt?: number;
+    shareExpiresAt?: number;
     updatedAt: number | undefined;
 };
 

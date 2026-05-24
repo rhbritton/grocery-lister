@@ -23,7 +23,14 @@ export const GroceryListService = {
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
-        return { fbid: docSnap.id, ...docSnap.data(), updatedAt: docSnap.data()?.updatedAt?.seconds || 0 };
+        const data = docSnap.data();
+        return {
+          fbid: docSnap.id,
+          ...data,
+          updatedAt: data?.updatedAt?.seconds || 0,
+          sharedAt: data?.sharedAt?.seconds ?? data?.sharedAt ?? 0,
+          shareExpiresAt: data?.shareExpiresAt?.seconds ?? data?.shareExpiresAt ?? 0,
+        };
       } else {
         console.log("No such document!");
         return undefined;

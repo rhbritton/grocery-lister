@@ -2,9 +2,10 @@ import React, { useMemo, useEffect, useState } from 'react';
 import { NavLink, useLinkClickHandler, useNavigate } from 'react-router-dom';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faEdit, faTrashAlt, faTrash } from '@fortawesome/free-solid-svg-icons';
+import { faTrashAlt, faLink } from '@fortawesome/free-solid-svg-icons';
 
 import { formatDate, formatTime } from '../../../services/date.js';
+import { isShareActive } from '../utils/groceryListShare.ts';
 
 import '../styles/GroceryListItem.css';
 
@@ -41,6 +42,8 @@ function GroceryListItem(props) {
         setIsComplete(allIngredients.total > 0 && allIngredients.crossed === allIngredients.total);
     }, [allIngredients.total, allIngredients.crossed])
 
+    const shareActive = isShareActive(props.gl);
+
     return (
         <div onClick={handleViewClick} className="bg-white rounded-2xl border border-slate-100 p-5 flex items-center shadow-md active:shadow-sm transition-all duration-100 cursor-pointer group">
             <div className="flex-1 min-w-0 flex flex-col items-start text-left">
@@ -51,6 +54,15 @@ function GroceryListItem(props) {
                 <span className="inline-flex items-center justify-center text-body-sm leading-none bg-slate-100 text-slate-500 px-2.5 py-1 rounded-full font-bold shrink-0">
                     {formatTime(new Date(props.gl.timestamp), { hour: 'numeric', minute: 'numeric'})}
                 </span>
+                {shareActive && (
+                  <span
+                    className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200 shrink-0"
+                    title="Shared for shopping"
+                    aria-label="Shared for shopping"
+                  >
+                    <FontAwesomeIcon icon={faLink} className="text-xs" aria-hidden="true" />
+                  </span>
+                )}
                 </div>
                 
                 <p className="text-sm text-slate-500 font-medium truncate w-full mb-1">

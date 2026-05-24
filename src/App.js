@@ -443,7 +443,7 @@ function App() {
         {user && <ConnectionStatusBanner status={connectionStatus} />}
 
         <main className={`min-h-screen bg-[#F8FAFC] font-sans text-slate-900 ${spaceForFloatingButton} ${connectionStatus === 'offline' || connectionStatus === 'syncing' ? 'pt-[52px]' : ''}`}>
-            {user && <Header user={user} handleGoogleLogin={handleGoogleLogin} handleLogout={handleLogout} hasProgressPercent={true} checkedCount={checkedCount} totalItems={totalItems} lastRemoteUpdateAt={lastRemoteUpdateAt} setLastRemoteUpdateAt={setLastRemoteUpdateAt} />}
+            <Header user={user} handleGoogleLogin={handleGoogleLogin} handleLogout={handleLogout} hasProgressPercent={true} checkedCount={checkedCount} totalItems={totalItems} lastRemoteUpdateAt={lastRemoteUpdateAt} setLastRemoteUpdateAt={setLastRemoteUpdateAt} />
             <Routes>
               {user && <Route path="/recipes" element={<Recipes user={user} setSpaceForFloatingButton={setSpaceForFloatingButton} />} />}
               {user && <Route path="/recipes/add" element={<AddRecipe user={user} />} />}
@@ -452,7 +452,7 @@ function App() {
               {user && <Route path="/grocery-lists" element={<GroceryLists user={user} setSpaceForFloatingButton={setSpaceForFloatingButton} />} />}
               {user && <Route path="/grocery-lists/add" element={<AddGroceryList user={user} />} />}
               {user && <Route path="/grocery-lists/edit/:groceryListId" element={<GroceryListEditRedirect />} />}
-              {user && <Route path="/grocery-lists/view/:groceryListId" element={<ViewGroceryList basename="/gl" userId={user.uid} setCheckedCount={setCheckedCount} setTotalItems={setTotalItems} setSpaceForFloatingButton={setSpaceForFloatingButton} setLastRemoteUpdateAt={setLastRemoteUpdateAt} onRemoteListUpdate={handleRemoteListUpdate} />} />}
+              <Route path="/grocery-lists/view/:groceryListId" element={<ViewGroceryList basename="/gl" userId={user?.uid} setCheckedCount={setCheckedCount} setTotalItems={setTotalItems} setSpaceForFloatingButton={setSpaceForFloatingButton} setLastRemoteUpdateAt={setLastRemoteUpdateAt} onRemoteListUpdate={handleRemoteListUpdate} />} />
               
               <Route path="/recipes/view/:recipeId" element={<ViewRecipe basename="/gl" userId={user?.uid} totalItems={totalItems} setCheckedCount={setCheckedCount} setTotalItems={setTotalItems} setSpaceForFloatingButton={setSpaceForFloatingButton} setLastRemoteUpdateAt={setLastRemoteUpdateAt} />} />
               <Route path="*" element={<QueryRedirectHandler user={user} />} />

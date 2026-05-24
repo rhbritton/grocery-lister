@@ -1,0 +1,42 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // shareExpiresAt is unix seconds, set when the owner shares a list
+    function isGroceryListShareActive() {
+      return resource.data.shareExpiresAt is number
+        && request.time.toMillis() / 1000 < resource.data.shareExpiresAt;
+    }
+
+    match /recipes/{documentId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    match /grocery-lists/{documentId} {
+      // Owner: full access while logged in
+      allow read, write: if isSignedIn();
+
+      // Shared link: read + check-off sync while the 7-day window is active
+      allow read: if isGroceryListShareActive();
+      allow update: if isGroceryListShareActive();
+    }
+
+    match /recipe-favorites/{docId} {
+      allow read, write: if isSignedIn() && request.auth.uid == docId;
+    }
+
+    match /artifacts/{appId}/users/{userId}/profiles/{profileId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

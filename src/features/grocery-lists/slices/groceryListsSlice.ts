@@ -13,6 +13,7 @@ import {
   omitUndefinedFields,
 } from '../../../services/offlineSync.ts';
 import { mergeGroceryListOnConflict, normalizeUpdatedAt } from '../utils/groceryListMerge.ts';
+import { SHARE_WINDOW_SECONDS } from '../utils/groceryListShare.ts';
 import { enqueuePendingSync, dequeuePendingSync } from '../../sync/pendingSyncSlice.ts';
 
 interface GroceryListsState {
@@ -338,6 +339,30 @@ export const editGroceryListFromFirestore = createAsyncThunk(
       }
       console.error(error);
       return rejectWithValue(error.message);
+    }
+  }
+);
+
+export const shareGroceryListFromFirestore = createAsyncThunk(
+  'groceryLists/shareGroceryList',
+  async (
+    { fbid, id, userId }: { fbid: string; id?: string; userId: string },
+    { rejectWithValue }
+  ) => {
+    const now = Math.floor(Date.now() / 1000);
+    const shareExpiresAt = now + SHARE_WINDOW_SECONDS;
+
+    try {
+      const docRef = doc(db, 'grocery-lists', fbid);
+      await updateDoc(docRef, {
+        sharedAt: now,
+        shareExpiresAt,
+        updatedAt: serverTimestamp(),
+      });
+
+      return { fbid, id, userId, sharedAt: now, shareExpiresAt };
+    } catch (error) {
+      return rejectWithValue((error as Error).message);
     }
   }
 );

@@ -173,9 +173,7 @@ const shareURL = async () => {
   const steps = instructions.split(/\r?\n/).filter(line => line.trim() !== "");
 
   // Pin the view below the app header so the page itself never scrolls.
-  const shellClass = props.userId
-    ? 'fixed inset-x-0 bottom-0 top-[var(--app-header-height)] z-0 overflow-hidden'
-    : 'fixed inset-x-0 bottom-0 top-0 z-0 overflow-hidden';
+  const shellClass = 'fixed inset-x-0 bottom-0 top-[var(--app-header-height)] z-0 overflow-hidden';
 
   useEffect(() => {
     props.setTotalItems?.(0);
@@ -260,8 +258,8 @@ const shareURL = async () => {
                     </NavLink>
                 )}
 
-                {/* FAVORITE BUTTON (Amber Theme) */}
-                {(owner && props.userId !== owner) && (
+                {/* FAVORITE BUTTON (logged-in viewers, not the owner) */}
+                {props.userId && owner && props.userId !== owner && (
                     <button 
                         type="button"
                         onClick={handleFavoriteToggle}
@@ -281,9 +279,8 @@ const shareURL = async () => {
                     </button>
                 )}
 
-                {/* SHARE BUTTON (Emerald Theme - Keep as is) */}
-                {props.userId && (
-                    <button 
+                {/* SHARE BUTTON */}
+                <button 
                     type="button"
                     onClick={shareURL}
                     aria-label={isShared ? 'Link copied' : 'Share recipe'}
@@ -292,7 +289,7 @@ const shareURL = async () => {
                         ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-200 scale-105' 
                         : 'bg-emerald-50/50 text-emerald-600 border-emerald-100/50 hover:bg-emerald-100 hover:border-emerald-200 active:scale-95'
                         }`}
-                    >
+                >
                     <FontAwesomeIcon 
                         icon={isShared ? faCheckCircle : faShareAlt} 
                         className={`transition-all duration-300 text-xl ${isShared ? 'scale-110' : 'scale-100'}`} 
@@ -301,8 +298,7 @@ const shareURL = async () => {
                         ${isShared ? 'opacity-100 max-h-4' : 'opacity-0 max-h-0'}`}>
                         Copied
                     </span>
-                    </button>
-                )}
+                </button>
                 </div>
             </div>
 
