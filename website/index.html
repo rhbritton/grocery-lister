@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta
+      name="description"
+      content="GroceryLister turns recipes into aisle-sorted grocery lists for easy meal planning. Share by link, shop offline, and sync when you're back online."
+    />
+    <title>GroceryLister — Recipe-powered grocery lists</title>
+    <link rel="stylesheet" href="./css/styles.css" />
+    <link rel="icon" href="./images/logo_color.png" />
+    <link rel="apple-touch-icon" href="./images/logo_color.png" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container site-header-inner">
+        <a class="brand" href="./index.html">
+          <span class="brand-mark">
+            <img src="./images/logo_color.png" alt="" width="40" height="40" />
+          </span>
+          <span>GroceryLister</span>
+        </a>
+        <nav class="site-nav" aria-label="Main">
+          <a href="./support.html">Support</a>
+        </nav>
+        <div class="header-actions">
+          <a class="btn btn-ghost btn-sm" data-web-app href="#">Log in</a>
+        </div>
+        <button type="button" class="nav-toggle" data-nav-toggle aria-expanded="false" aria-label="Open menu">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+      <div class="mobile-nav" data-mobile-nav hidden>
+        <a data-web-app href="#">Log in</a>
+        <a href="./support.html">Help</a>
+        <a href="./privacy.html">Privacy</a>
+        <a href="./terms.html">Terms</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="container hero-grid">
+          <div class="hero-copy">
+            <h1>Recipe-powered grocery lists.</h1>
+            <p class="hero-lead">
+              Pick recipes for the week and get one aisle-sorted list — meal planning without the spreadsheet or the scribbled sticky notes.
+            </p>
+            <div class="signup-stack">
+              <a class="btn btn-primary btn-block" data-web-app href="#">Use the web app</a>
+              <a class="btn btn-outline btn-block btn-with-icon" data-app-store href="#" rel="noopener noreferrer" hidden>
+                <svg class="store-icon store-icon-apple" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+                </svg>
+                <span>Download on the App Store</span>
+              </a>
+              <a class="btn btn-outline btn-block btn-with-icon" data-play-store href="#" rel="noopener noreferrer" hidden>
+                <img class="store-icon store-icon-play" src="./images/icons/google-play.svg" alt="" width="22" height="24" />
+                <span>Get it on Google Play</span>
+              </a>
+            </div>
+            <p class="fine-print">
+              By continuing, you agree to our <a href="./terms.html">Terms</a> and <a href="./privacy.html">Privacy Policy</a>.
+            </p>
+          </div>
+
+          <div class="hero-media">
+            <div class="hero-carousel" data-hero-carousel aria-roledescription="carousel" aria-label="App screenshots">
+              <div class="hero-carousel-controls">
+                <button type="button" class="hero-carousel-arrow hero-carousel-prev" data-carousel-prev aria-label="Previous screenshot">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+                <div class="hero-carousel-viewport">
+                  <div class="hero-carousel-track" data-carousel-track>
+                    <!-- Slides injected from js/config.js carouselSlides by carousel.js -->
+                  </div>
+                </div>
+                <button type="button" class="hero-carousel-arrow hero-carousel-next" data-carousel-next aria-label="Next screenshot">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </button>
+              </div>
+              <div class="hero-carousel-dots" data-carousel-dots aria-hidden="true"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-muted">
+        <div class="container">
+          <p class="eyebrow">Meal planning</p>
+          <h2 class="section-heading">
+            Lists built from recipes — so planning dinner for the week takes minutes, not an hour with a notes app.
+          </h2>
+          <div class="feature-row">
+            <article class="feature-block">
+              <h3>Recipe-powered lists.</h3>
+              <p>Select the meals you're making and GroceryLister pulls ingredients into one list. No copying from five different tabs.</p>
+            </article>
+            <article class="feature-block">
+              <h3>Sorted by aisle.</h3>
+              <p>Ingredients are grouped the way stores are laid out — produce, dairy, meat — so you walk the floor once.</p>
+            </article>
+            <article class="feature-block">
+              <h3>Works offline in the store.</h3>
+              <p>Spotty signal in the aisles? Keep checking items off — your changes save locally and sync when you're back online.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container">
+          <h2 class="section-title center">Share a link — no account required to view.</h2>
+          <div class="feature-row">
+            <article class="feature-block">
+              <h3>Share recipes.</h3>
+              <p>Send a recipe link to a friend or your partner. They can read ingredients and steps without logging in.</p>
+            </article>
+            <article class="feature-block">
+              <h3>Share grocery lists.</h3>
+              <p>One link for the whole household. Everyone opens the same list on their phone — at home or in the store.</p>
+            </article>
+            <article class="feature-block">
+              <h3>Updates in real time.</h3>
+              <p>Check an item off and it syncs for every shopper on the list — handy when you're splitting aisles or shopping at the same time.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-muted ready">
+        <div class="container center">
+          <h2 class="section-title">Ready to simplify your shopping?</h2>
+          <ul class="checklist">
+            <li>Recipe-powered meal planning</li>
+            <li>Ingredients grouped by aisle</li>
+            <li>Share recipes &amp; lists by link</li>
+            <li>Guests can view without signing in</li>
+            <li>Offline in the store — syncs when reconnected</li>
+          </ul>
+          <a class="btn btn-primary btn-lg" data-web-app href="#">Get started free</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-top">
+          <a class="brand brand-footer" href="./index.html">
+            <span class="brand-mark">
+              <img src="./images/logo_color.png" alt="" width="36" height="36" />
+            </span>
+            <span>GroceryLister</span>
+          </a>
+        </div>
+        <div class="footer-columns">
+          <div class="footer-col">
+            <h4>Product</h4>
+            <a data-web-app href="#">Web app</a>
+            <a data-app-store href="#" rel="noopener noreferrer" hidden>App Store</a>
+            <a data-play-store href="#" rel="noopener noreferrer" hidden>Google Play</a>
+          </div>
+          <div class="footer-col">
+            <h4>Support</h4>
+            <a href="./support.html">Help</a>
+            <a href="./privacy.html">Privacy</a>
+            <a href="./terms.html">Terms</a>
+          </div>
+        </div>
+        <p class="footer-copy">© <span id="year"></span> GroceryLister</p>
+      </div>
+    </footer>
+
+    <script src="./js/config.js"></script>
+    <script src="./js/site.js"></script>
+    <script src="./js/carousel.js"></script>
+    <script src="./js/nav.js"></script>
+    <script>
+      document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+  </body>
+</html>
