@@ -7,7 +7,12 @@ import DeleteAccountModal from '../../../components/DeleteAccountModal.js';
 import BottomNav from '../../../components/BottomNav.js';
 import { getDeleteAccountErrorMessage } from '../../../services/accountDeletion.js';
 
-function AccountSettings({ user, isDeletingAccount = false, handleDeleteAccount }) {
+function AccountSettings({
+  user,
+  isDeletingAccount = false,
+  handleDeleteAccount,
+  finishAccountDeletionRedirect,
+}) {
   const navigate = useNavigate();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -21,6 +26,7 @@ function AccountSettings({ user, isDeletingAccount = false, handleDeleteAccount 
       await handleDeleteAccount();
       setShowDeleteModal(false);
       navigate('/', { replace: true });
+      finishAccountDeletionRedirect?.();
     } catch (error) {
       setDeleteError(getDeleteAccountErrorMessage(error));
     } finally {

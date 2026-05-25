@@ -27,6 +27,18 @@ export function collectOwnedDocumentIds(items, userId) {
   )];
 }
 
+async function deleteDocBestEffort(docRef) {
+  try {
+    await deleteDoc(docRef);
+  } catch (error) {
+    // Legacy docs may lack userId and fail owner rules; continue account deletion.
+    if (error?.code === 'not-found' || error?.code === 'permission-denied') {
+      return;
+    }
+    throw error;
+  }
+}
+
 async function deleteMatchingDocs(collectionName, field, userId) {
   while (true) {
     const snapshot = await getDocs(
@@ -43,18 +55,21 @@ async function deleteMatchingDocs(collectionName, field, userId) {
 
     const batch = writeBatch(db);
     snapshot.docs.forEach((document) => batch.delete(document.ref));
-    await batch.commit();
+
+    try {
+      await batch.commit();
+    } catch (error) {
+      if (error?.code !== 'permission-denied') {
+        throw error;
+      }
+
+      await Promise.all(snapshot.docs.map((document) => deleteDocBestEffort(document.ref)));
+    }
   }
 }
 
 async function deleteOptionalDoc(docRef) {
-  try {
-    await deleteDoc(docRef);
-  } catch (error) {
-    if (error?.code !== 'not-found') {
-      throw error;
-    }
-  }
+  await deleteDocBestEffort(docRef);
 }
 
 async function deleteDocumentById(collectionName, documentId) {
@@ -114,6 +129,10 @@ export function getDeleteAccountErrorMessage(error) {
 
   if (error?.code === 'auth/network-request-failed') {
     return 'Network error. Check your connection and try again.';
+  }
+
+  if (error?.code === 'permission-denied') {
+    return 'Could not remove all cloud data. Try again or email support.';
   }
 
   return error?.message || 'Could not delete your account. Try again or email support.';

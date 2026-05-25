@@ -164,7 +164,7 @@ function App() {
     const previousUserId = previousUserIdRef.current;
 
     const loadSession = async () => {
-      if (shouldResetUserSession(previousUserId, nextUserId)) {
+      if (shouldResetUserSession(previousUserId, nextUserId) && !isDeletingAccountRef.current) {
         await resetUserSession(dispatch, persistor);
         clearUiSessionState();
       }
@@ -329,10 +329,16 @@ function App() {
       await deleteAccount();
       await resetUserSession(dispatch, persistor);
       clearUiSessionState();
-    } finally {
+    } catch (error) {
       isDeletingAccountRef.current = false;
       setIsDeletingAccount(false);
+      throw error;
     }
+  };
+
+  const finishAccountDeletionRedirect = () => {
+    isDeletingAccountRef.current = false;
+    setIsDeletingAccount(false);
   };
 
   if (loading) {
@@ -456,7 +462,7 @@ function App() {
       return <Navigate to="/recipes" replace />;
 
     if (isDeletingAccount) {
-      return <PageLoader message="Deleting your account…" />;
+      return <PageLoader message="Signing you out…" />;
     }
 
     return user ? _404 : loginPage;
@@ -482,7 +488,19 @@ function App() {
               {user && <Route path="/grocery-lists" element={<GroceryLists user={user} setSpaceForFloatingButton={setSpaceForFloatingButton} />} />}
               {user && <Route path="/grocery-lists/add" element={<AddGroceryList user={user} />} />}
               {user && <Route path="/grocery-lists/edit/:groceryListId" element={<GroceryListEditRedirect />} />}
-              {(user || isDeletingAccount) && <Route path="/account" element={<AccountSettings user={user} isDeletingAccount={isDeletingAccount} handleDeleteAccount={handleDeleteAccount} />} />}
+              {(user || isDeletingAccount) && (
+                <Route
+                  path="/account"
+                  element={
+                    <AccountSettings
+                      user={user}
+                      isDeletingAccount={isDeletingAccount}
+                      handleDeleteAccount={handleDeleteAccount}
+                      finishAccountDeletionRedirect={finishAccountDeletionRedirect}
+                    />
+                  }
+                />
+              )}
               <Route path="/grocery-lists/view/:groceryListId" element={<ViewGroceryList basename="/gl" userId={user?.uid} setCheckedCount={setCheckedCount} setTotalItems={setTotalItems} setSpaceForFloatingButton={setSpaceForFloatingButton} setLastRemoteUpdateAt={setLastRemoteUpdateAt} onRemoteListUpdate={handleRemoteListUpdate} />} />
               
               <Route path="/recipes/view/:recipeId" element={<ViewRecipe basename="/gl" userId={user?.uid} totalItems={totalItems} setCheckedCount={setCheckedCount} setTotalItems={setTotalItems} setSpaceForFloatingButton={setSpaceForFloatingButton} setLastRemoteUpdateAt={setLastRemoteUpdateAt} />} />
