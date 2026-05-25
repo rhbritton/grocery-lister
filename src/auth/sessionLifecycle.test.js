@@ -17,12 +17,15 @@ describe('sessionLifecycle', () => {
     expect(shouldFullRefreshUserData('user-a', 'user-b')).toBe(true);
   });
 
-  it('does not full refresh on first login after logout', () => {
-    expect(shouldFullRefreshUserData(null, 'user-b')).toBe(false);
+  it('full refreshes on first login after logout or account deletion', () => {
+    expect(shouldFullRefreshUserData(null, 'user-b')).toBe(true);
+  });
+
+  it('does not full refresh on initial authenticated load', () => {
+    expect(shouldFullRefreshUserData(undefined, 'user-a')).toBe(false);
   });
 
   it('does not reset on first authenticated load', () => {
     expect(shouldResetUserSession(undefined, 'user-a')).toBe(false);
-    expect(shouldFullRefreshUserData(undefined, 'user-a')).toBe(false);
   });
 });

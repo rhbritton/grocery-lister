@@ -27,6 +27,7 @@ import Recipes from './features/recipes/views/Recipes2.js';
 import AddRecipe from './features/recipes/views/AddRecipe2.js';
 import EditRecipe from './features/recipes/views/EditRecipe2.js';
 import ViewRecipe from './features/recipes/views/ViewRecipe2.js';
+import AccountSettings from './features/account/views/AccountSettings.js';
 
 import { 
   getAllRecipesFromFirestore, 
@@ -40,8 +41,9 @@ import {
   selectMaxGroceryListTimestamp
 } from './features/grocery-lists/slices/groceryListsSlice.ts';
 import { flushPendingSync } from './features/sync/flushPendingSync.ts';
-import { selectPendingSyncQueue } from './features/sync/pendingSyncSlice.ts';
+import { selectPendingSyncQueue, clearPendingSync } from './features/sync/pendingSyncSlice.ts';
 import { store, persistor } from './app/store.ts';
+import { deleteAccount } from './services/accountDeletion.js';
 
 import './App.css';
 
@@ -85,6 +87,8 @@ function App() {
   const syncInFlightRef = useRef(false);
   const pendingFlushCheckedRef = useRef(false);
   const previousUserIdRef = useRef(undefined);
+  const isDeletingAccountRef = useRef(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   const clearUiSessionState = useCallback(() => {
     setUserProfile(null);
@@ -316,6 +320,21 @@ function App() {
     await signOut(auth);
   };
 
+  const handleDeleteAccount = async () => {
+    isDeletingAccountRef.current = true;
+    setIsDeletingAccount(true);
+
+    try {
+      dispatch(clearPendingSync());
+      await deleteAccount();
+      await resetUserSession(dispatch, persistor);
+      clearUiSessionState();
+    } finally {
+      isDeletingAccountRef.current = false;
+      setIsDeletingAccount(false);
+    }
+  };
+
   if (loading) {
     return <PageLoader message="Starting GroceryLister…" />;
   }
@@ -421,7 +440,7 @@ function App() {
 
   
 
-  const QueryRedirectHandler = ({ user }) => {
+  const QueryRedirectHandler = ({ user, isDeletingAccount }) => {
     const [searchParams] = useSearchParams();
     const location = useLocation();
     const grocerylistId = searchParams.get('grocerylist');
@@ -435,6 +454,10 @@ function App() {
 
     if ((location.pathname === '/' || location.pathname === '/gl') && user)
       return <Navigate to="/recipes" replace />;
+
+    if (isDeletingAccount) {
+      return <PageLoader message="Deleting your account…" />;
+    }
 
     return user ? _404 : loginPage;
   };
@@ -459,10 +482,11 @@ function App() {
               {user && <Route path="/grocery-lists" element={<GroceryLists user={user} setSpaceForFloatingButton={setSpaceForFloatingButton} />} />}
               {user && <Route path="/grocery-lists/add" element={<AddGroceryList user={user} />} />}
               {user && <Route path="/grocery-lists/edit/:groceryListId" element={<GroceryListEditRedirect />} />}
+              {(user || isDeletingAccount) && <Route path="/account" element={<AccountSettings user={user} isDeletingAccount={isDeletingAccount} handleDeleteAccount={handleDeleteAccount} />} />}
               <Route path="/grocery-lists/view/:groceryListId" element={<ViewGroceryList basename="/gl" userId={user?.uid} setCheckedCount={setCheckedCount} setTotalItems={setTotalItems} setSpaceForFloatingButton={setSpaceForFloatingButton} setLastRemoteUpdateAt={setLastRemoteUpdateAt} onRemoteListUpdate={handleRemoteListUpdate} />} />
               
               <Route path="/recipes/view/:recipeId" element={<ViewRecipe basename="/gl" userId={user?.uid} totalItems={totalItems} setCheckedCount={setCheckedCount} setTotalItems={setTotalItems} setSpaceForFloatingButton={setSpaceForFloatingButton} setLastRemoteUpdateAt={setLastRemoteUpdateAt} />} />
-              <Route path="*" element={<QueryRedirectHandler user={user} />} />
+              <Route path="*" element={<QueryRedirectHandler user={user} isDeletingAccount={isDeletingAccount} />} />
             </Routes>
         </main>
         

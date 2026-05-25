@@ -7,7 +7,8 @@ import {
   faUserCircle,
   faSignOutAlt,
   faClipboardList,
-  faBook
+  faBook,
+  faGear,
 } from '@fortawesome/free-solid-svg-icons';
 import { formatRelativeUpdateTime, getRemoteUpdateFadeOpacity } from '../services/date.js';
 
@@ -50,6 +51,10 @@ function Header(props) {
     heading: 'Grocery List',
     backButton: '/grocery-lists'
   };
+  const accountPath = {
+    heading: 'Account',
+    backButton: '/recipes'
+  };
 
   const getDefaultPathInfo = () => ({
     heading: '',
@@ -67,6 +72,7 @@ function Header(props) {
         '/grocery-lists/add': groceryListsAddPath,
         '/grocery-lists/edit': groceryListsEditPath,
         '/grocery-lists/view': groceryListsViewPath,
+        '/account': accountPath,
     };
 
     const pathInfosIncludes = [
@@ -170,10 +176,26 @@ function Header(props) {
                       <p className="text-sm font-bold text-slate-800 leading-tight">{user.displayName}</p>
                       <p className="text-base text-slate-500 font-medium">{user.email}</p>
                     </div>
-                    <div className="px-2 pb-2 pt-0">
+                    <div className="px-2 py-2">
+                      <button
+                        type="button"
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 font-bold hover:bg-slate-100 hover:text-slate-800 rounded-xl transition-all group"
+                        onClick={() => {
+                          setIsDropdownOpen(false);
+                          navigate('/account');
+                        }}
+                      >
+                        <div className="w-8 h-8 flex items-center justify-center shrink-0">
+                          <FontAwesomeIcon
+                            icon={faGear}
+                            className="text-slate-400 group-hover:text-slate-700 transition-colors text-lg"
+                          />
+                        </div>
+                        <span className="uppercase tracking-wider text-base">Account</span>
+                      </button>
                       <button 
                         type="button"
-                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 font-bold hover:bg-red-50 hover:text-red-600 rounded-xl transition-all group"
+                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 font-bold hover:bg-slate-100 hover:text-slate-800 rounded-xl transition-all group"
                         onClick={() => {
                           props.handleLogout();
                           setIsDropdownOpen(false);
@@ -183,7 +205,7 @@ function Header(props) {
                         <div className="w-8 h-8 flex items-center justify-center shrink-0">
                           <FontAwesomeIcon 
                             icon={faSignOutAlt} 
-                            className="text-slate-400 group-hover:text-red-600 transition-colors text-lg" 
+                            className="text-slate-400 group-hover:text-slate-700 transition-colors text-lg" 
                           />
                         </div>
                         <span className="uppercase tracking-wider text-base">Logout</span>
