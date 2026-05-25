@@ -3,7 +3,11 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from './auth/firebaseConfig';
-import { userLogout } from './auth/authActions';
+import { resetUserSession } from './auth/authActions';
+import {
+  shouldFullRefreshUserData,
+  shouldResetUserSession,
+} from './auth/sessionLifecycle.js';
 
 import { BrowserRouter, Routes, Route, NavLink, useLocation, useSearchParams, Navigate, useNavigate, useParams } from 'react-router-dom';
 import ScrollToTop from './components/ScrollToTop';
@@ -37,7 +41,7 @@ import {
 } from './features/grocery-lists/slices/groceryListsSlice.ts';
 import { flushPendingSync } from './features/sync/flushPendingSync.ts';
 import { selectPendingSyncQueue } from './features/sync/pendingSyncSlice.ts';
-import { store } from './app/store.ts';
+import { store, persistor } from './app/store.ts';
 
 import './App.css';
 
@@ -80,6 +84,37 @@ function App() {
   const onlineFlashTimeoutRef = useRef(null);
   const syncInFlightRef = useRef(false);
   const pendingFlushCheckedRef = useRef(false);
+  const previousUserIdRef = useRef(undefined);
+
+  const clearUiSessionState = useCallback(() => {
+    setUserProfile(null);
+    setCheckedCount(0);
+    setTotalItems(0);
+    setLastRemoteUpdateAt(null);
+    setSpaceForFloatingButton('');
+    pendingFlushCheckedRef.current = false;
+  }, []);
+
+  const fetchInitialUserData = useCallback(async (userId, { fullRefresh = false } = {}) => {
+    const state = store.getState();
+    const lastSync = fullRefresh ? 0 : selectMaxRecipeTimestamp(state);
+    const lastSyncGL = fullRefresh ? 0 : selectMaxGroceryListTimestamp(state);
+
+    if (fullRefresh) {
+      await Promise.all([
+        dispatch(getAllFavoriteRecipesFromFirestore(userId)),
+        dispatch(getAllRecipesFromFirestore(userId)),
+        dispatch(getAllGroceryListsFromFirestore(userId)),
+      ]);
+      return;
+    }
+
+    await Promise.all([
+      dispatch(getAllFavoriteRecipesFromFirestore(userId)),
+      dispatch(syncRecipesFromFirestore({ userId, lastSyncTimestamp: lastSync })),
+      dispatch(syncGroceryListsFromFirestore({ userId, lastSyncTimestamp: lastSyncGL })),
+    ]);
+  }, [dispatch]);
 
   // useEffect(() => {
   //   const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
@@ -118,17 +153,42 @@ function App() {
     return () => unsubscribeAuth();
   }, []);
 
-  // 2. Profile & Data Observer: Runs only when user.uid exists
+  // Profile & data: reset session on logout/account switch, then load the active user.
   useEffect(() => {
-    if (!user) return;
+    let cancelled = false;
+    const nextUserId = user?.uid ?? null;
+    const previousUserId = previousUserIdRef.current;
+
+    const loadSession = async () => {
+      if (shouldResetUserSession(previousUserId, nextUserId)) {
+        await resetUserSession(dispatch, persistor);
+        clearUiSessionState();
+      }
+
+      previousUserIdRef.current = nextUserId;
+
+      if (!nextUserId || cancelled) {
+        return;
+      }
+
+      await fetchInitialUserData(nextUserId, {
+        fullRefresh: shouldFullRefreshUserData(previousUserId, nextUserId),
+      });
+    };
+
+    loadSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.uid, dispatch, clearUiSessionState, fetchInitialUserData]);
+
+  useEffect(() => {
+    if (!user?.uid) return;
 
     const userId = user.uid;
     const userProfileRef = doc(db, `artifacts/${appId}/users/${userId}/profiles/${userId}`);
 
-    // Trigger Data Fetch
-    fetchInitialUserData(dispatch, userId);
-
-    // Setup Profile Listener
     const unsubscribeSnapshot = onSnapshot(userProfileRef, (docSnap) => {
       if (docSnap.exists()) {
         setUserProfile(docSnap.data());
@@ -139,22 +199,10 @@ function App() {
       console.error("Error listening to user profile:", error);
     });
 
-    // CLEANUP: This is the most important part. 
-    // It kills the listener when the user logs out or the ID changes.
     return () => unsubscribeSnapshot();
-  }, [user?.uid, dispatch]);
+  }, [user?.uid]);
 
-  const lastSync = useSelector(selectMaxRecipeTimestamp);
-  const lastSyncGL = useSelector(selectMaxGroceryListTimestamp);
   const pendingQueue = useSelector(selectPendingSyncQueue);
-
-  const fetchInitialUserData = async (dispatch, userId) => {
-    await Promise.all([
-      dispatch(getAllFavoriteRecipesFromFirestore(userId)),
-      dispatch(syncRecipesFromFirestore({ userId, lastSyncTimestamp: lastSync })),
-      dispatch(syncGroceryListsFromFirestore({ userId, lastSyncTimestamp: lastSyncGL }))
-    ])
-  };
 
   const syncAfterReconnect = async (userId) => {
     await dispatch(flushPendingSync());
@@ -261,11 +309,11 @@ function App() {
   };
 
   const handleLogout = async () => {
-    if (auth) {
-      dispatch(userLogout());
+    if (!auth) return;
 
-      await signOut(auth);
-    }
+    await resetUserSession(dispatch, persistor);
+    clearUiSessionState();
+    await signOut(auth);
   };
 
   if (loading) {
