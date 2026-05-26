@@ -2,6 +2,13 @@
   "projects": {
     "default": "grocerylister-b107b"
   },
-  "targets": {},
+  "targets": {
+    "grocerylister-b107b": {
+      "hosting": {
+        "app": ["grocerylister-b107b"],
+        "marketing": ["grocerylister-marketing"]
+      }
+    }
+  },
   "etags": {}
 }

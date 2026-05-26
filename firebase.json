@@ -2,10 +2,18 @@
   "firestore": {
     "rules": "firestore.rules"
   },
-  "hosting": {
-    "public": "build",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "rewrites": [{ "source": "**", "destination": "/index.html" }],
-    "predeploy": ["npm run build"]
-  }
+  "hosting": [
+    {
+      "target": "app",
+      "public": "build",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "rewrites": [{ "source": "**", "destination": "/index.html" }],
+      "predeploy": ["npm run build"]
+    },
+    {
+      "target": "marketing",
+      "public": "website",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**", "**/*.md"]
+    }
+  ]
 }
