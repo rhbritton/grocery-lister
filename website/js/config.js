@@ -4,10 +4,10 @@
  */
 window.GROCERYLISTER_CONFIG = {
   siteName: 'GroceryLister',
-  webAppUrl: 'https://rhbritton.github.io/gl',
+  webAppUrl: 'https://web.grocerylisterapp.com',
   appStoreUrl: 'https://apps.apple.com/app/id0000000000',
   playStoreUrl: 'https://play.google.com/store/apps/details?id=com.rhbritton.grocerylister',
-  supportEmail: 'support@grocerylister.com',
+  supportEmail: 'support@grocerylisterapp.com',
   // Legal — shown on Privacy Policy and Terms (update address before App Store submission)
   legalOperator: 'Ryan Britton',
   legalAddressLine1: '',

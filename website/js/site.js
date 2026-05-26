@@ -24,7 +24,7 @@
   });
 
   document.querySelectorAll('[data-support-email]').forEach((el) => {
-    const email = config.supportEmail || 'support@grocerylister.com';
+    const email = config.supportEmail || 'support@grocerylisterapp.com';
     el.setAttribute('href', `mailto:${email}`);
     if (el.hasAttribute('data-support-email-text')) {
       el.textContent = email;

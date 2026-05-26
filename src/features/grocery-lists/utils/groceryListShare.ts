@@ -25,11 +25,6 @@ export function isShareActive(list: { sharedAt?: unknown; shareExpiresAt?: unkno
   return Math.floor(Date.now() / 1000) < getShareExpiresAt(sharedAt);
 }
 
-export function buildGroceryListShareUrl(basename: string, groceryListId: string): string {
-  const base = basename.endsWith('/') ? basename.slice(0, -1) : basename;
-  return `${window.location.origin}${base}?grocerylist=${groceryListId}`;
-}
-
 export function formatShareExpiryDate(expiresAtSeconds: number): string {
   return new Date(expiresAtSeconds * 1000).toLocaleDateString(undefined, {
     weekday: 'short',

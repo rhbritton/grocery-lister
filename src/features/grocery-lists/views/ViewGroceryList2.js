@@ -31,11 +31,11 @@ import { editGroceryListFromFirestore, upsertGroceryList, shareGroceryListFromFi
 import { normalizeUpdatedAt } from '../utils/groceryListMerge.ts';
 import {
   isShareActive,
-  buildGroceryListShareUrl,
   formatShareExpiryDate,
   getShareExpiresAtFromList,
   normalizeShareTimestamp,
 } from '../utils/groceryListShare.ts';
+import { buildGroceryListShareUrl } from '../../../utils/appPaths.js';
 
 import { formatDate, formatTime } from '../../../services/date.js';
 
@@ -539,7 +539,7 @@ const showToast = (message) => {
 };
 
 const shareListLink = async () => {
-    const fullUrl = buildGroceryListShareUrl(props.basename, groceryListId);
+    const fullUrl = buildGroceryListShareUrl(groceryListId);
     const shareData = {
         title: `Grocery List: ${groceryList ? formatDate(new Date(groceryList.timestamp)) : ''}`,
         text: 'Check off items on this grocery list while you shop.',

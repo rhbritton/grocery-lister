@@ -131,7 +131,7 @@ const AddRecipe = (props) => {
         <div className="flex items-center justify-start gap-3">
             {isConfig && value !== 'reset' ? (
                 <img 
-                    src="/gl/logo192.png"
+                    src={`${process.env.PUBLIC_URL}/logo192.png`}
                     alt="GroceryLister Logo" 
                     className="h-5 w-5 object-contain opacity-90" 
                 />

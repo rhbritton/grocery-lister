@@ -2,7 +2,7 @@
   "name": "grocery-lister",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://rhbritton.github.io/gl",
+  "homepage": "https://web.grocerylisterapp.com",
   "dependencies": {
     "@capacitor/android": "^8.0.1",
     "@capacitor/cli": "^7.4.5",

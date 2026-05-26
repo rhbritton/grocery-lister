@@ -458,7 +458,7 @@ function App() {
     if (recipeId)
       return <Navigate to={`/recipes/view/${recipeId}`} replace />;
 
-    if ((location.pathname === '/' || location.pathname === '/gl') && user)
+    if (location.pathname === '/' && user)
       return <Navigate to="/recipes" replace />;
 
     if (isDeletingAccount) {
@@ -472,7 +472,7 @@ function App() {
     <div className="App bg-[#F8FAFC] min-h-screen">
         <StorePromoBanner />
 
-        <BrowserRouter basename="/gl">
+        <BrowserRouter>
 
         <ScrollToTop />
 
@@ -501,9 +501,9 @@ function App() {
                   }
                 />
               )}
-              <Route path="/grocery-lists/view/:groceryListId" element={<ViewGroceryList basename="/gl" userId={user?.uid} setCheckedCount={setCheckedCount} setTotalItems={setTotalItems} setSpaceForFloatingButton={setSpaceForFloatingButton} setLastRemoteUpdateAt={setLastRemoteUpdateAt} onRemoteListUpdate={handleRemoteListUpdate} />} />
+              <Route path="/grocery-lists/view/:groceryListId" element={<ViewGroceryList userId={user?.uid} setCheckedCount={setCheckedCount} setTotalItems={setTotalItems} setSpaceForFloatingButton={setSpaceForFloatingButton} setLastRemoteUpdateAt={setLastRemoteUpdateAt} onRemoteListUpdate={handleRemoteListUpdate} />} />
               
-              <Route path="/recipes/view/:recipeId" element={<ViewRecipe basename="/gl" userId={user?.uid} totalItems={totalItems} setCheckedCount={setCheckedCount} setTotalItems={setTotalItems} setSpaceForFloatingButton={setSpaceForFloatingButton} setLastRemoteUpdateAt={setLastRemoteUpdateAt} />} />
+              <Route path="/recipes/view/:recipeId" element={<ViewRecipe userId={user?.uid} totalItems={totalItems} setCheckedCount={setCheckedCount} setTotalItems={setTotalItems} setSpaceForFloatingButton={setSpaceForFloatingButton} setLastRemoteUpdateAt={setLastRemoteUpdateAt} />} />
               <Route path="*" element={<QueryRedirectHandler user={user} isDeletingAccount={isDeletingAccount} />} />
             </Routes>
         </main>

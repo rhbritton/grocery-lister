@@ -25,6 +25,7 @@ import PageLoader from '../../../components/PageLoader.js';
 import EmptyState from '../../../components/EmptyState.js';
 import Toast from '../../../components/Toast.js';
 import { copyTextToClipboard } from '../../../utils/clipboard.js';
+import { buildRecipeShareUrl } from '../../../utils/appPaths.js';
 
 import '../styles/ViewRecipe.css';
 
@@ -65,7 +66,7 @@ const showToast = (message) => {
 };
 
 const shareURL = async () => {
-  const fullUrl = `${window.location.origin}${props.basename}?recipe=${recipeId}`;
+  const fullUrl = buildRecipeShareUrl(recipeId);
 
   const shareData = {
     title: `Recipe: ${name}`,

@@ -2,16 +2,12 @@
 <html>
 <head>
     <script>
-        var segmentCount = 0;
-
         var l = window.location;
         l.replace(
-            l.protocol + '//' + l.hostname + (l.pathname.match(/^\/gl(\/|$)/) ? '/gl/' : '/') +
-            '?' + l.hash.slice(1)
+            l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') + '/'
         );
-
     </script>
-    <noscript><meta http-equiv="refresh" content="0;url=/gl/" /></noscript>
+    <noscript><meta http-equiv="refresh" content="0;url=/" /></noscript>
 </head>
 <body></body>
 </html>
