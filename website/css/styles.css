@@ -669,6 +669,16 @@ a:hover {
   background: var(--bg-muted);
 }
 
+.section-brand {
+  background: var(--brand-light);
+  border-top: 16px solid var(--brand);
+  border-bottom: 4px solid var(--brand);
+}
+
+.section-brand .eyebrow {
+  color: var(--brand);
+}
+
 .eyebrow {
   margin: 0 0 1rem;
   font-size: 0.8125rem;
