@@ -1,21 +1,34 @@
-import { waitForPendingWrites } from 'firebase/firestore';
+import {
+  waitForPendingWrites,
+  getDocFromCache,
+  DocumentReference,
+  DocumentData,
+  DocumentSnapshot,
+} from 'firebase/firestore';
 import { db } from '../auth/firebaseConfig';
+import {
+  isBrowserOffline,
+  isNetworkUnavailableError,
+  markNetworkUnavailable,
+} from './connectionState.ts';
 
-export function isBrowserOffline(): boolean {
-  return typeof navigator !== 'undefined' && !navigator.onLine;
-}
+export {
+  isBrowserOffline,
+  isNetworkUnavailableError,
+  markNetworkUnavailable,
+  markFirestoreSyncPending,
+  handleFirestoreNetworkError,
+} from './connectionState.ts';
 
 export function shouldQueueOffline(error: unknown): boolean {
   if (isBrowserOffline()) return true;
 
   const code = (error as { code?: string })?.code;
-  return (
-    code === 'unavailable' ||
-    code === 'failed-precondition' ||
-    code === 'deadline-exceeded' ||
-    code === 'network-request-failed' ||
-    code === 'cancelled'
-  );
+  if (isNetworkUnavailableError(error)) {
+    markNetworkUnavailable();
+    return true;
+  }
+  return code === 'failed-precondition';
 }
 
 /** Remove undefined values so Firestore accepts nested payloads. */
@@ -158,4 +171,24 @@ export async function waitForFirestoreSync(): Promise<void> {
   } catch (error) {
     console.warn('waitForPendingWrites failed:', error);
   }
+}
+
+/** Read a document from the local cache only (never waits on the server). */
+export async function readLocalDocSnapshot(
+  docRef: DocumentReference<DocumentData, DocumentData>
+): Promise<DocumentSnapshot<DocumentData, DocumentData> | null> {
+  try {
+    return await getDocFromCache(docRef);
+  } catch {
+    return null;
+  }
+}
+
+/** True when Firestore has local writes not yet confirmed by the server. */
+export async function docHasPendingWrites(
+  docRef: DocumentReference<DocumentData, DocumentData>
+): Promise<boolean> {
+  const snap = await readLocalDocSnapshot(docRef);
+  if (snap) return snap.metadata.hasPendingWrites;
+  return isBrowserOffline();
 }

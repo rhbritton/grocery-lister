@@ -6,9 +6,15 @@ import {
   stripIngredientForFirestore,
   stripGroceryListPayloadForFirestore,
   stripSentinelValues,
+  handleFirestoreNetworkError,
 } from './offlineSync';
+import { setServerReachability, getServerReachability } from './connectionState.ts';
 
 describe('isBrowserOffline', () => {
+  beforeEach(() => {
+    setServerReachability(true);
+  });
+
   it('reflects navigator.onLine', () => {
     Object.defineProperty(navigator, 'onLine', { value: true, configurable: true });
     expect(isBrowserOffline()).toBe(false);
@@ -16,10 +22,17 @@ describe('isBrowserOffline', () => {
     Object.defineProperty(navigator, 'onLine', { value: false, configurable: true });
     expect(isBrowserOffline()).toBe(true);
   });
+
+  it('is offline when the Firestore server probe fails even if navigator.onLine is true', () => {
+    Object.defineProperty(navigator, 'onLine', { value: true, configurable: true });
+    setServerReachability(false);
+    expect(isBrowserOffline()).toBe(true);
+  });
 });
 
 describe('shouldQueueOffline', () => {
   beforeEach(() => {
+    setServerReachability(true);
     Object.defineProperty(navigator, 'onLine', { value: true, configurable: true });
   });
 
@@ -28,9 +41,22 @@ describe('shouldQueueOffline', () => {
     expect(shouldQueueOffline(new Error('anything'))).toBe(true);
   });
 
-  it('returns true for retryable Firestore error codes', () => {
+  it('marks server unreachable for retryable Firestore error codes', () => {
     expect(shouldQueueOffline({ code: 'unavailable' })).toBe(true);
+    expect(getServerReachability()).toBe(false);
+
+    setServerReachability(true);
     expect(shouldQueueOffline({ code: 'deadline-exceeded' })).toBe(true);
+    expect(getServerReachability()).toBe(false);
+  });
+
+  it('handleFirestoreNetworkError marks server unreachable for network errors only', () => {
+    setServerReachability(true);
+    handleFirestoreNetworkError({ code: 'unavailable' });
+    expect(getServerReachability()).toBe(false);
+    setServerReachability(true);
+    handleFirestoreNetworkError({ code: 'permission-denied' });
+    expect(getServerReachability()).toBe(true);
   });
 
   it('returns false for other errors while online', () => {

@@ -1,5 +1,8 @@
 import { BRAND } from '../constants/brand';
 
+/** Above sticky header (9999) and field labels; below modals/toasts. */
+export const REACT_SELECT_MENU_Z_INDEX = 10005;
+
 export function createReactSelectStyles({
   fontSize = '14px',
   multiValueLabelSize,

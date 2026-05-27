@@ -11,7 +11,7 @@ import { addRecipe, addRecipeToFirestore } from '../slices/recipesSlice.ts';
 
 import recipesConfig from '../config.json';
 
-import { createReactSelectStyles } from '../../../utils/reactSelectStyles.js';
+import { createReactSelectStyles, REACT_SELECT_MENU_Z_INDEX } from '../../../utils/reactSelectStyles.js';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -43,13 +43,16 @@ const AddRecipe = (props) => {
   };
 
   const handleIngredientChange = (index, field, value) => {
-    const newIngredients = [...ingredients];
-    newIngredients[index][field] = value;
-    setIngredients(newIngredients);
+    setIngredients((prev) =>
+      prev.map((ing, i) => (i === index ? { ...ing, [field]: value } : ing))
+    );
   };
 
-  const selectStyles = createReactSelectStyles({ fontSize: '20px', multiValueLabelSize: '20px' });
-  const aisleStyles = createReactSelectStyles({ fontSize: '14px', menuPortalZIndex: 9999 });
+  const selectStyles = createReactSelectStyles({
+    fontSize: '20px',
+    multiValueLabelSize: '20px',
+    menuPortalZIndex: REACT_SELECT_MENU_Z_INDEX,
+  });
 
   const handleSave = async () => {
     if (name.trim() !== '' && ingredients.length > 0 && ingredients.every(ingredient => ingredient.amount !== "" && ingredient.name.trim() !== "")) {
@@ -179,13 +182,13 @@ const AddRecipe = (props) => {
                         const configRecipe = getConfigRecipeById(selectedOption.value)
                         if (configRecipe) {
                             setName(configRecipe.name);
-                            setIngredients(configRecipe.ingredients);
+                            setIngredients(configRecipe.ingredients.map((ing) => ({ ...ing })));
                             setInstructions(configRecipe.instructions);
                         } else {
                             const recipeId = selectedOption.value;
                             const recipe = getRecipeById(recipeId);
                             setName(recipe.name);
-                            setIngredients(recipe.ingredients);
+                            setIngredients(recipe.ingredients.map((ing) => ({ ...ing })));
                             setInstructions(recipe.instructions);
                         }
                     } else {
@@ -253,8 +256,8 @@ const AddRecipe = (props) => {
         </section>
 
         {/* Ingredients Section (Dynamic List) */}
-        <section className="bg-white rounded-3xl shadow-md border border-slate-200 overflow-hidden">
-            <div className="h-1 bg-brand" />
+        <section className="bg-white rounded-3xl shadow-md border border-slate-200 overflow-visible">
+            <div className="h-1 bg-brand rounded-t-3xl" />
 
             <div className="p-6">
                 {/* Section Header - Simple & Clean */}

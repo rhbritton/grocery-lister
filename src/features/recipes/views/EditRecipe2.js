@@ -44,7 +44,7 @@ const EditRecipe = () => {
         if (recipe) {
             setExistingRecipe(recipe);
             setName(recipe.name || '');
-            setIngredients(recipe.ingredients || []);
+            setIngredients((recipe.ingredients || []).map((ing) => ({ ...ing })));
             setInstructions(recipe.instructions || '');
         } else {
             setLoadError(true);
@@ -77,9 +77,9 @@ const EditRecipe = () => {
 
   const handleIngredientChange = (index, field, value) => {
     setRecipeHasChanged(true);
-    const newIngredients = [...ingredients];
-    newIngredients[index][field] = value;
-    setIngredients(newIngredients);
+    setIngredients((prev) =>
+      prev.map((ing, i) => (i === index ? { ...ing, [field]: value } : ing))
+    );
   };
 
   const handleSave = async () => {

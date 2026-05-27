@@ -127,6 +127,7 @@ function Header(props) {
   const remoteUpdateOpacity = props.lastRemoteUpdateAt
     ? getRemoteUpdateFadeOpacity(props.lastRemoteUpdateAt)
     : 0;
+  const connectionBannerActive = props.connectionBannerActive;
 
   if (!showAppHeader) {
     return null;
@@ -134,7 +135,11 @@ function Header(props) {
 
   return (
     <>
-      <header className="bg-brand px-page pb-4 pt-safe-base shadow-lg sticky top-0 z-[9999]">
+      <header
+        className={`bg-brand px-page pb-4 pt-safe-base shadow-lg sticky z-[9999] ${
+          connectionBannerActive ? 'top-[var(--connection-banner-offset)]' : 'top-0'
+        }`}
+      >
         <div className="max-w-xl mx-auto flex items-center justify-between relative">
           {pathInfo.backButton ? (
             <NavLink 

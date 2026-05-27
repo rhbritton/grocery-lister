@@ -3,14 +3,16 @@ import { RootState } from '../../../app/store.ts';
 import { GroceryList } from './groceryListSlice.ts';
 
 import { db, auth } from '../../../auth/firebaseConfig';
-import { collection, query, where, getDocs, addDoc, doc, updateDoc, getDoc, limit, startAfter, orderBy, QueryDocumentSnapshot, DocumentData, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, doc, updateDoc, limit, startAfter, orderBy, QueryDocumentSnapshot, DocumentData, serverTimestamp, Timestamp } from 'firebase/firestore';
 
 import {
   shouldQueueOffline,
   isLocalNewer,
-  isBrowserOffline,
   stripGroceryListPayloadForFirestore,
   omitUndefinedFields,
+  docHasPendingWrites,
+  readLocalDocSnapshot,
+  handleFirestoreNetworkError,
 } from '../../../services/offlineSync.ts';
 import { mergeGroceryListOnConflict, normalizeUpdatedAt } from '../utils/groceryListMerge.ts';
 import { SHARE_WINDOW_SECONDS } from '../utils/groceryListShare.ts';
@@ -197,27 +199,14 @@ export const addGroceryListToFirestore = createAsyncThunk(
         isDeleted: false,
         ...groceryListData,
       });
-      if (isBrowserOffline()) {
-        const localId = newGroceryList.id;
-        dispatch(enqueuePendingSync({
-          type: 'addGroceryList',
-          id: `addGroceryList:${localId}`,
-          payload: newGroceryList,
-        }));
-        return {
-          fbid: `pending-${localId}`,
-          ...newGroceryList,
-          updatedAt: now,
-          offlineQueued: true,
-        };
-      }
 
       const docRef = await addDoc(collection(db, 'grocery-lists'), {
         ...newGroceryList,
         updatedAt: serverTimestamp(),
       });
       dispatch(dequeuePendingSync(`addGroceryList:${newGroceryList.id}`));
-      return { fbid: docRef.id, ...newGroceryList, updatedAt: now, offlineQueued: false };
+      const offlineQueued = await docHasPendingWrites(docRef);
+      return { fbid: docRef.id, ...newGroceryList, updatedAt: now, offlineQueued };
     } catch (error) {
       if (shouldQueueOffline(error)) {
         const localId = groceryListData.id || nanoid();
@@ -278,30 +267,28 @@ export const editGroceryListFromFirestore = createAsyncThunk(
       return buildResult(null, now, true);
     };
 
-    if (isBrowserOffline()) {
-      return queueAndReturn();
-    }
-
     try {
       const docRef = doc(db, 'grocery-lists', payload.fbid);
       let recipes = payload.recipes;
       let ingredients = payload.ingredients;
       let wasMerged = false;
 
-      try {
-        const currentSnap = await getDoc(docRef);
-        if (currentSnap.exists()) {
-          const serverData = currentSnap.data();
-          const serverUpdatedAt = normalizeUpdatedAt(serverData.updatedAt);
-          if (serverUpdatedAt > baseUpdatedAt) {
-            const merged = mergeGroceryListOnConflict(serverData, payload);
-            recipes = merged.recipes;
-            ingredients = merged.ingredients;
-            wasMerged = true;
-          }
+      const currentSnap = await readLocalDocSnapshot(docRef);
+      if (currentSnap?.exists()) {
+        const serverData = currentSnap.data();
+        const serverUpdatedAt = normalizeUpdatedAt(serverData.updatedAt);
+        const isOwnerWrite =
+          auth.currentUser?.uid &&
+          serverData.userId === auth.currentUser.uid;
+
+        if (serverUpdatedAt > baseUpdatedAt && !isOwnerWrite) {
+          const merged = mergeGroceryListOnConflict(serverData, payload, {
+            sharedCheckOffOnly: true,
+          });
+          recipes = merged.recipes;
+          ingredients = merged.ingredients;
+          wasMerged = true;
         }
-      } catch (_) {
-        // If the pre-read fails, proceed with the client payload.
       }
 
       await updateDoc(docRef, omitUndefinedFields({
@@ -315,24 +302,22 @@ export const editGroceryListFromFirestore = createAsyncThunk(
 
       dispatch(dequeuePendingSync(pendingId));
 
-      try {
-        const updatedSnapshot = await getDoc(docRef);
-        if (updatedSnapshot.exists()) {
-          const data = updatedSnapshot.data();
-          return buildResult(
-            data,
-            normalizeUpdatedAt(data.updatedAt) || now,
-            false,
-            wasMerged,
-            recipes,
-            ingredients
-          );
-        }
-      } catch (_) {
-        // Fall back to optimistic result when read fails offline.
+      const updatedSnapshot = await readLocalDocSnapshot(docRef);
+      if (updatedSnapshot?.exists()) {
+        const data = updatedSnapshot.data();
+        const pending = updatedSnapshot.metadata.hasPendingWrites;
+        return buildResult(
+          data,
+          normalizeUpdatedAt(data.updatedAt) || now,
+          pending,
+          wasMerged,
+          recipes,
+          ingredients
+        );
       }
 
-      return buildResult(null, now, false, wasMerged, recipes, ingredients);
+      const offlineQueued = await docHasPendingWrites(docRef);
+      return buildResult(null, now, offlineQueued, wasMerged, recipes, ingredients);
     } catch (error) {
       if (shouldQueueOffline(error)) {
         return queueAndReturn();
@@ -362,6 +347,7 @@ export const shareGroceryListFromFirestore = createAsyncThunk(
 
       return { fbid, id, userId, sharedAt: now, shareExpiresAt };
     } catch (error) {
+      handleFirestoreNetworkError(error);
       return rejectWithValue((error as Error).message);
     }
   }
@@ -371,11 +357,6 @@ export const deleteGroceryListFromFirestore = createAsyncThunk(
   'groceryLists/deleteGroceryList',
   async (fbid, { dispatch, rejectWithValue }) => {
     const pendingId = `deleteGroceryList:${fbid}`;
-
-    if (isBrowserOffline()) {
-      dispatch(enqueuePendingSync({ type: 'deleteGroceryList', id: pendingId, payload: fbid }));
-      return fbid;
-    }
 
     try {
       const docRef = doc(db, 'grocery-lists', fbid);

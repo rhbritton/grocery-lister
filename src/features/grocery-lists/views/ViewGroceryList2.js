@@ -28,7 +28,9 @@ import {
 
 import { fetchGroceryListById } from '../slices/groceryListSlice.ts';
 import { editGroceryListFromFirestore, upsertGroceryList, shareGroceryListFromFirestore } from '../slices/groceryListsSlice.ts';
-import { normalizeUpdatedAt } from '../utils/groceryListMerge.ts';
+import { selectPendingSyncQueue } from '../../sync/pendingSyncSlice.ts';
+import { normalizeUpdatedAt, shouldApplyRemoteGroceryListSnapshot } from '../utils/groceryListMerge.ts';
+import { handleFirestoreNetworkError } from '../../../services/offlineSync.ts';
 import {
   isShareActive,
   formatShareExpiryDate,
@@ -146,11 +148,14 @@ const ViewGroceryList = (props) => {
     const dispatch = useDispatch();
     const { groceryLists } = useSelector((state) => state.groceryLists);
     const rehydrated = useSelector((state) => state._persist?.rehydrated);
+    const pendingSyncQueue = useSelector(selectPendingSyncQueue);
 
     const isInitialLoad = useRef(true);
     const groceryListRef = useRef(undefined);
+    const hasPendingEditRef = useRef(false);
     const remoteHighlightIdsRef = useRef(null);
     const onRemoteListUpdateRef = useRef(props.onRemoteListUpdate);
+    const persistQueueRef = useRef(Promise.resolve());
     
     const [groceryList, setGroceryList] = useState(undefined);
     const [originalAllIngredients, setOriginalAllIngredients] = useState([]);
@@ -197,6 +202,12 @@ const ViewGroceryList = (props) => {
     groceryListRef.current = groceryList;
   }, [groceryList]);
 
+  useEffect(() => {
+    hasPendingEditRef.current = pendingSyncQueue.some(
+      (item) => item.id === `editGroceryList:${groceryListId}`
+    );
+  }, [pendingSyncQueue, groceryListId]);
+
   const highlightRow = (itemId, delay = 0) => {
     setTimeout(() => {
       const target = document.getElementById(itemId);
@@ -231,29 +242,45 @@ const ViewGroceryList = (props) => {
   const shareExpiresAt = getShareExpiresAtFromList(groceryList);
   const canCheckOff = isOwner || shareActive;
 
-  const persistGroceryList = async (list) => {
-    if (!list?.fbid || !canCheckOff) return;
+  const persistGroceryList = (list) => {
+    if (!list?.fbid || !canCheckOff) return Promise.resolve();
+
+    const optimisticUpdatedAt = Math.floor(Date.now() / 1000);
+    const listWithTimestamp = { ...list, updatedAt: optimisticUpdatedAt };
 
     const listToSave = {
-      fbid: list.fbid,
-      id: list.id,
-      userId: list.userId || props.userId,
-      timestamp: list.timestamp,
-      recipes: list.recipes,
-      ingredients: list.ingredients,
+      fbid: listWithTimestamp.fbid,
+      id: listWithTimestamp.id,
+      userId: listWithTimestamp.userId || props.userId,
+      timestamp: listWithTimestamp.timestamp,
+      recipes: listWithTimestamp.recipes,
+      ingredients: listWithTimestamp.ingredients,
       baseUpdatedAt: normalizeUpdatedAt(list.updatedAt),
     };
 
-    dispatch(upsertGroceryList({ ...list, ...listToSave }));
+    groceryListRef.current = listWithTimestamp;
+    setGroceryList(listWithTimestamp);
+    dispatch(upsertGroceryList({ ...listWithTimestamp, ...listToSave }));
 
-    try {
-      const result = await dispatch(editGroceryListFromFirestore(listToSave)).unwrap();
-      const nextList = { ...list, ...result };
-      setGroceryList(nextList);
-      setOriginalAllIngredients(getAllIngredients(nextList));
-    } catch (_) {
-      // Offline saves are queued by the thunk; no UI feedback needed.
-    }
+    persistQueueRef.current = persistQueueRef.current
+      .catch(() => {})
+      .then(async () => {
+        try {
+          const result = await dispatch(editGroceryListFromFirestore(listToSave)).unwrap();
+          const nextList = {
+            ...listWithTimestamp,
+            ...result,
+            offlineQueued: result.offlineQueued ?? false,
+          };
+          groceryListRef.current = nextList;
+          setGroceryList(nextList);
+          setOriginalAllIngredients(getAllIngredients(nextList));
+        } catch (_) {
+          // Offline saves are queued by the thunk; no UI feedback needed.
+        }
+      });
+
+    return persistQueueRef.current;
   };
 
   const deleteGlobalItem = (globalIndex) => {
@@ -478,14 +505,16 @@ const ViewGroceryList = (props) => {
           setLoadError(false);
 
           const currentList = groceryListRef.current;
-          const serverUpdatedAt = normalizeUpdatedAt(remoteList.updatedAt);
-          const localUpdatedAt = normalizeUpdatedAt(currentList?.updatedAt);
-          const serverNewer = serverUpdatedAt > localUpdatedAt;
-          const contentDiff =
+          const contentSame =
             currentList &&
-            getListContentSignature(currentList) !== getListContentSignature(remoteList);
+            getListContentSignature(currentList) === getListContentSignature(remoteList);
 
-          if (!currentList || serverNewer || contentDiff) {
+          if (shouldApplyRemoteGroceryListSnapshot(
+            currentList,
+            remoteList,
+            !!contentSame,
+            hasPendingEditRef.current
+          )) {
             dispatch(upsertGroceryList(remoteList));
             setGroceryList(remoteList);
             setOriginalAllIngredients(getAllIngredients(remoteList));
@@ -504,7 +533,17 @@ const ViewGroceryList = (props) => {
         const currentList = groceryListRef.current;
         if (!currentList) return;
 
-        if (getListContentSignature(currentList) === getListContentSignature(remoteList)) return;
+        const contentSame =
+          getListContentSignature(currentList) === getListContentSignature(remoteList);
+
+        if (!shouldApplyRemoteGroceryListSnapshot(
+          currentList,
+          remoteList,
+          contentSame,
+          hasPendingEditRef.current
+        )) {
+          return;
+        }
 
         const changedItemIds = findChangedItemDomIds(currentList, remoteList);
         remoteHighlightIdsRef.current = changedItemIds;
@@ -518,6 +557,7 @@ const ViewGroceryList = (props) => {
       },
       (error) => {
         console.error('Error listening to grocery list changes:', error);
+        handleFirestoreNetworkError(error);
         if (!groceryListRef.current) {
           setLoadError(true);
         }

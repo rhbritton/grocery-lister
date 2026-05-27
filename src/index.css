@@ -15,6 +15,7 @@
   --fab-scroll-buffer: 1.25rem;
   --fab-clearance: calc(var(--fab-size) + var(--fab-gap) + var(--fab-scroll-buffer) + env(safe-area-inset-bottom, 0px));
   --fab-clearance-no-nav: calc(var(--fab-size) + var(--page-gutter) + var(--fab-scroll-buffer) + env(safe-area-inset-bottom, 0px));
+  --connection-banner-offset: calc(53px + env(safe-area-inset-top, 0px));
 }
 
 html {

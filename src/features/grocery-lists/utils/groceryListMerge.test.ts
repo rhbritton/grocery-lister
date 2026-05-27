@@ -2,7 +2,9 @@ import {
   normalizeUpdatedAt,
   stableIngredientKey,
   mergeGroceryListOnConflict,
+  shouldApplyRemoteGroceryListSnapshot,
 } from './groceryListMerge';
+import { setServerReachability } from '../../../services/connectionState.ts';
 
 describe('normalizeUpdatedAt', () => {
   it('returns unix seconds for numeric timestamps', () => {
@@ -56,7 +58,34 @@ describe('mergeGroceryListOnConflict', () => {
     ingredients: [{ name: 'Bananas', amount: '3', crossed: false }],
   };
 
-  it('merges crossed state with OR logic for matching items', () => {
+  it('merges crossed state with OR logic for shared check-off sync', () => {
+    const merged = mergeGroceryListOnConflict(
+      serverDoc,
+      {
+        recipes: [
+          {
+            id: 'entry1',
+            recipe: {
+              id: 'r1',
+              fbid: 'fb1',
+              ingredients: [
+                { name: 'Eggs', amount: '2', crossed: true },
+                { name: 'Milk', amount: '1 cup', crossed: false },
+              ],
+            },
+          },
+        ],
+        ingredients: [{ name: 'Bananas', amount: '3', crossed: true }],
+      },
+      { sharedCheckOffOnly: true }
+    );
+
+    expect(merged.recipes[0].recipe.ingredients[0].crossed).toBe(true);
+    expect(merged.recipes[0].recipe.ingredients[1].crossed).toBe(true);
+    expect(merged.ingredients[0].crossed).toBe(true);
+  });
+
+  it('lets the client uncheck items when not in shared check-off mode', () => {
     const merged = mergeGroceryListOnConflict(serverDoc, {
       recipes: [
         {
@@ -71,12 +100,34 @@ describe('mergeGroceryListOnConflict', () => {
           },
         },
       ],
-      ingredients: [{ name: 'Bananas', amount: '3', crossed: true }],
+      ingredients: [{ name: 'Bananas', amount: '3', crossed: false }],
     });
 
     expect(merged.recipes[0].recipe.ingredients[0].crossed).toBe(true);
-    expect(merged.recipes[0].recipe.ingredients[1].crossed).toBe(true);
-    expect(merged.ingredients[0].crossed).toBe(true);
+    expect(merged.recipes[0].recipe.ingredients[1].crossed).toBe(false);
+    expect(merged.ingredients[0].crossed).toBe(false);
+  });
+
+  it('applies client name and amount edits by index', () => {
+    const merged = mergeGroceryListOnConflict(serverDoc, {
+      recipes: [
+        {
+          id: 'entry1',
+          recipe: {
+            id: 'r1',
+            fbid: 'fb1',
+            ingredients: [
+              { name: 'Eggs', amount: '3', crossed: false },
+              { name: 'Milk', amount: '1 cup', crossed: true },
+            ],
+          },
+        },
+      ],
+      ingredients: [{ name: 'Bananas', amount: '4', crossed: false }],
+    });
+
+    expect(merged.recipes[0].recipe.ingredients[0].amount).toBe('3');
+    expect(merged.ingredients[0].amount).toBe('4');
   });
 
   it('appends recipe entries that exist only on the client', () => {
@@ -116,5 +167,57 @@ describe('mergeGroceryListOnConflict', () => {
 
     expect(merged.recipes[0].recipe.ingredients[1].crossed).toBe(true);
     expect(merged.ingredients[0].name).toBe('Bananas');
+  });
+});
+
+describe('shouldApplyRemoteGroceryListSnapshot', () => {
+  it('applies remote data on first load', () => {
+    expect(
+      shouldApplyRemoteGroceryListSnapshot(undefined, { updatedAt: 100 }, false)
+    ).toBe(true);
+  });
+
+  it('skips remote data when local updatedAt is newer', () => {
+    expect(
+      shouldApplyRemoteGroceryListSnapshot(
+        { updatedAt: 200 },
+        { updatedAt: 100 },
+        false
+      )
+    ).toBe(false);
+  });
+
+  it('skips remote data while offline if local is at least as new', () => {
+    setServerReachability(false);
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+
+    expect(
+      shouldApplyRemoteGroceryListSnapshot(
+        { updatedAt: 100 },
+        { updatedAt: 100 },
+        false
+      )
+    ).toBe(false);
+  });
+
+  it('skips remote data while a pending sync item exists', () => {
+    expect(
+      shouldApplyRemoteGroceryListSnapshot(
+        { updatedAt: 50 },
+        { updatedAt: 100 },
+        false,
+        true
+      )
+    ).toBe(false);
+  });
+
+  it('skips remote data while a write is still queued offline', () => {
+    expect(
+      shouldApplyRemoteGroceryListSnapshot(
+        { updatedAt: 50, offlineQueued: true },
+        { updatedAt: 100 },
+        false
+      )
+    ).toBe(false);
   });
 });

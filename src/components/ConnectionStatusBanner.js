@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faTriangleExclamation,
@@ -6,10 +7,12 @@ import {
   faCircleCheck,
 } from '@fortawesome/free-solid-svg-icons';
 
+export const CONNECTION_BANNER_HEIGHT_PX = 53;
+
 const BANNER_CONFIG = {
   offline: {
     message: "You're offline",
-    detail: 'Changes saved locally will sync when you reconnect',
+    detail: 'Edits are saved on this device and will sync when you reconnect',
     icon: faTriangleExclamation,
     barClass: 'bg-amber-500',
     panelClass: 'bg-amber-50 text-amber-950 border-amber-200',
@@ -34,45 +37,49 @@ const BANNER_CONFIG = {
 };
 
 function ConnectionStatusBanner({ status }) {
-  const isVisible = status && status !== 'hidden';
-  const config = BANNER_CONFIG[status];
+  if (!status || status === 'hidden') {
+    return null;
+  }
 
-  return (
+  const config = BANNER_CONFIG[status];
+  if (!config || typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(
     <div
-      className={`fixed top-0 left-0 right-0 z-[10000] pointer-events-none transition-all duration-500 ease-out ${
-        isVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
-      }`}
+      className="fixed top-0 left-0 right-0 z-[99999] shadow-md"
+      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
       role="status"
       aria-live="polite"
-      aria-hidden={!isVisible}
     >
-      {config && (
+      <div className={`border-b ${config.panelClass}`}>
+        <div className={`h-0.5 ${config.barClass}`} />
         <div
-          className={`border-b shadow-sm backdrop-blur-sm ${config.panelClass}`}
+          className="max-w-xl mx-auto px-4 py-2.5 flex items-center gap-3"
+          style={{ minHeight: CONNECTION_BANNER_HEIGHT_PX }}
         >
-          <div className={`h-0.5 ${config.barClass}`} />
-          <div className="max-w-xl mx-auto px-4 py-2.5 flex items-center gap-3">
-            <div
-              className={`w-8 h-8 rounded-full bg-white/80 flex items-center justify-center shrink-0 shadow-sm ${config.iconClass}`}
-            >
-              <FontAwesomeIcon
-                icon={config.icon}
-                className={`text-sm ${status === 'syncing' ? 'animate-pulse' : ''}`}
-                spin={status === 'syncing'}
-              />
-            </div>
-            <div className="min-w-0 text-left flex-1">
-              <p className="text-sm font-bold leading-tight truncate">
-                {config.message}
-              </p>
-              <p className="text-xs opacity-80 leading-snug truncate">
-                {config.detail}
-              </p>
-            </div>
+          <div
+            className={`w-8 h-8 rounded-full bg-white/80 flex items-center justify-center shrink-0 shadow-sm ${config.iconClass}`}
+          >
+            <FontAwesomeIcon
+              icon={config.icon}
+              className={`text-sm ${status === 'syncing' ? 'animate-pulse' : ''}`}
+              spin={status === 'syncing'}
+            />
+          </div>
+          <div className="min-w-0 text-left flex-1">
+            <p className="text-sm font-bold leading-tight truncate">
+              {config.message}
+            </p>
+            <p className="text-xs opacity-80 leading-snug truncate">
+              {config.detail}
+            </p>
           </div>
         </div>
-      )}
-    </div>
+      </div>
+    </div>,
+    document.body
   );
 }
 

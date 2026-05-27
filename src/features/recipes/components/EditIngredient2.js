@@ -1,7 +1,7 @@
 import React from 'react';
 
 import Select from 'react-select';
-import { createReactSelectStyles } from '../../../utils/reactSelectStyles.js';
+import { createReactSelectStyles, REACT_SELECT_MENU_Z_INDEX } from '../../../utils/reactSelectStyles.js';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
@@ -26,7 +26,7 @@ function EditIngredient(props) {
             <div className="flex gap-3">
                 {/* Amount Field */}
                 <div className="w-28 shrink-0 relative">
-                    <label className="absolute -top-2 left-3 px-1 bg-white z-10 text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1">
+                    <label className="pointer-events-none absolute -top-2 left-3 z-[1] px-1 bg-white text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1">
                         <FontAwesomeIcon icon={faHashtag} className="text-[8px]" /> Qty
                     </label>
                     <input 
@@ -40,7 +40,7 @@ function EditIngredient(props) {
 
                 {/* Aisle / Category Field */}
                 <div className="flex-1 relative">
-                    <label className="absolute -top-2 left-3 px-1 bg-white z-10 text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1">
+                    <label className="pointer-events-none absolute -top-2 left-3 z-[1] px-1 bg-white text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1">
                         <FontAwesomeIcon icon={faTag} className="text-[8px]" /> Aisle
                     </label>
                     <Select 
@@ -58,7 +58,7 @@ function EditIngredient(props) {
 
             {/* Bottom Row: Ingredient Name */}
             <div className="w-full relative">
-                <label className="absolute -top-2 left-3 px-1 bg-white z-10 text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1">
+                <label className="pointer-events-none absolute -top-2 left-3 z-[1] px-1 bg-white text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1">
                     <FontAwesomeIcon icon={faUtensils} className="text-[8px]" /> Name
                 </label>
                 <input 

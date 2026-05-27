@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "265106502571",
+    "project_id": "grocerylister-b107b",
+    "storage_bucket": "grocerylister-b107b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:265106502571:android:e59bb1c9b00719f6ed58ee",
+        "android_client_info": {
+          "package_name": "com.rhbritton.grocerylister"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "265106502571-a8th4m5pt4cgdqk87h35hir3nbls1cb8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAuaFKvER6TPAw17XMw2n7v2ou13JkhlUA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "265106502571-a8th4m5pt4cgdqk87h35hir3nbls1cb8.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

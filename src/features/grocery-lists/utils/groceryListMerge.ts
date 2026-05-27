@@ -1,3 +1,5 @@
+import { isBrowserOffline } from '../../../services/offlineSync.ts';
+
 /** Normalize Firestore updatedAt to unix seconds. */
 export function normalizeUpdatedAt(value: unknown): number {
   if (typeof value === 'number' && value > 0) return value;
@@ -7,12 +9,60 @@ export function normalizeUpdatedAt(value: unknown): number {
   return 0;
 }
 
+type GroceryListSnapshotLike = {
+  updatedAt?: unknown;
+  offlineQueued?: boolean;
+};
+
+/**
+ * Whether a Firestore snapshot should replace in-memory list state.
+ * Keeps local/offline edits until the server has a newer updatedAt.
+ */
+export function shouldApplyRemoteGroceryListSnapshot(
+  currentList: GroceryListSnapshotLike | null | undefined,
+  remoteList: GroceryListSnapshotLike,
+  contentSame: boolean,
+  hasPendingSync = false
+): boolean {
+  if (!currentList) return true;
+  if (contentSame) return false;
+  if (hasPendingSync || currentList.offlineQueued) return false;
+
+  const localUpdatedAt = normalizeUpdatedAt(currentList.updatedAt);
+  const remoteUpdatedAt = normalizeUpdatedAt(remoteList.updatedAt);
+
+  if (localUpdatedAt > remoteUpdatedAt) return false;
+
+  if (isBrowserOffline() && localUpdatedAt >= remoteUpdatedAt) {
+    return false;
+  }
+
+  return remoteUpdatedAt >= localUpdatedAt;
+}
+
+const INGREDIENT_MERGE_KEYS = ['name', 'amount', 'type', 'crossed', 'duplicate'] as const;
+
 type IngredientLike = {
   name?: string;
   amount?: string;
   crossed?: boolean;
   [key: string]: unknown;
 };
+
+function mergeIngredientFields(
+  serverIng: IngredientLike,
+  clientIng: IngredientLike | undefined
+): IngredientLike {
+  if (!clientIng) return serverIng;
+
+  const merged = { ...serverIng };
+  for (const key of INGREDIENT_MERGE_KEYS) {
+    if (clientIng[key] !== undefined) {
+      merged[key] = clientIng[key];
+    }
+  }
+  return merged;
+}
 
 type RecipeLike = {
   id?: string;
@@ -67,28 +117,52 @@ function buildCrossedMap(
 
 /**
  * When the server doc is newer than the client's base version, merge instead of overwriting.
- * Checked items use OR logic so concurrent check-offs from two people are both kept.
+ * Matched items use the client's field values (including uncheck and renames).
+ * For shared-list check-offs only, crossed uses OR so two shoppers can both mark items done.
  */
 export function mergeGroceryListOnConflict(
   serverDoc: Record<string, unknown>,
-  clientPayload: { recipes?: RecipeEntryLike[]; ingredients?: IngredientLike[] }
+  clientPayload: { recipes?: RecipeEntryLike[]; ingredients?: IngredientLike[] },
+  options: { sharedCheckOffOnly?: boolean } = {}
 ): { recipes: RecipeEntryLike[]; ingredients: IngredientLike[] } {
+  const sharedCheckOffOnly = options.sharedCheckOffOnly ?? false;
   const serverRecipes = [...((serverDoc.recipes as RecipeEntryLike[]) ?? [])];
   const serverIngredients = [...((serverDoc.ingredients as IngredientLike[]) ?? [])];
   const clientCrossed = buildCrossedMap(clientPayload.recipes, clientPayload.ingredients);
+  const clientRecipesById = new Map(
+    (clientPayload.recipes ?? []).map((entry) => [recipeEntryId(entry), entry])
+  );
 
   const mergedRecipes = serverRecipes.map((entry) => {
     const recipe = entry.recipe;
     if (!recipe?.ingredients) return entry;
+
+    const clientEntry = clientRecipesById.get(recipeEntryId(entry));
+    const clientIngredients = clientEntry?.recipe?.ingredients ?? [];
+
     return {
       ...entry,
       recipe: {
         ...recipe,
-        ingredients: recipe.ingredients.map((ing) => {
+        ingredients: recipe.ingredients.map((ing, idx) => {
+          const clientIng = clientIngredients[idx];
+          if (clientIng) {
+            if (sharedCheckOffOnly) {
+              return {
+                ...ing,
+                crossed: !!ing.crossed || !!clientIng.crossed,
+              };
+            }
+            return mergeIngredientFields(ing, clientIng);
+          }
+
           const key = stableIngredientKey({ ingredient: ing, recipe });
           const clientCross = clientCrossed.get(key);
           if (clientCross === undefined) return ing;
-          return { ...ing, crossed: !!ing.crossed || clientCross };
+          if (sharedCheckOffOnly) {
+            return { ...ing, crossed: !!ing.crossed || clientCross };
+          }
+          return { ...ing, crossed: clientCross };
         }),
       },
     };
@@ -103,11 +177,27 @@ export function mergeGroceryListOnConflict(
     }
   }
 
-  const mergedIngredients = serverIngredients.map((ing) => {
+  const clientManual = clientPayload.ingredients ?? [];
+
+  const mergedIngredients = serverIngredients.map((ing, idx) => {
+    const clientIng = clientManual[idx];
+    if (clientIng) {
+      if (sharedCheckOffOnly) {
+        return {
+          ...ing,
+          crossed: !!ing.crossed || !!clientIng.crossed,
+        };
+      }
+      return mergeIngredientFields(ing, clientIng);
+    }
+
     const key = stableIngredientKey({ ingredient: ing });
     const clientCross = clientCrossed.get(key);
     if (clientCross === undefined) return ing;
-    return { ...ing, crossed: !!ing.crossed || clientCross };
+    if (sharedCheckOffOnly) {
+      return { ...ing, crossed: !!ing.crossed || clientCross };
+    }
+    return { ...ing, crossed: clientCross };
   });
 
   const serverManualKeys = new Set(

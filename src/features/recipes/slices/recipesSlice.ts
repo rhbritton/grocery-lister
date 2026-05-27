@@ -6,7 +6,7 @@ import recipesConfig from '../config.json';
 
 import { generateSearchIndex, generateWordIndexFromRecipe } from '../../../services/search.js';
 
-import { shouldQueueOffline, isLocalNewer, isBrowserOffline, stripRecipePayloadForFirestore, toRecipeFirestoreFields } from '../../../services/offlineSync.ts';
+import { shouldQueueOffline, isLocalNewer, stripRecipePayloadForFirestore, toRecipeFirestoreFields, docHasPendingWrites, readLocalDocSnapshot } from '../../../services/offlineSync.ts';
 import { enqueuePendingSync, dequeuePendingSync } from '../../sync/pendingSyncSlice.ts';
 import { db, auth, appId } from '../../../auth/firebaseConfig';
 import { collection, query, where, getDoc, getDocs, addDoc, doc, documentId, updateDoc, setDoc, limit, 
@@ -506,10 +506,6 @@ export const addRecipeToFirestore = createAsyncThunk(
       };
     };
 
-    if (isBrowserOffline()) {
-      return queueAndReturn();
-    }
-
     try {
       const name_lowercase = payload.name ? String(payload.name).trim().toLowerCase() : '';
       const docRef = await addDoc(collection(db, 'recipes'), {
@@ -517,13 +513,14 @@ export const addRecipeToFirestore = createAsyncThunk(
         updatedAt: serverTimestamp(),
       });
       dispatch(dequeuePendingSync(`addRecipe:${localId}`));
+      const offlineQueued = await docHasPendingWrites(docRef);
       return {
         fbid: docRef.id,
         ...payload,
         isDeleted: false,
         name_lowercase,
         updatedAt: now,
-        offlineQueued: false,
+        offlineQueued,
       };
     } catch (error) {
       if (shouldQueueOffline(error)) {
@@ -567,10 +564,6 @@ export const editRecipeFromFirestore = createAsyncThunk(
       return { ...payload, fbid, updatedAt: now, offlineQueued: true };
     };
 
-    if (isBrowserOffline()) {
-      return queueAndReturn();
-    }
-
     try {
       const docRef = doc(db, 'recipes', fbid);
       const name_lowercase = payload.name ? String(payload.name).trim().toLowerCase() : '';
@@ -585,22 +578,20 @@ export const editRecipeFromFirestore = createAsyncThunk(
 
       dispatch(dequeuePendingSync(pendingId));
 
-      try {
-        const updatedSnapshot = await getDoc(docRef);
-        if (updatedSnapshot.exists()) {
-          const data = updatedSnapshot.data();
-          return {
-            ...payload,
-            fbid,
-            updatedAt: data?.updatedAt?.seconds || now,
-            offlineQueued: false,
-          };
-        }
-      } catch (_) {
-        // Fall back to optimistic result when read fails.
+      const updatedSnapshot = await readLocalDocSnapshot(docRef);
+      if (updatedSnapshot?.exists()) {
+        const data = updatedSnapshot.data();
+        const pending = updatedSnapshot.metadata.hasPendingWrites;
+        return {
+          ...payload,
+          fbid,
+          updatedAt: data?.updatedAt?.seconds || now,
+          offlineQueued: pending,
+        };
       }
 
-      return { ...payload, fbid, updatedAt: now, offlineQueued: false };
+      const offlineQueued = await docHasPendingWrites(docRef);
+      return { ...payload, fbid, updatedAt: now, offlineQueued };
     } catch (error) {
       if (shouldQueueOffline(error)) {
         return queueAndReturn();
@@ -615,11 +606,6 @@ export const deleteRecipeFromFirestore = createAsyncThunk(
   'recipes/deleteRecipe',
   async (fbid, { dispatch, rejectWithValue }) => {
     const pendingId = `deleteRecipe:${fbid}`;
-
-    if (isBrowserOffline()) {
-      dispatch(enqueuePendingSync({ type: 'deleteRecipe', id: pendingId, payload: fbid }));
-      return fbid;
-    }
 
     try {
       const docRef = doc(db, 'recipes', fbid);

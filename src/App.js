@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { getFirestore, doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from './auth/firebaseConfig';
 import { resetUserSession } from './auth/authActions';
@@ -11,7 +11,7 @@ import {
 
 import { BrowserRouter, Routes, Route, NavLink, useLocation, useSearchParams, Navigate, useNavigate, useParams } from 'react-router-dom';
 import ScrollToTop from './components/ScrollToTop';
-import ConnectionStatusBanner from './components/ConnectionStatusBanner';
+import ConnectionStatusBanner, { CONNECTION_BANNER_HEIGHT_PX } from './components/ConnectionStatusBanner';
 import StorePromoBanner from './components/StorePromoBanner';
 import PageLoader from './components/PageLoader';
 
@@ -44,6 +44,14 @@ import { flushPendingSync } from './features/sync/flushPendingSync.ts';
 import { selectPendingSyncQueue, clearPendingSync } from './features/sync/pendingSyncSlice.ts';
 import { store, persistor } from './app/store.ts';
 import { deleteAccount } from './services/accountDeletion.js';
+import { signInWithGoogle, getSignInErrorMessage } from './auth/signIn.js';
+import { upsertUserProfile } from './auth/userProfile.js';
+import {
+  isEffectivelyOffline,
+  useConnectionStatus,
+} from './services/connectionMonitor.ts';
+import { handleFirestoreNetworkError } from './services/offlineSync.ts';
+import { waitForFirestoreSync } from './services/offlineSync.ts';
 
 import './App.css';
 
@@ -80,12 +88,13 @@ function App() {
 
   const dispatch = useDispatch();
 
-  const [connectionStatus, setConnectionStatus] = useState(
-    () => (typeof navigator !== 'undefined' && !navigator.onLine ? 'offline' : 'hidden')
-  );
+  const { serverReachable } = useConnectionStatus(user?.uid);
+  const wasOfflineRef = useRef(false);
+  const sawOfflineOrSyncingRef = useRef(false);
+
+  const [connectionStatus, setConnectionStatus] = useState('hidden');
   const onlineFlashTimeoutRef = useRef(null);
   const syncInFlightRef = useRef(false);
-  const pendingFlushCheckedRef = useRef(false);
   const previousUserIdRef = useRef(undefined);
   const isDeletingAccountRef = useRef(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
@@ -96,7 +105,6 @@ function App() {
     setTotalItems(0);
     setLastRemoteUpdateAt(null);
     setSpaceForFloatingButton('');
-    pendingFlushCheckedRef.current = false;
   }, []);
 
   const fetchInitialUserData = useCallback(async (userId, { fullRefresh = false } = {}) => {
@@ -201,6 +209,7 @@ function App() {
       }
     }, (error) => {
       console.error("Error listening to user profile:", error);
+      handleFirestoreNetworkError(error);
     });
 
     return () => unsubscribeSnapshot();
@@ -208,84 +217,95 @@ function App() {
 
   const pendingQueue = useSelector(selectPendingSyncQueue);
 
-  const syncAfterReconnect = async (userId) => {
-    await dispatch(flushPendingSync());
-    const state = store.getState();
-    await Promise.all([
-      dispatch(getAllFavoriteRecipesFromFirestore(userId)),
-      dispatch(syncRecipesFromFirestore({
-        userId,
-        lastSyncTimestamp: selectMaxRecipeTimestamp(state),
-      })),
-      dispatch(syncGroceryListsFromFirestore({
-        userId,
-        lastSyncTimestamp: selectMaxGroceryListTimestamp(state),
-      })),
-    ]);
-  };
+  useEffect(() => {
+    if (connectionStatus === 'offline' || connectionStatus === 'syncing') {
+      sawOfflineOrSyncingRef.current = true;
+    }
+  }, [connectionStatus]);
 
-  const runSyncAfterReconnect = useCallback(async (userId) => {
+  const finishSyncBanner = useCallback(() => {
+    const queueLength = selectPendingSyncQueue(store.getState()).length;
+
+    if (isEffectivelyOffline(serverReachable)) {
+      setConnectionStatus('offline');
+      return;
+    }
+
+    if (queueLength > 0) {
+      setConnectionStatus('syncing');
+      return;
+    }
+
+    if (!sawOfflineOrSyncingRef.current) {
+      setConnectionStatus('hidden');
+      return;
+    }
+
+    sawOfflineOrSyncingRef.current = false;
+    setConnectionStatus('online');
+    if (onlineFlashTimeoutRef.current) clearTimeout(onlineFlashTimeoutRef.current);
+    onlineFlashTimeoutRef.current = setTimeout(() => {
+      setConnectionStatus('hidden');
+    }, 2200);
+  }, [serverReachable]);
+
+  const runSyncAfterReconnect = useCallback(async () => {
     if (syncInFlightRef.current) return;
     syncInFlightRef.current = true;
     setConnectionStatus('syncing');
 
     try {
-      await syncAfterReconnect(userId);
-      setConnectionStatus('online');
-      if (onlineFlashTimeoutRef.current) clearTimeout(onlineFlashTimeoutRef.current);
-      onlineFlashTimeoutRef.current = setTimeout(() => {
-        setConnectionStatus('hidden');
-      }, 2200);
+      await dispatch(flushPendingSync());
+      await waitForFirestoreSync();
     } catch (error) {
       console.warn('Reconnect sync failed:', error);
-      setConnectionStatus('online');
-      if (onlineFlashTimeoutRef.current) clearTimeout(onlineFlashTimeoutRef.current);
-      onlineFlashTimeoutRef.current = setTimeout(() => {
-        setConnectionStatus('hidden');
-      }, 2200);
     } finally {
       syncInFlightRef.current = false;
+      finishSyncBanner();
     }
-  }, [dispatch]);
+  }, [dispatch, finishSyncBanner]);
 
   useEffect(() => {
     if (!user?.uid) {
       setConnectionStatus('hidden');
-      pendingFlushCheckedRef.current = false;
+      wasOfflineRef.current = false;
+      sawOfflineOrSyncingRef.current = false;
       return;
     }
 
-    const handleOffline = () => {
-      if (onlineFlashTimeoutRef.current) clearTimeout(onlineFlashTimeoutRef.current);
-      setConnectionStatus('offline');
-    };
+    const offline = isEffectivelyOffline(serverReachable);
 
-    const handleOnline = () => {
-      runSyncAfterReconnect(user.uid);
-    };
-
-    window.addEventListener('offline', handleOffline);
-    window.addEventListener('online', handleOnline);
-
-    if (!navigator.onLine) {
-      setConnectionStatus('offline');
+    if (offline) {
+      wasOfflineRef.current = true;
+      if (onlineFlashTimeoutRef.current) {
+        clearTimeout(onlineFlashTimeoutRef.current);
+        onlineFlashTimeoutRef.current = null;
+      }
+      if (!syncInFlightRef.current) {
+        setConnectionStatus('offline');
+      }
+      return;
     }
 
-    return () => {
-      window.removeEventListener('offline', handleOffline);
-      window.removeEventListener('online', handleOnline);
-      if (onlineFlashTimeoutRef.current) clearTimeout(onlineFlashTimeoutRef.current);
-    };
-  }, [user?.uid, runSyncAfterReconnect]);
+    const shouldFlush = wasOfflineRef.current || pendingQueue.length > 0;
 
-  useEffect(() => {
-    if (!user?.uid || pendingFlushCheckedRef.current) return;
-    pendingFlushCheckedRef.current = true;
-
-    if (navigator.onLine && pendingQueue.length > 0) {
-      runSyncAfterReconnect(user.uid);
+    if (shouldFlush) {
+      wasOfflineRef.current = false;
+      if (!syncInFlightRef.current) {
+        runSyncAfterReconnect();
+      } else {
+        setConnectionStatus('syncing');
+      }
+      return;
     }
-  }, [user?.uid, pendingQueue.length, runSyncAfterReconnect]);
+
+    if (syncInFlightRef.current) {
+      setConnectionStatus('syncing');
+      return;
+    }
+
+    finishSyncBanner();
+  }, [user?.uid, serverReachable, pendingQueue.length, runSyncAfterReconnect, finishSyncBanner]);
 
   // Handle Google Sign-in
   const handleGoogleLogin = async () => {
@@ -293,22 +313,12 @@ function App() {
       console.error("Firebase services are not initialized.");
       return;
     }
-    const provider = new GoogleAuthProvider();
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const googleUser = result.user;
-      
-      const userProfileRef = doc(db, `artifacts/${appId}/users/${googleUser.uid}/profiles/${googleUser.uid}`);
-      await setDoc(userProfileRef, {
-        uid: googleUser.uid,
-        displayName: googleUser.displayName,
-        email: googleUser.email,
-        photoURL: googleUser.photoURL,
-        lastLogin: new Date().toISOString()
-      }, { merge: true });
 
+    try {
+      const result = await signInWithGoogle();
+      await upsertUserProfile(result.user);
     } catch (error) {
-      console.error("Error during Google login:", error);
+      console.error("Error during Google login:", getSignInErrorMessage(error), error);
     }
   };
 
@@ -468,18 +478,44 @@ function App() {
     return user ? _404 : loginPage;
   };
 
+  // Banner UI disabled — offline/sync logic below still runs.
+  const connectionBannerVisible = false;
+
   return (
-    <div className="App bg-[#F8FAFC] min-h-screen">
+    <div
+      className="App bg-[#F8FAFC] min-h-screen"
+      style={
+        connectionBannerVisible
+          ? {
+              '--connection-banner-offset': `calc(${CONNECTION_BANNER_HEIGHT_PX}px + env(safe-area-inset-top, 0px))`,
+            }
+          : undefined
+      }
+    >
         <StorePromoBanner />
 
         <BrowserRouter>
 
         <ScrollToTop />
 
-        {user && <ConnectionStatusBanner status={connectionStatus} />}
+        {user && <ConnectionStatusBanner status="hidden" />}
 
-        <main className={`min-h-screen bg-[#F8FAFC] font-sans text-slate-900 ${spaceForFloatingButton} ${connectionStatus === 'offline' || connectionStatus === 'syncing' ? 'pt-[52px]' : ''}`}>
-            <Header user={user} handleGoogleLogin={handleGoogleLogin} handleLogout={handleLogout} hasProgressPercent={true} checkedCount={checkedCount} totalItems={totalItems} lastRemoteUpdateAt={lastRemoteUpdateAt} setLastRemoteUpdateAt={setLastRemoteUpdateAt} />
+        <main
+          className={`min-h-screen bg-[#F8FAFC] font-sans text-slate-900 ${spaceForFloatingButton} ${
+            connectionBannerVisible ? 'pt-[var(--connection-banner-offset)]' : ''
+          }`}
+        >
+            <Header
+              user={user}
+              handleGoogleLogin={handleGoogleLogin}
+              handleLogout={handleLogout}
+              hasProgressPercent={true}
+              checkedCount={checkedCount}
+              totalItems={totalItems}
+              lastRemoteUpdateAt={lastRemoteUpdateAt}
+              setLastRemoteUpdateAt={setLastRemoteUpdateAt}
+              connectionBannerActive={connectionBannerVisible}
+            />
             <Routes>
               {user && <Route path="/recipes" element={<Recipes user={user} setSpaceForFloatingButton={setSpaceForFloatingButton} />} />}
               {user && <Route path="/recipes/add" element={<AddRecipe user={user} />} />}
