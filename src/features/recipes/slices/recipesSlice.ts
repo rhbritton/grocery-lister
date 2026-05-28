@@ -6,7 +6,7 @@ import recipesConfig from '../config.json';
 
 import { generateSearchIndex, generateWordIndexFromRecipe } from '../../../services/search.js';
 
-import { shouldQueueOffline, isLocalNewer, stripRecipePayloadForFirestore, toRecipeFirestoreFields, docHasPendingWrites, readLocalDocSnapshot } from '../../../services/offlineSync.ts';
+import { shouldQueueOffline, isLocalNewer, stripRecipePayloadForFirestore, toRecipeFirestoreFields, docHasPendingWrites, readLocalDocSnapshot, isBrowserOffline, withFirestoreWriteTimeout } from '../../../services/offlineSync.ts';
 import { enqueuePendingSync, dequeuePendingSync } from '../../sync/pendingSyncSlice.ts';
 import { db, auth, appId } from '../../../auth/firebaseConfig';
 import { collection, query, where, getDoc, getDocs, addDoc, doc, documentId, updateDoc, setDoc, limit, 
@@ -506,12 +506,18 @@ export const addRecipeToFirestore = createAsyncThunk(
       };
     };
 
+    if (isBrowserOffline()) {
+      return queueAndReturn();
+    }
+
     try {
       const name_lowercase = payload.name ? String(payload.name).trim().toLowerCase() : '';
-      const docRef = await addDoc(collection(db, 'recipes'), {
-        ...toRecipeFirestoreFields(payload, { name_lowercase }),
-        updatedAt: serverTimestamp(),
-      });
+      const docRef = await withFirestoreWriteTimeout(
+        addDoc(collection(db, 'recipes'), {
+          ...toRecipeFirestoreFields(payload, { name_lowercase }),
+          updatedAt: serverTimestamp(),
+        })
+      );
       dispatch(dequeuePendingSync(`addRecipe:${localId}`));
       const offlineQueued = await docHasPendingWrites(docRef);
       return {
@@ -564,17 +570,23 @@ export const editRecipeFromFirestore = createAsyncThunk(
       return { ...payload, fbid, updatedAt: now, offlineQueued: true };
     };
 
+    if (isBrowserOffline()) {
+      return queueAndReturn();
+    }
+
     try {
       const docRef = doc(db, 'recipes', fbid);
       const name_lowercase = payload.name ? String(payload.name).trim().toLowerCase() : '';
-      await updateDoc(docRef, {
-        ...toRecipeFirestoreFields(payload, {
-          name_lowercase,
-          search_keywords: generateSearchIndex(name_lowercase),
-          ingredient_keywords: generateWordIndexFromRecipe(payload),
-        }),
-        updatedAt: serverTimestamp(),
-      });
+      await withFirestoreWriteTimeout(
+        updateDoc(docRef, {
+          ...toRecipeFirestoreFields(payload, {
+            name_lowercase,
+            search_keywords: generateSearchIndex(name_lowercase),
+            ingredient_keywords: generateWordIndexFromRecipe(payload),
+          }),
+          updatedAt: serverTimestamp(),
+        })
+      );
 
       dispatch(dequeuePendingSync(pendingId));
 

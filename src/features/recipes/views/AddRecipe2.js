@@ -58,9 +58,9 @@ const AddRecipe = (props) => {
     if (name.trim() !== '' && ingredients.length > 0 && ingredients.every(ingredient => ingredient.amount !== "" && ingredient.name.trim() !== "")) {
       setIsSaving(true);
       try {
-        await dispatch(addRecipeToFirestore({ 
+        await dispatch(addRecipeToFirestore({
             userId, name, ingredients, instructions
-        }));
+        })).unwrap();
 
         setName('');
         setIngredients([{ amount: '1', name: '', type: '' }]);

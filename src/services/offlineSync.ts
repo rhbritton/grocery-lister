@@ -166,6 +166,34 @@ export function isLocalNewer(
 }
 
 const FIRESTORE_SYNC_TIMEOUT_MS = 15_000;
+export const FIRESTORE_WRITE_TIMEOUT_MS = 8_000;
+
+/** Reject hung Firestore writes when the browser still reports online. */
+export async function withFirestoreWriteTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs = FIRESTORE_WRITE_TIMEOUT_MS
+): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          markNetworkUnavailable();
+          reject(
+            Object.assign(new Error('Firestore write timed out'), {
+              code: 'deadline-exceeded',
+            })
+          );
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId);
+    }
+  }
+}
 
 export async function waitForFirestoreSync(): Promise<void> {
   try {

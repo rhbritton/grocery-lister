@@ -7,6 +7,7 @@ import {
   stripGroceryListPayloadForFirestore,
   stripSentinelValues,
   handleFirestoreNetworkError,
+  withFirestoreWriteTimeout,
 } from './offlineSync';
 import { setServerReachability, getServerReachability } from './connectionState.ts';
 
@@ -62,6 +63,32 @@ describe('shouldQueueOffline', () => {
   it('returns false for other errors while online', () => {
     expect(shouldQueueOffline({ code: 'permission-denied' })).toBe(false);
     expect(shouldQueueOffline(new Error('boom'))).toBe(false);
+  });
+});
+
+describe('withFirestoreWriteTimeout', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    setServerReachability(true);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('resolves when the write completes in time', async () => {
+    const result = await withFirestoreWriteTimeout(Promise.resolve('ok'), 1000);
+    expect(result).toBe('ok');
+  });
+
+  it('rejects with deadline-exceeded and marks server unreachable on timeout', async () => {
+    const pending = withFirestoreWriteTimeout(new Promise(() => {}), 1000);
+
+    jest.advanceTimersByTime(1000);
+
+    await expect(pending).rejects.toMatchObject({ code: 'deadline-exceeded' });
+    expect(getServerReachability()).toBe(false);
+    expect(shouldQueueOffline({ code: 'deadline-exceeded' })).toBe(true);
   });
 });
 

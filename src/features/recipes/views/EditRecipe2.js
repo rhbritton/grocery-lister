@@ -97,7 +97,7 @@ const EditRecipe = () => {
         };
 
         dispatch(upsertRecipe(recipeToSave));
-        await dispatch(editRecipeFromFirestore(recipeToSave));
+        await dispatch(editRecipeFromFirestore(recipeToSave)).unwrap();
 
         navigate('/recipes');
       } catch (error) {
