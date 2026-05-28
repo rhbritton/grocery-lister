@@ -4,7 +4,7 @@ export const CONNECTIVITY_PROBE_URL =
 
 export const CONNECTIVITY_PROBE_TIMEOUT_MS = 5000;
 
-export const CONNECTIVITY_PROBE_INTERVAL_MS = 12000;
+export const CONNECTIVITY_PROBE_INTERVAL_MS = 6000;
 
 /**
  * Real network probe. Browsers often keep navigator.onLine true after WiFi
