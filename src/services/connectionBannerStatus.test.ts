@@ -65,12 +65,12 @@ describe('connectionBannerStatus', () => {
   });
 
   describe('isConnectionBannerVisible', () => {
-    it('is false only for hidden', () => {
+    it('is true only for offline and syncing', () => {
       expect(isConnectionBannerVisible('hidden')).toBe(false);
       expect(isConnectionBannerVisible('offline')).toBe(true);
       expect(isConnectionBannerVisible('syncing')).toBe(true);
-      expect(isConnectionBannerVisible('online')).toBe(true);
-      expect(isConnectionBannerVisible('connected')).toBe(true);
+      expect(isConnectionBannerVisible('online')).toBe(false);
+      expect(isConnectionBannerVisible('connected')).toBe(false);
     });
   });
 

@@ -41,7 +41,7 @@ const BANNER_CONFIG = {
 };
 
 function ConnectionStatusBanner({ status }) {
-  if (!status || status === 'hidden') {
+  if (!status || status === 'hidden' || status === 'online' || status === 'connected') {
     return null;
   }
 

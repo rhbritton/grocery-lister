@@ -23,7 +23,7 @@ export function isConnectionOffline(serverReachable: boolean): boolean {
 }
 
 export function isConnectionBannerVisible(status: ConnectionBannerStatus): boolean {
-  return status !== 'hidden';
+  return status === 'offline' || status === 'syncing';
 }
 
 /** Derive banner status from current inputs — any input change should re-render. */

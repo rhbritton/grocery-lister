@@ -10,6 +10,7 @@ import {
   deriveConnectionBannerStatus,
   isConnectionBannerVisible,
 } from './connectionBannerStatus.ts';
+import { useMinimumDurationBannerStatus } from './connectionBannerDisplay.ts';
 
 function readNavigatorOnline(): boolean {
   return typeof navigator === 'undefined' || navigator.onLine !== false;
@@ -143,6 +144,8 @@ export function useConnectionBannerStatus(
     [userId, offline, pendingQueue.length, syncInFlight, showOnlineFlash]
   );
 
+  const displayStatus = useMinimumDurationBannerStatus(connectionStatus);
+
   useEffect(
     () => () => {
       if (onlineFlashTimeoutRef.current) {
@@ -153,7 +156,7 @@ export function useConnectionBannerStatus(
   );
 
   return {
-    connectionStatus,
-    connectionBannerVisible: isConnectionBannerVisible(connectionStatus),
+    connectionStatus: displayStatus,
+    connectionBannerVisible: isConnectionBannerVisible(displayStatus),
   };
 }
