@@ -6,21 +6,62 @@
   });
 
   document.querySelectorAll('[data-app-store]').forEach((el) => {
-    if (config.appStoreLive && config.appStoreUrl) {
-      el.setAttribute('href', config.appStoreUrl);
-      el.hidden = false;
-    } else {
-      el.hidden = true;
-    }
+    configureStoreLink(el, {
+      live: config.appStoreLive && config.appStoreUrl,
+      url: config.appStoreUrl,
+      liveLine: 'Download on the',
+      comingSoonLine: 'Coming soon to',
+      footerLabel: 'App Store',
+    });
   });
 
   document.querySelectorAll('[data-play-store]').forEach((el) => {
-    if (config.playStoreLive && config.playStoreUrl) {
-      el.setAttribute('href', config.playStoreUrl);
+    configureStoreLink(el, {
+      live: config.playStoreLive && config.playStoreUrl,
+      url: config.playStoreUrl,
+      liveLine: 'Get it on',
+      comingSoonLine: 'Coming soon to',
+      footerLabel: 'Google Play',
+    });
+  });
+
+  function configureStoreLink(el, { live, url, liveLine, comingSoonLine, footerLabel }) {
+    const badgeLine = el.querySelector('[data-store-line]');
+
+    if (badgeLine) {
+      if (live) {
+        el.setAttribute('href', url);
+        el.removeAttribute('aria-disabled');
+        el.classList.remove('store-coming-soon');
+        badgeLine.textContent = liveLine;
+      } else {
+        el.setAttribute('href', '#');
+        el.setAttribute('aria-disabled', 'true');
+        el.classList.add('store-coming-soon');
+        badgeLine.textContent = comingSoonLine;
+      }
+      return;
+    }
+
+    if (live) {
+      el.setAttribute('href', url);
+      el.removeAttribute('aria-disabled');
+      el.classList.remove('store-coming-soon');
+      el.textContent = footerLabel;
       el.hidden = false;
     } else {
-      el.hidden = true;
+      el.setAttribute('href', '#');
+      el.setAttribute('aria-disabled', 'true');
+      el.classList.add('store-coming-soon');
+      el.textContent = `${footerLabel} (coming soon)`;
+      el.hidden = false;
     }
+  }
+
+  document.querySelectorAll('.store-coming-soon[href="#"]').forEach((el) => {
+    el.addEventListener('click', (event) => {
+      event.preventDefault();
+    });
   });
 
   document.querySelectorAll('[data-support-email]').forEach((el) => {

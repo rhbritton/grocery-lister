@@ -21,7 +21,7 @@ Edit `js/config.js`:
 - `webAppUrl` — your hosted React app (default: GitHub Pages `/gl`)
 - `appStoreUrl` / `playStoreUrl` — store listing URLs
 - `supportEmail` — shown on support & privacy pages
-- Set `appStoreLive` / `playStoreLive` to `true` when listings are live (enables store buttons)
+- Set `appStoreLive` / `playStoreLive` to `true` when listings are live (enables store download links; otherwise badges show "Coming soon to")
 
 ## Preview locally
 

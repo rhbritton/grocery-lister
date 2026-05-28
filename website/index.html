@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta
       name="description"
-      content="GroceryLister turns recipes into aisle-sorted grocery lists for easy meal planning. Share by link, shop offline, and sync when you're back online."
+      content="GroceryLister turns recipes into aisle-sorted grocery lists for easy meal planning. Share by link, shop offline when signed in, and sync when you're back online."
     />
     <title>GroceryLister — Recipe-powered grocery lists</title>
     <link rel="stylesheet" href="./css/styles.css" />
@@ -51,15 +51,21 @@
             </p>
             <div class="signup-stack">
               <a class="btn btn-primary btn-block" data-web-app href="#">Use the web app</a>
-              <a class="btn btn-outline btn-block btn-with-icon" data-app-store href="#" rel="noopener noreferrer" hidden>
+              <a class="btn btn-outline btn-block btn-with-icon store-coming-soon" data-app-store href="#" rel="noopener noreferrer" aria-disabled="true">
                 <svg class="store-icon store-icon-apple" viewBox="0 0 24 24" aria-hidden="true">
                   <path fill="currentColor" d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
                 </svg>
-                <span>Download on the App Store</span>
+                <span class="store-badge-text">
+                  <span class="store-badge-line" data-store-line>Coming soon to</span>
+                  <span class="store-badge-name">App Store</span>
+                </span>
               </a>
-              <a class="btn btn-outline btn-block btn-with-icon" data-play-store href="#" rel="noopener noreferrer" hidden>
+              <a class="btn btn-outline btn-block btn-with-icon store-coming-soon" data-play-store href="#" rel="noopener noreferrer" aria-disabled="true">
                 <img class="store-icon store-icon-play" src="./images/icons/google-play.svg" alt="" width="22" height="24" />
-                <span>Get it on Google Play</span>
+                <span class="store-badge-text">
+                  <span class="store-badge-line" data-store-line>Coming soon to</span>
+                  <span class="store-badge-name">Google Play</span>
+                </span>
               </a>
             </div>
             <p class="fine-print">
@@ -101,11 +107,11 @@
             </article>
             <article class="feature-block">
               <h3>Sorted by aisle.</h3>
-              <p>Ingredients are grouped the way stores are laid out — produce, dairy, meat — so you walk the floor once.</p>
+              <p>Ingredients are grouped the way stores are laid out — produce, meat, dairy, freezer, and more — so you walk the floor once.</p>
             </article>
             <article class="feature-block">
-              <h3>Works offline in the store.</h3>
-              <p>Spotty signal in the aisles? Keep checking items off — your changes save locally and sync when you're back online.</p>
+              <h3>Works offline when you're signed in.</h3>
+              <p>Spotty signal in the aisles? Keep checking items off — changes save on your device and sync to your account when you're back online.</p>
             </article>
           </div>
         </div>
@@ -117,15 +123,15 @@
           <div class="feature-row">
             <article class="feature-block">
               <h3>Share recipes.</h3>
-              <p>Send a recipe link to a friend or your partner. They can read ingredients and steps without logging in.</p>
+              <p>Send a recipe link to a friend or your partner. They can read ingredients and steps without logging in — an internet connection is required to open the link.</p>
             </article>
             <article class="feature-block">
               <h3>Share grocery lists.</h3>
-              <p>One link for the whole household. Everyone opens the same list on their phone — at home or in the store.</p>
+              <p>One link for the whole household. Anyone with the link can check items off for 7 days — at home or in the store. Guests need an internet connection.</p>
             </article>
             <article class="feature-block">
-              <h3>Updates in real time.</h3>
-              <p>Check an item off and it syncs for every shopper on the list — handy when you're splitting aisles or shopping at the same time.</p>
+              <h3>Stays in sync while online.</h3>
+              <p>When everyone is connected, check-offs update across devices — handy when you're splitting aisles or shopping at the same time.</p>
             </article>
           </div>
         </div>
@@ -137,9 +143,9 @@
           <ul class="checklist">
             <li>Recipe-powered meal planning</li>
             <li>Ingredients grouped by aisle</li>
-            <li>Share recipes &amp; lists by link</li>
-            <li>Guests can view without signing in</li>
-            <li>Offline in the store — syncs when reconnected</li>
+            <li>Share recipes &amp; lists by link (shared lists active 7 days)</li>
+            <li>Guests can open shared links without signing in</li>
+            <li>Offline shopping when signed in — syncs when reconnected</li>
           </ul>
           <a class="btn btn-primary btn-lg" data-web-app href="#">Get started free</a>
         </div>

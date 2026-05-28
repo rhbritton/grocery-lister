@@ -15,7 +15,7 @@ window.GROCERYLISTER_CONFIG = {
   legalCountry: 'United States',
   governingLawRegion: '',
   governingLawCountry: 'United States',
-  // Set to true when each store listing is live (hides "Coming soon" hint)
+  // Set to true when each store listing is live (switches badge text to "Download on the" / "Get it on")
   appStoreLive: false,
   playStoreLive: false,
   // Hero carousel: ms between auto-advances (4.5s default)
