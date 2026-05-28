@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { onSnapshotsInSync } from 'firebase/firestore';
-import { db } from '../auth/firebaseConfig';
+import {
+  probeNetworkReachable,
+  CONNECTIVITY_PROBE_INTERVAL_MS,
+} from './connectionProbe.ts';
 import {
   getFirestoreSyncPending,
+  getServerReachability,
   isNavigatorOffline,
   markFirestoreSyncPending,
   markNetworkAvailable,
   markNetworkUnavailable,
-  readInitialReachability,
   subscribeFirestoreSyncPending,
   subscribeServerReachability,
 } from './connectionState.ts';
@@ -19,9 +21,23 @@ export interface ConnectionStatus {
   firestoreSyncPending: boolean;
 }
 
-/** Event-driven connection + sync status — no polling, no extra Firestore reads. */
+async function applyProbeResult(): Promise<void> {
+  if (isNavigatorOffline()) {
+    markNetworkUnavailable();
+    return;
+  }
+
+  const reachable = await probeNetworkReachable();
+  if (reachable) {
+    markNetworkAvailable();
+  } else {
+    markNetworkUnavailable();
+  }
+}
+
+/** Event-driven connection + sync status; periodic HTTP probe for WiFi drops. */
 export function useConnectionStatus(userId: string | undefined): ConnectionStatus {
-  const [serverReachable, setServerReachable] = useState(readInitialReachability);
+  const [serverReachable, setServerReachable] = useState(getServerReachability);
   const [firestoreSyncPending, setFirestoreSyncPending] = useState(getFirestoreSyncPending);
 
   useEffect(() => subscribeServerReachability(setServerReachable), []);
@@ -29,7 +45,10 @@ export function useConnectionStatus(userId: string | undefined): ConnectionStatu
 
   useEffect(() => {
     const handleOffline = () => markNetworkUnavailable();
-    const handleOnline = () => markNetworkAvailable();
+
+    const handleOnline = () => {
+      void applyProbeResult();
+    };
 
     window.addEventListener('offline', handleOffline);
     window.addEventListener('online', handleOnline);
@@ -37,7 +56,7 @@ export function useConnectionStatus(userId: string | undefined): ConnectionStatu
     if (isNavigatorOffline()) {
       markNetworkUnavailable();
     } else {
-      markNetworkAvailable();
+      void applyProbeResult();
     }
 
     return () => {
@@ -49,16 +68,34 @@ export function useConnectionStatus(userId: string | undefined): ConnectionStatu
   useEffect(() => {
     if (!userId) {
       if (!isNavigatorOffline()) {
-        markNetworkAvailable();
+        void applyProbeResult();
       }
       markFirestoreSyncPending(false);
       return undefined;
     }
 
-    return onSnapshotsInSync(db, () => {
-      markNetworkAvailable();
-      markFirestoreSyncPending(false);
-    });
+    let cancelled = false;
+
+    const runProbe = () => {
+      if (cancelled || document.visibilityState === 'hidden') return;
+      void applyProbeResult();
+    };
+
+    runProbe();
+    const intervalId = window.setInterval(runProbe, CONNECTIVITY_PROBE_INTERVAL_MS);
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        runProbe();
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, [userId]);
 
   return { serverReachable, firestoreSyncPending };

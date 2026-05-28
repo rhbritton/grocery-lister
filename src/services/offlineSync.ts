@@ -165,9 +165,19 @@ export function isLocalNewer(
   return (localUpdatedAt || 0) > (incomingUpdatedAt || 0);
 }
 
+const FIRESTORE_SYNC_TIMEOUT_MS = 15_000;
+
 export async function waitForFirestoreSync(): Promise<void> {
   try {
-    await waitForPendingWrites(db);
+    await Promise.race([
+      waitForPendingWrites(db),
+      new Promise<never>((_, reject) => {
+        setTimeout(
+          () => reject(new Error('waitForPendingWrites timed out')),
+          FIRESTORE_SYNC_TIMEOUT_MS
+        );
+      }),
+    ]);
   } catch (error) {
     console.warn('waitForPendingWrites failed:', error);
   }

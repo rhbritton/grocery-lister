@@ -1,6 +1,9 @@
 import {
   isNetworkUnavailableError,
   isEffectivelyOffline,
+  getServerReachability,
+  markNetworkAvailable,
+  markNetworkUnavailable,
   setServerReachability,
 } from './connectionState.ts';
 
@@ -36,5 +39,13 @@ describe('isEffectivelyOffline', () => {
     expect(isEffectivelyOffline(true)).toBe(false);
 
     Object.defineProperty(navigator, 'onLine', { configurable: true, value: originalOnLine });
+  });
+
+  it('restores reachability only when explicitly confirmed after an outage', () => {
+    markNetworkUnavailable();
+    expect(getServerReachability()).toBe(false);
+
+    markNetworkAvailable();
+    expect(getServerReachability()).toBe(true);
   });
 });

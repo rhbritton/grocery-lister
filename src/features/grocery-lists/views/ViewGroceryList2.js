@@ -203,10 +203,19 @@ const ViewGroceryList = (props) => {
   }, [groceryList]);
 
   useEffect(() => {
-    hasPendingEditRef.current = pendingSyncQueue.some(
-      (item) => item.id === `editGroceryList:${groceryListId}`
-    );
-  }, [pendingSyncQueue, groceryListId]);
+    const pendingId = `editGroceryList:${groceryListId}`;
+    const hasPendingEdit = pendingSyncQueue.some((item) => item.id === pendingId);
+    hasPendingEditRef.current = hasPendingEdit;
+
+    // Background flush removes the queue item before the view's persist path runs;
+    // clear offlineQueued so the next server snapshot can apply.
+    if (!hasPendingEdit && groceryListRef.current?.offlineQueued) {
+      const cleared = { ...groceryListRef.current, offlineQueued: false };
+      groceryListRef.current = cleared;
+      setGroceryList(cleared);
+      dispatch(upsertGroceryList(cleared));
+    }
+  }, [pendingSyncQueue, groceryListId, dispatch]);
 
   const highlightRow = (itemId, delay = 0) => {
     setTimeout(() => {

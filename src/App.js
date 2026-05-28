@@ -15,7 +15,7 @@ import ConnectionStatusBanner, { CONNECTION_BANNER_HEIGHT_PX } from './component
 import StorePromoBanner from './components/StorePromoBanner';
 import PageLoader from './components/PageLoader';
 
-import { useSelector, useDispatch } from 'react-redux';
+import { useDispatch } from 'react-redux';
 
 import Header from './components/Header2.js';
 
@@ -40,18 +40,13 @@ import {
   syncGroceryListsFromFirestore,
   selectMaxGroceryListTimestamp
 } from './features/grocery-lists/slices/groceryListsSlice.ts';
-import { flushPendingSync } from './features/sync/flushPendingSync.ts';
-import { selectPendingSyncQueue, clearPendingSync } from './features/sync/pendingSyncSlice.ts';
+import { clearPendingSync } from './features/sync/pendingSyncSlice.ts';
 import { store, persistor } from './app/store.ts';
 import { deleteAccount } from './services/accountDeletion.js';
 import { signInWithGoogle, getSignInErrorMessage } from './auth/signIn.js';
 import { upsertUserProfile } from './auth/userProfile.js';
-import {
-  isEffectivelyOffline,
-  useConnectionStatus,
-} from './services/connectionMonitor.ts';
 import { handleFirestoreNetworkError } from './services/offlineSync.ts';
-import { waitForFirestoreSync } from './services/offlineSync.ts';
+import { useConnectionBannerStatus } from './services/useConnectionBannerStatus.ts';
 
 import './App.css';
 
@@ -88,13 +83,9 @@ function App() {
 
   const dispatch = useDispatch();
 
-  const { serverReachable } = useConnectionStatus(user?.uid);
-  const wasOfflineRef = useRef(false);
-  const sawOfflineOrSyncingRef = useRef(false);
+  const { connectionStatus, connectionBannerVisible } =
+    useConnectionBannerStatus(user?.uid);
 
-  const [connectionStatus, setConnectionStatus] = useState('hidden');
-  const onlineFlashTimeoutRef = useRef(null);
-  const syncInFlightRef = useRef(false);
   const previousUserIdRef = useRef(undefined);
   const isDeletingAccountRef = useRef(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
@@ -214,98 +205,6 @@ function App() {
 
     return () => unsubscribeSnapshot();
   }, [user?.uid]);
-
-  const pendingQueue = useSelector(selectPendingSyncQueue);
-
-  useEffect(() => {
-    if (connectionStatus === 'offline' || connectionStatus === 'syncing') {
-      sawOfflineOrSyncingRef.current = true;
-    }
-  }, [connectionStatus]);
-
-  const finishSyncBanner = useCallback(() => {
-    const queueLength = selectPendingSyncQueue(store.getState()).length;
-
-    if (isEffectivelyOffline(serverReachable)) {
-      setConnectionStatus('offline');
-      return;
-    }
-
-    if (queueLength > 0) {
-      setConnectionStatus('syncing');
-      return;
-    }
-
-    if (!sawOfflineOrSyncingRef.current) {
-      setConnectionStatus('hidden');
-      return;
-    }
-
-    sawOfflineOrSyncingRef.current = false;
-    setConnectionStatus('online');
-    if (onlineFlashTimeoutRef.current) clearTimeout(onlineFlashTimeoutRef.current);
-    onlineFlashTimeoutRef.current = setTimeout(() => {
-      setConnectionStatus('hidden');
-    }, 2200);
-  }, [serverReachable]);
-
-  const runSyncAfterReconnect = useCallback(async () => {
-    if (syncInFlightRef.current) return;
-    syncInFlightRef.current = true;
-    setConnectionStatus('syncing');
-
-    try {
-      await dispatch(flushPendingSync());
-      await waitForFirestoreSync();
-    } catch (error) {
-      console.warn('Reconnect sync failed:', error);
-    } finally {
-      syncInFlightRef.current = false;
-      finishSyncBanner();
-    }
-  }, [dispatch, finishSyncBanner]);
-
-  useEffect(() => {
-    if (!user?.uid) {
-      setConnectionStatus('hidden');
-      wasOfflineRef.current = false;
-      sawOfflineOrSyncingRef.current = false;
-      return;
-    }
-
-    const offline = isEffectivelyOffline(serverReachable);
-
-    if (offline) {
-      wasOfflineRef.current = true;
-      if (onlineFlashTimeoutRef.current) {
-        clearTimeout(onlineFlashTimeoutRef.current);
-        onlineFlashTimeoutRef.current = null;
-      }
-      if (!syncInFlightRef.current) {
-        setConnectionStatus('offline');
-      }
-      return;
-    }
-
-    const shouldFlush = wasOfflineRef.current || pendingQueue.length > 0;
-
-    if (shouldFlush) {
-      wasOfflineRef.current = false;
-      if (!syncInFlightRef.current) {
-        runSyncAfterReconnect();
-      } else {
-        setConnectionStatus('syncing');
-      }
-      return;
-    }
-
-    if (syncInFlightRef.current) {
-      setConnectionStatus('syncing');
-      return;
-    }
-
-    finishSyncBanner();
-  }, [user?.uid, serverReachable, pendingQueue.length, runSyncAfterReconnect, finishSyncBanner]);
 
   // Handle Google Sign-in
   const handleGoogleLogin = async () => {
@@ -478,9 +377,6 @@ function App() {
     return user ? _404 : loginPage;
   };
 
-  // Banner UI disabled — offline/sync logic below still runs.
-  const connectionBannerVisible = false;
-
   return (
     <div
       className="App bg-[#F8FAFC] min-h-screen"
@@ -498,7 +394,7 @@ function App() {
 
         <ScrollToTop />
 
-        {user && <ConnectionStatusBanner status="hidden" />}
+        {user && <ConnectionStatusBanner status={connectionStatus} />}
 
         <main
           className={`min-h-screen bg-[#F8FAFC] font-sans text-slate-900 ${spaceForFloatingButton} ${

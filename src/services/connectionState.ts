@@ -88,7 +88,7 @@ export function markNetworkUnavailable(): void {
   setServerReachability(false);
 }
 
-/** Client synced with server, or browser came back online. */
+/** Restore reachability only after a successful HTTP probe (not Firestore cache sync). */
 export function markNetworkAvailable(): void {
   if (!readNavigatorOnline()) {
     setServerReachability(false);
