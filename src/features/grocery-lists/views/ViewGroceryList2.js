@@ -31,6 +31,7 @@ import { editGroceryListFromFirestore, upsertGroceryList, shareGroceryListFromFi
 import { selectPendingSyncQueue } from '../../sync/pendingSyncSlice.ts';
 import { normalizeUpdatedAt, shouldApplyRemoteGroceryListSnapshot } from '../utils/groceryListMerge.ts';
 import { handleFirestoreNetworkError } from '../../../services/offlineSync.ts';
+import { useConnectionStatus } from '../../../services/connectionMonitor.ts';
 import {
   isShareActive,
   formatShareExpiryDate,
@@ -149,6 +150,7 @@ const ViewGroceryList = (props) => {
     const { groceryLists } = useSelector((state) => state.groceryLists);
     const rehydrated = useSelector((state) => state._persist?.rehydrated);
     const pendingSyncQueue = useSelector(selectPendingSyncQueue);
+    const { serverReachable } = useConnectionStatus(props.userId);
 
     const isInitialLoad = useRef(true);
     const groceryListRef = useRef(undefined);
@@ -156,6 +158,11 @@ const ViewGroceryList = (props) => {
     const remoteHighlightIdsRef = useRef(null);
     const onRemoteListUpdateRef = useRef(props.onRemoteListUpdate);
     const persistQueueRef = useRef(Promise.resolve());
+    const serverReachableRef = useRef(serverReachable);
+    const prevServerReachableRef = useRef(serverReachable);
+    serverReachableRef.current = serverReachable;
+
+    const [listenerGeneration, setListenerGeneration] = useState(0);
     
     const [groceryList, setGroceryList] = useState(undefined);
     const [originalAllIngredients, setOriginalAllIngredients] = useState([]);
@@ -216,6 +223,18 @@ const ViewGroceryList = (props) => {
       dispatch(upsertGroceryList(cleared));
     }
   }, [pendingSyncQueue, groceryListId, dispatch]);
+
+  // Re-attach a single Firestore listener after confirmed reconnect (not on disconnect).
+  useEffect(() => {
+    const wasReachable = prevServerReachableRef.current;
+    prevServerReachableRef.current = serverReachable;
+
+    if (wasReachable || !serverReachable || !props.userId || !groceryListId) {
+      return;
+    }
+
+    setListenerGeneration((generation) => generation + 1);
+  }, [serverReachable, props.userId, groceryListId]);
 
   const highlightRow = (itemId, delay = 0) => {
     setTimeout(() => {
@@ -476,17 +495,20 @@ const ViewGroceryList = (props) => {
 
   useEffect(() => {
     const listFbid = groceryListId;
-    if (!listFbid) return;
+    if (!listFbid) return undefined;
 
     isInitialLoad.current = true;
     setLoadError(false);
     const docRef = doc(db, 'grocery-lists', listFbid);
+    let active = true;
 
     const unsubscribe = onSnapshot(
       docRef,
       (docSnap) => {
+        if (!active) return;
+
         if (!docSnap.exists()) {
-          if (!docSnap.metadata.fromCache || !navigator.onLine) {
+          if (!docSnap.metadata.fromCache || !serverReachableRef.current) {
             setLoadError(true);
           }
           return;
@@ -500,7 +522,8 @@ const ViewGroceryList = (props) => {
           }
 
           // When online, wait for the server snapshot — the first cache event can be stale.
-          const waitingForServer = docSnap.metadata.fromCache && navigator.onLine;
+          const waitingForServer =
+            docSnap.metadata.fromCache && serverReachableRef.current;
           if (waitingForServer) {
             if (!groceryListRef.current) {
               dispatch(upsertGroceryList(remoteList));
@@ -565,6 +588,7 @@ const ViewGroceryList = (props) => {
         onRemoteListUpdateRef.current?.();
       },
       (error) => {
+        if (!active) return;
         console.error('Error listening to grocery list changes:', error);
         handleFirestoreNetworkError(error);
         if (!groceryListRef.current) {
@@ -573,8 +597,11 @@ const ViewGroceryList = (props) => {
       }
     );
 
-    return () => unsubscribe();
-  }, [groceryListId, props.userId, dispatch]);
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [groceryListId, props.userId, dispatch, listenerGeneration]);
 
     const [isShared, setIsShared] = useState(false);
     const [isShareModalOpen, setIsShareModalOpen] = useState(false);
