@@ -131,13 +131,13 @@ const AddGroceryList = (props) => {
     if (!isSaveDisabled) {
       setIsSaving(true);
       try {
-        await dispatch(addGroceryListToFirestore({ 
-            id: nanoid(), 
-            userId, 
-            recipes, 
-            ingredients, 
-            timestamp: (new Date()).getTime() 
-        }));
+        await dispatch(addGroceryListToFirestore({
+            id: nanoid(),
+            userId,
+            recipes,
+            ingredients,
+            timestamp: (new Date()).getTime()
+        })).unwrap();
 
         setRecipes([]);
         setIngredients([]);

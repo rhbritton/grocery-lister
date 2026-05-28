@@ -147,6 +147,20 @@ export const upsertRecipeInState = (state, recipe) => {
   }
 };
 
+export const removeRecipeFromState = (state, fbid: string) => {
+  const matches = (recipe: Recipe) =>
+    recipe.fbid === fbid || recipe.id === fbid;
+
+  state.allRecipes = (state.allRecipes || []).filter((recipe) => !matches(recipe));
+  state.allRecipesSorted = (state.allRecipesSorted || []).filter(
+    (recipe) => !matches(recipe)
+  );
+  state.recipes = (state.recipes || []).filter((recipe) => !matches(recipe));
+  state.favoriteRecipes = (state.favoriteRecipes || []).filter(
+    (recipe) => !matches(recipe)
+  );
+};
+
 export const getAllFavoriteRecipesFromFirestore = createAsyncThunk(
   'recipes/fetchAllFavoriteRecipes',
   async (userId, { rejectWithValue }) => {
@@ -619,23 +633,33 @@ export const deleteRecipeFromFirestore = createAsyncThunk(
   async (fbid, { dispatch, rejectWithValue }) => {
     const pendingId = `deleteRecipe:${fbid}`;
 
+    const queueAndReturn = () => {
+      dispatch(enqueuePendingSync({
+        type: 'deleteRecipe',
+        id: pendingId,
+        payload: fbid,
+      }));
+      return fbid;
+    };
+
+    if (isBrowserOffline()) {
+      return queueAndReturn();
+    }
+
     try {
       const docRef = doc(db, 'recipes', fbid);
-      await updateDoc(docRef, {
-        isDeleted: true,
-        updatedAt: serverTimestamp()
-      });
+      await withFirestoreWriteTimeout(
+        updateDoc(docRef, {
+          isDeleted: true,
+          updatedAt: serverTimestamp(),
+        })
+      );
 
       dispatch(dequeuePendingSync(pendingId));
       return fbid;
     } catch (error) {
       if (shouldQueueOffline(error)) {
-        dispatch(enqueuePendingSync({
-          type: 'deleteRecipe',
-          id: pendingId,
-          payload: fbid,
-        }));
-        return fbid;
+        return queueAndReturn();
       }
       return rejectWithValue(error.message);
     }
@@ -875,13 +899,11 @@ export const recipesSlice = createSlice({
       .addCase(editRecipeFromFirestore.rejected, (state, action) => {
       
       })
-      .addCase(deleteRecipeFromFirestore.pending, (state) => {
-        
+      .addCase(deleteRecipeFromFirestore.pending, (state, action) => {
+        removeRecipeFromState(state, action.meta.arg);
       })
       .addCase(deleteRecipeFromFirestore.fulfilled, (state, action) => {
-        state.allRecipes = state.allRecipes.filter(recipe => recipe.fbid !== action.payload);
-        state.allRecipesSorted = state.allRecipesSorted.filter(recipe => recipe.fbid !== action.payload);
-        state.recipes = state.recipes.filter(recipe => recipe.fbid !== action.payload);
+        removeRecipeFromState(state, action.payload);
       })
       .addCase(deleteRecipeFromFirestore.rejected, (state, action) => {
         
