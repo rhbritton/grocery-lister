@@ -8,6 +8,8 @@ import { generateSearchIndex, generateWordIndexFromRecipe } from '../../../servi
 
 import { shouldQueueOffline, isLocalNewer, stripRecipePayloadForFirestore, toRecipeFirestoreFields, docHasPendingWrites, readLocalDocSnapshot, isBrowserOffline, withFirestoreWriteTimeout } from '../../../services/offlineSync.ts';
 import { enqueuePendingSync, dequeuePendingSync } from '../../sync/pendingSyncSlice.ts';
+import { getRecipeCatalogWithPending, overlayPendingRecipesOnCollections } from '../../sync/pendingRecipeOverlay.ts';
+import { mergeRecipesByNewestUpdatedAt } from '../utils/recipeMerge.ts';
 import { db, auth, appId } from '../../../auth/firebaseConfig';
 import { collection, query, where, getDoc, getDocs, addDoc, doc, documentId, updateDoc, setDoc, limit, 
           startAfter, orderBy, QueryDocumentSnapshot, DocumentData, arrayUnion, arrayRemove, serverTimestamp, Timestamp } from 'firebase/firestore';
@@ -118,6 +120,8 @@ const normalizeRecipe = (recipe) => {
   };
 };
 
+export { mergeRecipesByNewestUpdatedAt } from '../utils/recipeMerge.ts';
+
 export const upsertRecipeInState = (state, recipe) => {
   const normalized = normalizeRecipe(recipe);
   if (!normalized.fbid) return;
@@ -125,6 +129,7 @@ export const upsertRecipeInState = (state, recipe) => {
   if (!state.allRecipes) state.allRecipes = [];
   if (!state.allRecipesSorted) state.allRecipesSorted = [];
   if (!state.recipes) state.recipes = [];
+  if (!state.favoriteRecipes) state.favoriteRecipes = [];
 
   const masterIndex = state.allRecipes.findIndex(
     (r) => r.fbid === normalized.fbid || r.id === normalized.fbid
@@ -133,6 +138,17 @@ export const upsertRecipeInState = (state, recipe) => {
     state.allRecipes[masterIndex] = { ...state.allRecipes[masterIndex], ...normalized };
   } else {
     state.allRecipes.push(normalized);
+  }
+
+  const favIndex = state.favoriteRecipes.findIndex(
+    (r) => r.fbid === normalized.fbid || r.id === normalized.fbid
+  );
+  if (favIndex !== -1) {
+    state.favoriteRecipes[favIndex] = {
+      ...state.favoriteRecipes[favIndex],
+      ...normalized,
+      favorited: true,
+    };
   }
 
   const sortedCopy = [...state.allRecipes];
@@ -251,20 +267,9 @@ export const searchRecipesFromAll = createAsyncThunk(
 
       const state = getState() as RootState;
       const { allRecipes, favoriteRecipes } = state.recipes;
+      const queue = state.pendingSync?.queue ?? [];
 
-      // 1. Combine both lists and ensure uniqueness by ID
-      // We prioritize favoriteRecipes because they already have the 'favorited: true' flag
-      const combined = [...favoriteRecipes, ...allRecipes];
-      const uniqueMap = new Map();
-      
-      combined.forEach(recipe => {
-        const id = recipe.fbid || recipe.id;
-        if (!uniqueMap.has(id)) {
-          uniqueMap.set(id, recipe);
-        }
-      });
-
-      const sourceList = Array.from(uniqueMap.values());
+      const sourceList = getRecipeCatalogWithPending(allRecipes, favoriteRecipes, queue);
 
       // 2. Perform the filter based on the searchType
       let filteredResults = sourceList.filter((recipe) => {
@@ -779,7 +784,17 @@ export const recipesSlice = createSlice({
     },
     upsertRecipe: (state, action) => {
       upsertRecipeInState(state, action.payload);
-    }
+    },
+    setRecipeCollections: (state, action) => {
+      state.allRecipes = action.payload.allRecipes || [];
+      state.favoriteRecipes = action.payload.favoriteRecipes || [];
+      const sortedCopy = [...state.allRecipes];
+      sortRecipes(sortedCopy);
+      state.allRecipesSorted = sortedCopy;
+    },
+    removeRecipeByFbid: (state, action) => {
+      removeRecipeFromState(state, action.payload);
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -968,7 +983,23 @@ export const recipesSlice = createSlice({
         
       })
       .addCase(getAllFavoriteRecipesFromFirestore.fulfilled, (state, action) => {
-        state.favoriteRecipes = action.payload || [];
+        const incoming = action.payload || [];
+        state.favoriteRecipes = incoming.map((incomingRecipe) => {
+          const id = incomingRecipe.fbid || incomingRecipe.id;
+          const localAll = state.allRecipes.find(
+            (recipe) => recipe.fbid === id || recipe.id === id
+          );
+          const localFav = state.favoriteRecipes.find(
+            (recipe) => recipe.fbid === id || recipe.id === id
+          );
+          const merged = mergeRecipesByNewestUpdatedAt(
+            [localAll, localFav, incomingRecipe].filter(Boolean)
+          )[0];
+
+          return merged
+            ? { ...merged, favorited: true }
+            : { ...incomingRecipe, favorited: true };
+        });
       })
       .addCase(getAllFavoriteRecipesFromFirestore.rejected, (state) => {
         
@@ -986,7 +1017,31 @@ export const recipesSlice = createSlice({
   },
 });
 
-export const { setRecipeSearchParams, setRecipes, addRecipe, editRecipe, deleteRecipe, searchRecipes, upsertRecipe } = recipesSlice.actions
+export const {
+  setRecipeSearchParams,
+  setRecipes,
+  addRecipe,
+  editRecipe,
+  deleteRecipe,
+  searchRecipes,
+  upsertRecipe,
+  setRecipeCollections,
+  removeRecipeByFbid,
+} = recipesSlice.actions
+
+/** Re-apply queued recipe writes after redux-persist rehydrate (offline cold start). */
+export const applyPendingRecipesFromSyncQueue = createAsyncThunk(
+  'recipes/applyPendingFromSyncQueue',
+  async (_, { getState, dispatch }) => {
+    const state = getState() as RootState;
+    const queue = state.pendingSync?.queue ?? [];
+    if (!queue.length) return;
+
+    const { allRecipes, favoriteRecipes } = state.recipes;
+    const next = overlayPendingRecipesOnCollections(allRecipes, favoriteRecipes, queue);
+    dispatch(setRecipeCollections(next));
+  }
+);
 
 export const fetchRecipes = (storedRecipes: any) => (dispatch: any) => {
   dispatch(setRecipes(storedRecipes));

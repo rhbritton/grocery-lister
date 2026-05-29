@@ -7,13 +7,31 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { Provider } from 'react-redux'; // Import Provider
 import { store, persistor } from './app/store.ts'; // Import your store
+import { applyPendingRecipesFromSyncQueue } from './features/recipes/slices/recipesSlice.ts';
 import * as serviceWorkerRegistration from './serviceWorkerRegistration.ts';
+
+const flushPersistedState = () => {
+  persistor.persist();
+};
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') {
+      flushPersistedState();
+    }
+  });
+  window.addEventListener('pagehide', flushPersistedState);
+}
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   // <React.StrictMode>
     <Provider store={store}> {/* Wrap App with Provider */}
-      <PersistGate loading={<PageLoader message="Restoring your data…" />} persistor={persistor}>
+      <PersistGate
+        loading={<PageLoader message="Restoring your data…" />}
+        persistor={persistor}
+        onBeforeLift={() => store.dispatch(applyPendingRecipesFromSyncQueue())}
+      >
         <App />
       </PersistGate>
     </Provider>

@@ -33,7 +33,8 @@ import {
   getAllRecipesFromFirestore, 
   getAllFavoriteRecipesFromFirestore, 
   selectMaxRecipeTimestamp,
-  syncRecipesFromFirestore
+  syncRecipesFromFirestore,
+  applyPendingRecipesFromSyncQueue,
 } from './features/recipes/slices/recipesSlice.ts';
 import { 
   getAllGroceryListsFromFirestore, 
@@ -45,7 +46,7 @@ import { store, persistor } from './app/store.ts';
 import { deleteAccount } from './services/accountDeletion.js';
 import { signInWithGoogle, getSignInErrorMessage } from './auth/signIn.js';
 import { upsertUserProfile } from './auth/userProfile.js';
-import { handleFirestoreNetworkError } from './services/offlineSync.ts';
+import { handleFirestoreNetworkError, isBrowserOffline } from './services/offlineSync.ts';
 import { useConnectionBannerStatus } from './services/useConnectionBannerStatus.ts';
 
 import './App.css';
@@ -99,6 +100,12 @@ function App() {
   }, []);
 
   const fetchInitialUserData = useCallback(async (userId, { fullRefresh = false } = {}) => {
+    await dispatch(applyPendingRecipesFromSyncQueue());
+
+    if (isBrowserOffline()) {
+      return;
+    }
+
     const state = store.getState();
     const lastSync = fullRefresh ? 0 : selectMaxRecipeTimestamp(state);
     const lastSyncGL = fullRefresh ? 0 : selectMaxGroceryListTimestamp(state);

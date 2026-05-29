@@ -2,6 +2,7 @@ import { createSlice, nanoid, createAsyncThunk } from '@reduxjs/toolkit';
 import { RootState } from '../../../app/store.ts';
 
 import { RecipeService } from '../data/recipeService.ts';
+import { getRecipeCatalogWithPending } from '../../sync/pendingRecipeOverlay.ts';
 
 export const typeOptions = [
   { value: 'produce', label: 'Produce' },
@@ -55,9 +56,16 @@ export const fetchRecipeById = createAsyncThunk<
   { state: RootState }
 >('recipes/fetchRecipeById', async (id, { getState }) => {
   try {
-    const { allRecipes, favoriteRecipes } = getState().recipes;
-    const localRecipes = [...allRecipes, ...favoriteRecipes];
-    return await RecipeService.getRecipe(id, localRecipes);
+    const state = getState();
+    const { allRecipes, favoriteRecipes } = state.recipes;
+    const queue = state.pendingSync?.queue ?? [];
+    const catalog = getRecipeCatalogWithPending(allRecipes, favoriteRecipes, queue);
+    const cached = catalog.find(
+      (recipe) => recipe.fbid === id || recipe.id === id
+    );
+    if (cached) return cached;
+
+    return await RecipeService.getRecipe(id, catalog);
   } catch (error) {
     console.error('Error fetching recipe:', error);
     return undefined;
