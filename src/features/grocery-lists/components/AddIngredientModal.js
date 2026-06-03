@@ -5,7 +5,11 @@ import { faPlus, faUtensils, faBookmark } from '@fortawesome/free-solid-svg-icon
 
 import Select from 'react-select';
 import ModalShell from '../../../components/ModalShell.js';
-import { createReactSelectStyles } from '../../../utils/reactSelectStyles.js';
+import {
+  createReactSelectStyles,
+  getReactSelectPortalProps,
+  REACT_SELECT_MENU_Z_INDEX,
+} from '../../../utils/reactSelectStyles.js';
 
 const aisles = ["produce", "meat", "dairy", "freezer", "other"];
 
@@ -40,7 +44,11 @@ const AddIngredientModal = ({ isOpen, onClose, onAdd, groceryList }) => {
         isFavorite: recipe.favorited
     })) : []));
 
-    const selectStyles = createReactSelectStyles({ fontSize: '20px', menuPortalZIndex: 9999 });
+    const selectStyles = createReactSelectStyles({
+      fontSize: '20px',
+      menuPortalZIndex: REACT_SELECT_MENU_Z_INDEX,
+    });
+    const selectPortalProps = getReactSelectPortalProps();
 
     const handleSubmit = () => {
         if (mode === 'custom') {
@@ -125,6 +133,7 @@ const AddIngredientModal = ({ isOpen, onClose, onAdd, groceryList }) => {
                         <label className="text-[14px] font-black uppercase tracking-widest text-slate-400 mb-1 block">Aisle / Category</label>
                         <Select
                             styles={selectStyles}
+                            {...selectPortalProps}
                             options={aisles.map(a => { return { value: a, label: a.toUpperCase() } })}
                             onChange={(target) => setNewItem({...newItem, type: target.value})}
                             aria-label="Aisle or category"
@@ -157,6 +166,7 @@ const AddIngredientModal = ({ isOpen, onClose, onAdd, groceryList }) => {
                         <label className="text-[14px] font-black uppercase tracking-widest text-slate-400 mb-1 block">Select Recipe</label>
                         <Select
                             styles={selectStyles}
+                            {...selectPortalProps}
                             options={recipeOptions}
                             formatOptionLabel={({ label, isFavorite }) => (
                                 <div className="flex items-center">

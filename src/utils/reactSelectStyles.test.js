@@ -1,4 +1,8 @@
-import { createReactSelectStyles } from './reactSelectStyles';
+import {
+  createReactSelectStyles,
+  getReactSelectPortalProps,
+  REACT_SELECT_MENU_MAX_HEIGHT,
+} from './reactSelectStyles';
 import { BRAND } from '../constants/brand';
 
 describe('createReactSelectStyles', () => {
@@ -16,5 +20,14 @@ describe('createReactSelectStyles', () => {
     expect(styles.menuPortal({})).toEqual({ zIndex: 9999 });
     expect(styles.menu({}).zIndex).toBe(9999);
     expect(styles.menuList({}).backgroundColor).toBe('white');
+    expect(styles.menuList({}).maxHeight).toBe(REACT_SELECT_MENU_MAX_HEIGHT);
+    expect(styles.menuList({}).overflowY).toBe('auto');
+  });
+
+  it('returns portal props for document body menus', () => {
+    expect(getReactSelectPortalProps()).toEqual({
+      menuPortalTarget: document.body,
+      menuPosition: 'fixed',
+    });
   });
 });

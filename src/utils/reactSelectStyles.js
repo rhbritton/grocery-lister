@@ -3,6 +3,20 @@ import { BRAND } from '../constants/brand';
 /** Above sticky header (9999) and field labels; below modals/toasts. */
 export const REACT_SELECT_MENU_Z_INDEX = 10005;
 
+export const REACT_SELECT_MENU_MAX_HEIGHT = 220;
+
+/** Render dropdown menus in a portal so they are not clipped by modal overflow. */
+export function getReactSelectPortalProps() {
+  if (typeof document === 'undefined') {
+    return {};
+  }
+
+  return {
+    menuPortalTarget: document.body,
+    menuPosition: 'fixed',
+  };
+}
+
 export function createReactSelectStyles({
   fontSize = '14px',
   multiValueLabelSize,
@@ -88,6 +102,8 @@ export function createReactSelectStyles({
       ...base,
       backgroundColor: 'white',
       borderRadius: '1rem',
+      maxHeight: REACT_SELECT_MENU_MAX_HEIGHT,
+      overflowY: 'auto',
     });
   }
 

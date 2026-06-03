@@ -26,3 +26,7 @@ firebase.js
 .firebase/
 
 .env
+
+keystore.properties
+*.jks
+*.keystore

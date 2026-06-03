@@ -80,6 +80,10 @@
       .replace(/"/g, '&quot;');
   }
 
+  document.querySelectorAll('[data-site-name]').forEach((el) => {
+    el.textContent = config.siteName || 'GroceryLister';
+  });
+
   document.querySelectorAll('[data-legal-operator]').forEach((el) => {
     el.textContent = config.legalOperator || config.siteName || 'GroceryLister';
   });
