@@ -49,26 +49,24 @@ export function dismissStorePromo() {
 
 export function getStorePromoTarget() {
   const appStoreLive = envFlag('REACT_APP_APP_STORE_LIVE');
-  const playStoreLive = envFlag('REACT_APP_PLAY_STORE_LIVE');
+  const playStorePromoOff = envFlag('REACT_APP_PLAY_STORE_PROMO') === false;
+
+  if (isAndroidDevice() && !playStorePromoOff) {
+    return {
+      platform: 'android',
+      href: PLAY_STORE_URL,
+      storeName: 'Google Play',
+      cta: 'Install',
+    };
+  }
 
   const iosLive = appStoreLive ?? false;
-  const androidLive = playStoreLive ?? false;
-
   if (isIosDevice() && iosLive) {
     return {
       platform: 'ios',
       href: APP_STORE_URL,
       storeName: 'App Store',
       cta: 'App Store',
-    };
-  }
-
-  if (isAndroidDevice() && androidLive) {
-    return {
-      platform: 'android',
-      href: PLAY_STORE_URL,
-      storeName: 'Google Play',
-      cta: 'Google Play',
     };
   }
 
