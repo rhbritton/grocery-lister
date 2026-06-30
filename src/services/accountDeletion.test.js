@@ -8,6 +8,10 @@ describe('accountDeletion', () => {
     expect(getDeleteAccountErrorMessage({ code: 'auth/popup-closed-by-user' })).toMatch(/cancelled/i);
   });
 
+  it('maps argument-error to a friendly message', () => {
+    expect(getDeleteAccountErrorMessage({ code: 'auth/argument-error' })).toMatch(/confirm your Google sign-in/i);
+  });
+
   it('falls back to error message', () => {
     expect(getDeleteAccountErrorMessage(new Error('Server unavailable'))).toBe('Server unavailable');
   });

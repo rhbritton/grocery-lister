@@ -8,9 +8,11 @@ import {
   deleteDoc,
   writeBatch,
 } from 'firebase/firestore';
+import { Capacitor } from '@capacitor/core';
 import {
   GoogleAuthProvider,
   reauthenticateWithPopup,
+  reauthenticateWithCredential,
   deleteUser,
 } from 'firebase/auth';
 import { auth, db, projectId } from '../auth/firebaseConfig';
@@ -109,10 +111,33 @@ export async function deleteUserFirestoreData(userId, { supplementIds = null } =
   await deleteOptionalDoc(getUserProfileRef(userId));
 }
 
+async function reauthenticateWithGoogleNative() {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('Not signed in');
+  }
+
+  const { FirebaseAuthentication } = await import('@capacitor-firebase/authentication');
+  const result = await FirebaseAuthentication.signInWithGoogle();
+  const idToken = result.credential?.idToken;
+
+  if (!idToken) {
+    throw new Error('Google sign-in did not return an ID token.');
+  }
+
+  const credential = GoogleAuthProvider.credential(idToken);
+  await reauthenticateWithCredential(user, credential);
+}
+
 export async function reauthenticateForAccountDeletion() {
   const user = auth.currentUser;
   if (!user) {
     throw new Error('Not signed in');
+  }
+
+  if (Capacitor.isNativePlatform()) {
+    await reauthenticateWithGoogleNative();
+    return;
   }
 
   await reauthenticateWithPopup(user, new GoogleAuthProvider());
@@ -121,6 +146,10 @@ export async function reauthenticateForAccountDeletion() {
 export function getDeleteAccountErrorMessage(error) {
   if (error?.code === 'auth/popup-closed-by-user') {
     return 'Google sign-in was cancelled. Confirm your account to delete it.';
+  }
+
+  if (error?.code === 'auth/argument-error') {
+    return 'Could not confirm your Google sign-in. Try again from the app.';
   }
 
   if (error?.code === 'auth/popup-blocked') {
@@ -164,6 +193,12 @@ export async function deleteAccount() {
   const user = auth.currentUser;
   if (!user) {
     throw new Error('Not signed in');
+  }
+
+  // Native apps cannot use reauthenticateWithPopup; confirm Google first so we
+  // do not delete Firestore data and then fail on auth deletion.
+  if (Capacitor.isNativePlatform()) {
+    await reauthenticateForAccountDeletion();
   }
 
   const supplementIds = getOwnedContentIdsFromState(user.uid);

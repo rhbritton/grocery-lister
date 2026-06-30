@@ -13,8 +13,8 @@ android {
         applicationId "com.rhbritton.grocerylister"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1      // bump integer for every Play upload
-        versionName "1.0"  // human-readable version
+        versionCode 2      // bump integer for every Play upload
+        versionName "1.0.1"  // human-readable version
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.

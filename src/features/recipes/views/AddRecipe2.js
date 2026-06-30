@@ -18,8 +18,12 @@ import {
   faSave, 
   faPlus, 
   faListUl, 
-  faMortarPestle
+  faMortarPestle,
+  faWandMagicSparkles,
 } from '@fortawesome/free-solid-svg-icons';
+
+import { canUseAiRecipeImport } from '../../../utils/aiImportAccess.js';
+import RecipeAiImportModal from '../components/RecipeAiImportModal.js';
 
 const AddRecipe = (props) => {
   const { user } = props;
@@ -31,6 +35,9 @@ const AddRecipe = (props) => {
   const [ingredients, setIngredients] = useState([{ amount: '1', name: '', type: '' }]);
   const [instructions, setInstructions] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [aiImportOpen, setAiImportOpen] = useState(false);
+
+  const showAiImport = canUseAiRecipeImport(user);
 
   const handleAddIngredient = () => {
     setIngredients([...ingredients, { amount: '1', name: '', type: '' }]);
@@ -81,6 +88,12 @@ const AddRecipe = (props) => {
     setInstructions('');
 
     navigate('/recipes');
+  };
+
+  const handleAiImport = (recipe) => {
+    setName(recipe.name);
+    setIngredients(recipe.ingredients.map((ingredient) => ({ ...ingredient })));
+    setInstructions(recipe.instructions);
   };
 
   const isSaveDisabled = name.trim() === '' || ingredients.length === 0 || ingredients.some(ingredient => ingredient.amount === "" || ingredient.name.trim() === "") || isSaving;
@@ -199,6 +212,19 @@ const AddRecipe = (props) => {
                 }}
             />
         </div>
+
+        {showAiImport ? (
+          <div className="mb-4">
+            <button
+              type="button"
+              onClick={() => setAiImportOpen(true)}
+              className="w-full py-3.5 rounded-2xl font-bold text-sm bg-violet-50 text-violet-700 border border-violet-100 hover:bg-violet-100 transition-colors flex items-center justify-center gap-2"
+            >
+              <FontAwesomeIcon icon={faWandMagicSparkles} />
+              Import with AI
+            </button>
+          </div>
+        ) : null}
         
         {/* Basic Info Card */}
         <section className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden relative">
@@ -343,6 +369,13 @@ const AddRecipe = (props) => {
                 </button>
             </div>
         </div>
+
+        {aiImportOpen ? (
+          <RecipeAiImportModal
+            onClose={() => setAiImportOpen(false)}
+            onImport={handleAiImport}
+          />
+        ) : null}
 
       </main>
   );
