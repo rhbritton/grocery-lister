@@ -3,12 +3,15 @@ import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faEdit, 
-  faCheck, 
+  faCheck,
+  faCartShopping,
+  faPlus,
 } from '@fortawesome/free-solid-svg-icons';
 
 function GroceryListViewItem(props) {
     const { ingredient, recipe, crossed } = props.ingredient;
     const disableCheck = props.disableCheck;
+    const hasWalmartItem = !!String(ingredient.walmartUsItemId || '').trim();
     const checkLabel = crossed
       ? `Uncheck ${ingredient.name}`
       : `Check off ${ingredient.name}`;
@@ -16,6 +19,11 @@ function GroceryListViewItem(props) {
     const handleToggle = () => {
         if (disableCheck) return;
         props.onUpdate({ crossed: !crossed });
+    };
+
+    const handleAddToWalmartCart = (event) => {
+        event.stopPropagation();
+        props.onAddToWalmartCart?.();
     };
 
     return (
@@ -63,8 +71,25 @@ function GroceryListViewItem(props) {
                 </div>
             </button>
             
-            {!props.disableEdit && (
-              <div className="flex items-center pr-4 relative z-40">
+            <div className="flex items-center gap-1 pr-4 relative z-40">
+              {hasWalmartItem && !crossed && props.onAddToWalmartCart ? (
+                <button
+                  type="button"
+                  onClick={handleAddToWalmartCart}
+                  aria-label={`Add ${ingredient.name} to Walmart cart and check off`}
+                  title="Add to Walmart cart"
+                  className="min-w-touch min-h-touch flex items-center justify-center transition-all duration-200 rounded-xl text-[#0071dc] hover:text-[#004f9a] hover:bg-[#0071dc]/10 active:scale-90 bg-[#0071dc]/5 border border-[#0071dc]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0071dc]"
+                >
+                  <span className="relative inline-flex" aria-hidden="true">
+                    <FontAwesomeIcon icon={faCartShopping} className="text-lg" />
+                    <span className="absolute -bottom-0.5 -right-1 flex h-3 w-3 items-center justify-center rounded-full bg-[#0071dc] text-white">
+                      <FontAwesomeIcon icon={faPlus} className="text-[7px]" />
+                    </span>
+                  </span>
+                </button>
+              ) : null}
+
+              {!props.disableEdit && (
                 <button 
                     type="button"
                     onClick={(e) => { e.stopPropagation(); props.onEdit(); }}
@@ -77,8 +102,8 @@ function GroceryListViewItem(props) {
                 >
                     <FontAwesomeIcon icon={faEdit} className="text-lg" aria-hidden="true" />
                 </button>
+              )}
             </div>
-            )}
         </div>
     );
 }

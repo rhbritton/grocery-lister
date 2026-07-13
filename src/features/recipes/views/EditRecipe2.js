@@ -4,6 +4,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 
 import EditIngredient from '../components/EditIngredient2';
 
+import { applyWalmartUrlToIngredient } from '../utils/walmartProduct.js';
+
 import { fetchRecipeById } from '../slices/recipeSlice.ts';
 import { editRecipeFromFirestore, upsertRecipe } from '../slices/recipesSlice.ts';
 
@@ -79,6 +81,15 @@ const EditRecipe = () => {
     setRecipeHasChanged(true);
     setIngredients((prev) =>
       prev.map((ing, i) => (i === index ? { ...ing, [field]: value } : ing))
+    );
+  };
+
+  const handleIngredientPatch = (index, walmartUrlInput) => {
+    setRecipeHasChanged(true);
+    setIngredients((prev) =>
+      prev.map((ing, i) =>
+        i === index ? applyWalmartUrlToIngredient(ing, walmartUrlInput) : ing
+      )
     );
   };
 
@@ -236,6 +247,7 @@ const EditRecipe = () => {
                             index={index} 
                             typeOptions={typeOptions}
                             handleIngredientChange={handleIngredientChange}
+                            handleIngredientPatch={handleIngredientPatch}
                             handleRemoveIngredient={handleRemoveIngredient}
                             findSelectedOption={findSelectedOption}
                         />

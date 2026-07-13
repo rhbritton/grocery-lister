@@ -40,7 +40,15 @@ export function shouldApplyRemoteGroceryListSnapshot(
   return remoteUpdatedAt >= localUpdatedAt;
 }
 
-const INGREDIENT_MERGE_KEYS = ['name', 'amount', 'type', 'crossed', 'duplicate'] as const;
+const INGREDIENT_MERGE_KEYS = [
+  'name',
+  'amount',
+  'type',
+  'crossed',
+  'duplicate',
+  'walmartUrl',
+  'walmartUsItemId',
+] as const;
 
 type IngredientLike = {
   name?: string;

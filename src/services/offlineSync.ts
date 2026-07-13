@@ -77,7 +77,15 @@ export function omitUndefinedFields(
   );
 }
 
-const INGREDIENT_PERSIST_KEYS = ['amount', 'name', 'type', 'crossed', 'duplicate'] as const;
+const INGREDIENT_PERSIST_KEYS = [
+  'amount',
+  'name',
+  'type',
+  'crossed',
+  'duplicate',
+  'walmartUrl',
+  'walmartUsItemId',
+] as const;
 
 /** Drop UI-only fields (e.g. autoFocus) before persisting ingredients. */
 export function stripIngredientForFirestore(

@@ -24,6 +24,7 @@ import {
 
 import { canUseAiRecipeImport } from '../../../utils/aiImportAccess.js';
 import RecipeAiImportModal from '../components/RecipeAiImportModal.js';
+import { applyWalmartUrlToIngredient } from '../utils/walmartProduct.js';
 
 const AddRecipe = (props) => {
   const { user } = props;
@@ -52,6 +53,14 @@ const AddRecipe = (props) => {
   const handleIngredientChange = (index, field, value) => {
     setIngredients((prev) =>
       prev.map((ing, i) => (i === index ? { ...ing, [field]: value } : ing))
+    );
+  };
+
+  const handleIngredientPatch = (index, walmartUrlInput) => {
+    setIngredients((prev) =>
+      prev.map((ing, i) =>
+        i === index ? applyWalmartUrlToIngredient(ing, walmartUrlInput) : ing
+      )
     );
   };
 
@@ -303,6 +312,7 @@ const AddRecipe = (props) => {
                             index={index} 
                             typeOptions={typeOptions}
                             handleIngredientChange={handleIngredientChange}
+                            handleIngredientPatch={handleIngredientPatch}
                             handleRemoveIngredient={handleRemoveIngredient}
                             findSelectedOption={findSelectedOption}
                         />

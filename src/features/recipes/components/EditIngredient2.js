@@ -8,11 +8,39 @@ import {
   faUtensils,
   faTrashAlt, 
   faTag, 
-  faHashtag
+  faHashtag,
+  faCartShopping,
+  faMagnifyingGlass,
 } from '@fortawesome/free-solid-svg-icons';
+
+import { parseWalmartProductInput, buildWalmartSearchUrl } from '../utils/walmartProduct.js';
 
 function EditIngredient(props) {
     const selectStyles = createReactSelectStyles({ fontSize: '14px', multiValueLabelSize: '12px', menuPortalZIndex: 9999 });
+    const walmartParsed = parseWalmartProductInput(props.ingredient.walmartUrl || props.ingredient.walmartUsItemId);
+
+  const handleWalmartUrlChange = (value) => {
+    if (props.handleIngredientPatch) {
+      props.handleIngredientPatch(props.index, value);
+      return;
+    }
+
+    props.handleIngredientChange(props.index, 'walmartUrl', value);
+    props.handleIngredientChange(
+      props.index,
+      'walmartUsItemId',
+      parseWalmartProductInput(value)?.usItemId || ''
+    );
+  };
+
+  const openWalmartSearch = () => {
+    const searchUrl = buildWalmartSearchUrl(props.ingredient.name);
+    if (searchUrl) {
+      window.open(searchUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
+
+  const ingredientName = String(props.ingredient.name || '').trim();
 
   return (
     <div 
@@ -68,6 +96,40 @@ function EditIngredient(props) {
                     className="w-full bg-[#f8fafc] rounded-xl px-4 py-3 text-base font-bold border outline-none transition-all focus:border-brand focus:ring-4 focus:ring-blue-500/10 focus:bg-white"
                     placeholder="Tomatoes, diced"
                 />
+            </div>
+
+            <div className="w-full relative">
+                <label className="pointer-events-none absolute -top-2 left-3 z-[1] px-1 bg-white text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-1">
+                    <FontAwesomeIcon icon={faCartShopping} className="text-[8px]" /> Walmart URL (optional)
+                </label>
+                <div className="flex gap-2">
+                    <input
+                        type="url"
+                        value={props.ingredient.walmartUrl || ''}
+                        onChange={(e) => handleWalmartUrlChange(e.target.value)}
+                        className="min-w-0 flex-1 bg-[#f8fafc] rounded-xl px-4 py-3 text-sm font-semibold border outline-none transition-all focus:border-[#0071dc] focus:ring-4 focus:ring-blue-500/10 focus:bg-white"
+                        placeholder="https://www.walmart.com/ip/..."
+                    />
+                    <button
+                        type="button"
+                        onClick={openWalmartSearch}
+                        disabled={!ingredientName}
+                        title={ingredientName ? `Search Walmart for "${ingredientName}" (cheapest first)` : 'Enter an ingredient name to search Walmart'}
+                        aria-label={ingredientName ? `Search Walmart for ${ingredientName}, sorted cheapest first` : 'Enter an ingredient name to search Walmart'}
+                        className="shrink-0 w-14 h-[50px] flex items-center justify-center rounded-xl border border-[#0071dc]/20 bg-[#0071dc]/5 text-[#0071dc] hover:bg-[#0071dc]/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-95"
+                    >
+                        <FontAwesomeIcon icon={faMagnifyingGlass} className="text-lg" />
+                    </button>
+                </div>
+                {walmartParsed?.usItemId ? (
+                    <p className="mt-1 text-[11px] font-bold text-[#0071dc]">
+                        Walmart item ID: {walmartParsed.usItemId}
+                    </p>
+                ) : props.ingredient.walmartUrl ? (
+                    <p className="mt-1 text-[11px] font-bold text-amber-600">
+                        Paste a Walmart product page URL or numeric item ID.
+                    </p>
+                ) : null}
             </div>
         </div>
 

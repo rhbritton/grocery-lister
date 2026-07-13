@@ -28,6 +28,8 @@ export interface Ingredient {
   amount: string;
   name: string;
   type: string;
+  walmartUrl?: string;
+  walmartUsItemId?: string;
 };
 
 export interface Recipe {
