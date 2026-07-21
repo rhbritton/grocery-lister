@@ -7,12 +7,10 @@ import { db } from '../../../auth/firebaseConfig';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
-  faChevronLeft, 
   faChevronDown, 
   faEdit, 
   faShareAlt, 
   faCheck, 
-  faShoppingCart,
   faCalendarAlt,
   faUserCircle,
   faReceipt,
@@ -46,7 +44,6 @@ import { typeOptions } from '../../recipes/slices/recipesSlice.ts';
 
 import GroceryListViewItem from '../components/GroceryListViewItem2.js';
 import AddIngredientModal from '../components/AddIngredientModal';
-import WalmartCartModal from '../components/WalmartCartModal.js';
 import PageLoader from '../../../components/PageLoader.js';
 import EmptyState from '../../../components/EmptyState.js';
 import Toast from '../../../components/Toast.js';
@@ -55,9 +52,7 @@ import ModalShell from '../../../components/ModalShell.js';
 import ShareGroceryListModal from '../../../components/ShareGroceryListModal.js';
 import { copyTextToClipboard } from '../../../utils/clipboard.js';
 import {
-  collectWalmartCartItems,
   buildWalmartSingleItemAddToCartUrl,
-  parseIngredientQuantity,
 } from '../../recipes/utils/walmartProduct.js';
 
 const groceryListRecipeSeparator = ', ';
@@ -418,47 +413,6 @@ const ViewGroceryList = (props) => {
       }
   };
 
-  const markGlobalIndicesCrossed = (globalIndices) => {
-    const indexSet = new Set(globalIndices);
-    if (!groceryList || !indexSet.size) {
-      return;
-    }
-
-    let newGroceryList = { ...groceryList };
-
-    allIngredients.forEach((item, globalIndex) => {
-      if (!indexSet.has(globalIndex)) {
-        return;
-      }
-
-      if (item.recipe) {
-        newGroceryList = {
-          ...newGroceryList,
-          recipes: newGroceryList.recipes.map((r) => {
-            if (!matchesGroceryListRecipeEntry(r, item.recipe)) {
-              return r;
-            }
-
-            const updatedIngs = r.recipe.ingredients.map((ing, idx) =>
-              idx === item.index ? { ...ing, crossed: true } : ing
-            );
-            return { ...r, recipe: { ...r.recipe, ingredients: updatedIngs } };
-          }),
-        };
-      } else {
-        newGroceryList = {
-          ...newGroceryList,
-          ingredients: newGroceryList.ingredients.map((ing, idx) =>
-            idx === item.index ? { ...ing, crossed: true } : ing
-          ),
-        };
-      }
-    });
-
-    setGroceryList(newGroceryList);
-    persistGroceryList(newGroceryList);
-  };
-
   function getAllIngredientsByType(all_ingredients) {
     let all_ingredients_by_type = {};
     all_ingredients.forEach(function(ing) {
@@ -655,10 +609,6 @@ const ViewGroceryList = (props) => {
     const [isSharingLink, setIsSharingLink] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
     const [toastVisible, setToastVisible] = useState(false);
-    const [isWalmartModalOpen, setIsWalmartModalOpen] = useState(false);
-    const [walmartCartPreview, setWalmartCartPreview] = useState(null);
-    const [isWalmartSubmitting, setIsWalmartSubmitting] = useState(false);
-
 const showToast = (message) => {
   setToastMessage(message);
   setToastVisible(true);
@@ -722,13 +672,6 @@ const handleConfirmShare = async () => {
 };
 
   let all_ingredients_by_type = getAllIngredientsByType(allIngredients);
-  const walmartCartSummary = collectWalmartCartItems(allIngredients);
-  const walmartItemCount = walmartCartSummary.eligible.length;
-
-  const openWalmartCartModal = () => {
-    setWalmartCartPreview(collectWalmartCartItems(allIngredients));
-    setIsWalmartModalOpen(true);
-  };
 
   const handleAddSingleItemToWalmartCart = (globalIndex) => {
     const item = allIngredients[globalIndex];
@@ -737,35 +680,13 @@ const handleConfirmShare = async () => {
       return;
     }
 
-    const cartUrl = buildWalmartSingleItemAddToCartUrl(
-      usItemId,
-      parseIngredientQuantity(item.ingredient?.amount)
-    );
+    const cartUrl = buildWalmartSingleItemAddToCartUrl(usItemId);
     if (cartUrl) {
       window.open(cartUrl, '_blank', 'noopener,noreferrer');
     }
 
     updateGlobalItem(globalIndex, { crossed: true });
     showToast(`Added ${item.ingredient.name} to Walmart cart`);
-  };
-
-  const handleConfirmWalmartCart = () => {
-    const preview = walmartCartPreview || collectWalmartCartItems(allIngredients);
-    const { cartUrls, eligible } = preview;
-    if (!cartUrls.length || !eligible.length) {
-      return;
-    }
-
-    setIsWalmartSubmitting(true);
-    cartUrls.forEach((url) => {
-      window.open(url, '_blank', 'noopener,noreferrer');
-    });
-
-    markGlobalIndicesCrossed(eligible.map((item) => item.globalIndex));
-    setIsWalmartModalOpen(false);
-    setWalmartCartPreview(null);
-    setIsWalmartSubmitting(false);
-    showToast(`Opened Walmart with ${eligible.length} item${eligible.length === 1 ? '' : 's'}`);
   };
 
   if (!groceryList) {
@@ -904,27 +825,6 @@ const handleConfirmShare = async () => {
       )}
     </div>
     </div>
-
-    {canCheckOff && walmartItemCount > 0 && (
-      <button
-        type="button"
-        onClick={openWalmartCartModal}
-        className="mb-4 w-full flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-left shadow-sm hover:border-[#0071dc]/25 hover:bg-slate-50/80 active:scale-[0.99] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0071dc]"
-      >
-        <span className="relative inline-flex shrink-0 text-[#0071dc]" aria-hidden="true">
-          <FontAwesomeIcon icon={faShoppingCart} className="text-base" />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-bold text-slate-800">
-            Add {walmartItemCount} Walmart item{walmartItemCount === 1 ? '' : 's'} to cart
-          </span>
-          <span className="block text-[13px] text-slate-500 mt-0.5">
-            Opens Walmart and checks them off your list
-          </span>
-        </span>
-        <FontAwesomeIcon icon={faChevronLeft} className="shrink-0 rotate-180 text-slate-300 text-xs" aria-hidden="true" />
-      </button>
-    )}
 
             {/* 3. THE "PAPER" LIST */}
             <div className="bg-white rounded-3xl shadow-xl border border-slate-200 relative overflow-hidden">
@@ -1087,19 +987,6 @@ const handleConfirmShare = async () => {
                 onShare={handleConfirmShare}
                 expiresAt={shareExpiresAt}
                 isSharing={isSharingLink}
-              />
-            )}
-
-            {isWalmartModalOpen && walmartCartPreview && (
-              <WalmartCartModal
-                onClose={() => {
-                  setIsWalmartModalOpen(false);
-                  setWalmartCartPreview(null);
-                }}
-                items={walmartCartPreview.eligible}
-                cartUrlCount={walmartCartPreview.cartUrls.length}
-                onConfirm={handleConfirmWalmartCart}
-                isSubmitting={isWalmartSubmitting}
               />
             )}
 

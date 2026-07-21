@@ -16,7 +16,6 @@ function Header(props) {
   const { user } = props;
   const location = useLocation();
   const navigate = useNavigate();
-
   const recipesListPath = {
     heading: 'Recipes',
     backButton: false,

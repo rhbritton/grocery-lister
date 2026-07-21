@@ -49,9 +49,9 @@ export function dismissStorePromo() {
 
 export function getStorePromoTarget() {
   const appStoreLive = envFlag('REACT_APP_APP_STORE_LIVE');
-  const playStorePromoOff = envFlag('REACT_APP_PLAY_STORE_PROMO') === false;
+  const playStorePromoOn = envFlag('REACT_APP_PLAY_STORE_PROMO') === true;
 
-  if (isAndroidDevice() && !playStorePromoOff) {
+  if (isAndroidDevice() && playStorePromoOn) {
     return {
       platform: 'android',
       href: PLAY_STORE_URL,

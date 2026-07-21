@@ -131,79 +131,15 @@ export function buildWalmartAddToCartUrls(lineItems) {
   return urls;
 }
 
-export function buildWalmartSingleItemAddToCartUrl(usItemId, quantity = 1) {
+/** Always adds exactly one of the given Walmart item. */
+export function buildWalmartSingleItemAddToCartUrl(usItemId) {
   const urls = buildWalmartAddToCartUrls([
     {
       usItemId: String(usItemId || '').trim(),
-      quantity,
+      quantity: 1,
     },
   ]);
   return urls[0] || null;
-}
-
-/** Best-effort quantity from free-text amounts like "2 cups" or "1". */
-export function parseIngredientQuantity(amount) {
-  const trimmed = String(amount || '').trim();
-  if (!trimmed) {
-    return 1;
-  }
-
-  const leadingNumber = trimmed.match(/^(\d+(?:\.\d+)?)/);
-  if (leadingNumber) {
-    const parsed = Number(leadingNumber[1]);
-    if (Number.isFinite(parsed) && parsed > 0) {
-      return Math.max(1, Math.round(parsed));
-    }
-  }
-
-  return 1;
-}
-
-/**
- * Collect uncrossed grocery rows that have a Walmart item id.
- * @returns {{
- *   eligible: Array<{ globalIndex: number, usItemId: string, quantity: number, name: string, amount: string, recipeName?: string }>,
- *   lineItems: Array<{ usItemId: string, quantity: number }>,
- *   cartUrls: string[],
- * }}
- */
-export function collectWalmartCartItems(allIngredients) {
-  const eligible = [];
-
-  allIngredients.forEach((item, globalIndex) => {
-    const usItemId = String(item.ingredient?.walmartUsItemId || '').trim();
-    if (!usItemId || item.crossed) {
-      return;
-    }
-
-    eligible.push({
-      globalIndex,
-      usItemId,
-      quantity: parseIngredientQuantity(item.ingredient?.amount),
-      name: item.ingredient?.name || '',
-      amount: item.ingredient?.amount || '',
-      recipeName: item.recipe?.name,
-    });
-  });
-
-  const quantityByItemId = new Map();
-  for (const row of eligible) {
-    quantityByItemId.set(
-      row.usItemId,
-      (quantityByItemId.get(row.usItemId) || 0) + row.quantity
-    );
-  }
-
-  const lineItems = [...quantityByItemId.entries()].map(([usItemId, quantity]) => ({
-    usItemId,
-    quantity,
-  }));
-
-  return {
-    eligible,
-    lineItems,
-    cartUrls: buildWalmartAddToCartUrls(lineItems),
-  };
 }
 
 export function applyWalmartUrlToIngredient(ingredient, walmartUrlInput) {
