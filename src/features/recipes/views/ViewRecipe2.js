@@ -21,11 +21,19 @@ import { fetchRecipeById } from '../slices/recipeSlice.ts';
 import { toggleFavoriteRecipeInFirestore } from '../slices/recipesSlice.ts';
 
 import UnfavoriteModal from '../components/UnfavoriteModal.js';
+import SignInToFavoriteModal from '../components/SignInToFavoriteModal.js';
 import PageLoader from '../../../components/PageLoader.js';
 import EmptyState from '../../../components/EmptyState.js';
 import Toast from '../../../components/Toast.js';
 import { copyTextToClipboard } from '../../../utils/clipboard.js';
 import { buildRecipeShareUrl } from '../../../utils/appPaths.js';
+import {
+  setPendingAuthIntent,
+  consumePendingAuthIntent,
+  clearPendingAuthIntent,
+  peekPendingAuthIntent,
+} from '../../../utils/pendingAuthIntent.js';
+import { getSignInErrorMessage } from '../../../auth/signIn.js';
 
 import '../styles/ViewRecipe.css';
 
@@ -54,6 +62,8 @@ const ViewRecipe = (props) => {
 
   const [isFavorite, setIsFavorite] = useState(false);
   const [showUnfavoriteModal, setShowUnfavoriteModal] = useState(false);
+  const [showSignInToFavoriteModal, setShowSignInToFavoriteModal] = useState(false);
+  const [favoriteStatusReady, setFavoriteStatusReady] = useState(false);
   const isFavoriteLoading = useSelector((state) => state.recipes.isFavoriteLoading);
   const { allRecipes, favoriteRecipes } = useSelector((state) => state.recipes);
 
@@ -127,9 +137,11 @@ const shareURL = async () => {
     const checkFavoriteStatus = async () => {
       if (!props.userId || !recipeId) {
         setIsFavorite(false);
+        setFavoriteStatusReady(false);
         return;
       }
 
+      setFavoriteStatusReady(false);
       try {
         const favRef = doc(db, "recipe-favorites", props.userId);
         const docSnap = await getDoc(favRef);
@@ -147,11 +159,54 @@ const shareURL = async () => {
       } catch (error) {
         console.error("Error checking favorite status:", error);
         setIsFavorite(false);
+      } finally {
+        setFavoriteStatusReady(true);
       }
     };
 
     checkFavoriteStatus();
   }, [props.userId, recipeId]);
+
+  // After sign-in, apply a remembered "favorite this recipe" intent.
+  useEffect(() => {
+    if (!props.userId || !recipeId || !name || !favoriteStatusReady) {
+      return;
+    }
+
+    if (owner && props.userId === owner) {
+      clearPendingAuthIntent();
+      return;
+    }
+
+    const intent = peekPendingAuthIntent();
+    if (!intent || intent.type !== 'favoriteRecipe' || intent.recipeId !== recipeId) {
+      return;
+    }
+
+    consumePendingAuthIntent('favoriteRecipe', recipeId);
+
+    if (isFavorite) {
+      return;
+    }
+
+    setIsFavorite(true);
+    dispatch(
+      toggleFavoriteRecipeInFirestore({
+        userId: props.userId,
+        recipeId,
+        recipeName: name,
+        isAdding: true,
+      })
+    );
+  }, [
+    props.userId,
+    recipeId,
+    name,
+    owner,
+    favoriteStatusReady,
+    isFavorite,
+    dispatch,
+  ]);
 
   const confirmFavoriteToggle = async () => {
     if (!props.userId) return;
@@ -164,10 +219,26 @@ const shareURL = async () => {
   };
 
   const handleFavoriteToggle = () => {
-    if (isFavorite)
+    if (!props.userId) {
+      setShowSignInToFavoriteModal(true);
+      return;
+    }
+
+    if (isFavorite) {
       setShowUnfavoriteModal(true);
-    else
+    } else {
       confirmFavoriteToggle();
+    }
+  };
+
+  const handleSignInToFavorite = async () => {
+    setPendingAuthIntent({ type: 'favoriteRecipe', recipeId });
+    try {
+      await props.handleGoogleLogin?.();
+    } catch (error) {
+      clearPendingAuthIntent();
+      throw new Error(getSignInErrorMessage(error));
+    }
   };
 
 
@@ -259,12 +330,12 @@ const shareURL = async () => {
                     </NavLink>
                 )}
 
-                {/* FAVORITE BUTTON (logged-in viewers, not the owner) */}
-                {props.userId && owner && props.userId !== owner && (
+                {/* FAVORITE BUTTON (guests + logged-in viewers, not the owner) */}
+                {owner && props.userId !== owner && (
                     <button 
                         type="button"
                         onClick={handleFavoriteToggle}
-                        disabled={isFavoriteLoading}
+                        disabled={Boolean(props.userId) && isFavoriteLoading}
                         aria-label={isFavorite ? 'Remove from favorites' : 'Save to favorites'}
                         aria-pressed={isFavorite}
                         className={`w-14 h-14 flex items-center justify-center transition-all duration-300 rounded-xl border
@@ -413,6 +484,13 @@ const shareURL = async () => {
                 onConfirm={confirmFavoriteToggle} 
               />
             )}
+
+            {showSignInToFavoriteModal ? (
+              <SignInToFavoriteModal
+                onClose={() => setShowSignInToFavoriteModal(false)}
+                onSignIn={handleSignInToFavorite}
+              />
+            ) : null}
 
             <Toast
               message={toastMessage}

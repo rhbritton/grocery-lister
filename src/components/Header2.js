@@ -241,7 +241,9 @@ function Header(props) {
           ) : (
             <button
               type="button"
-              onClick={props.handleGoogleLogin}
+              onClick={() => {
+                Promise.resolve(props.handleGoogleLogin?.()).catch(() => {});
+              }}
               className="min-h-touch px-4 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-label font-black uppercase tracking-widest transition-colors"
             >
               Sign in

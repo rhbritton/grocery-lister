@@ -232,14 +232,16 @@ function App() {
   const handleGoogleLogin = async () => {
     if (!auth || !db) {
       console.error("Firebase services are not initialized.");
-      return;
+      throw new Error('Sign-in is unavailable right now.');
     }
 
     try {
       const result = await signInWithGoogle();
       await upsertUserProfile(result.user);
+      return result;
     } catch (error) {
       console.error("Error during Google login:", getSignInErrorMessage(error), error);
+      throw error;
     }
   };
 
@@ -325,7 +327,10 @@ function App() {
         </p>
 
         <button
-          onClick={handleGoogleLogin}
+          type="button"
+          onClick={() => {
+            Promise.resolve(handleGoogleLogin()).catch(() => {});
+          }}
           className="w-full flex items-center justify-center py-4 px-6 bg-brand hover:bg-brand-dark text-white font-bold rounded-2xl transition-all duration-300 ease-in-out transform hover:scale-[1.02] shadow-lg shadow-blue-200"
         >
           <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
@@ -460,7 +465,7 @@ function App() {
               )}
               <Route path="/grocery-lists/view/:groceryListId" element={<ViewGroceryList userId={user?.uid} setCheckedCount={setCheckedCount} setTotalItems={setTotalItems} setSpaceForFloatingButton={setSpaceForFloatingButton} setLastRemoteUpdateAt={setLastRemoteUpdateAt} onRemoteListUpdate={handleRemoteListUpdate} />} />
               
-              <Route path="/recipes/view/:recipeId" element={<ViewRecipe userId={user?.uid} totalItems={totalItems} setCheckedCount={setCheckedCount} setTotalItems={setTotalItems} setSpaceForFloatingButton={setSpaceForFloatingButton} setLastRemoteUpdateAt={setLastRemoteUpdateAt} />} />
+              <Route path="/recipes/view/:recipeId" element={<ViewRecipe userId={user?.uid} handleGoogleLogin={handleGoogleLogin} totalItems={totalItems} setCheckedCount={setCheckedCount} setTotalItems={setTotalItems} setSpaceForFloatingButton={setSpaceForFloatingButton} setLastRemoteUpdateAt={setLastRemoteUpdateAt} />} />
               <Route path="*" element={<QueryRedirectHandler user={user} isDeletingAccount={isDeletingAccount} />} />
             </Routes>
         </main>
