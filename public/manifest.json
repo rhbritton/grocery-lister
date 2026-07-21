@@ -18,5 +18,17 @@
   "start_url": ".",
   "display": "standalone",
   "theme_color": "#1976D2",
-  "background_color": "#1976D2"
+  "background_color": "#1976D2",
+  "related_applications": [
+    {
+      "platform": "webapp",
+      "url": "https://web.grocerylisterapp.com/manifest.json"
+    }
+  ],
+  "protocol_handlers": [
+    {
+      "protocol": "web+grocerylister",
+      "url": "/recipes?pwa=%s"
+    }
+  ]
 }

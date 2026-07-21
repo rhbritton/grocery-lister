@@ -9,11 +9,12 @@ import {
   faClipboardList,
   faBook,
   faGear,
+  faDownload,
 } from '@fortawesome/free-solid-svg-icons';
 import { formatRelativeUpdateTime, getRemoteUpdateFadeOpacity } from '../services/date.js';
 
 function Header(props) {
-  const { user } = props;
+  const { user, showInstall = false, onInstall } = props;
   const location = useLocation();
   const navigate = useNavigate();
   const recipesListPath = {
@@ -197,6 +198,24 @@ function Header(props) {
                         </div>
                         <span className="uppercase tracking-wider text-base">Account</span>
                       </button>
+                      {showInstall ? (
+                        <button
+                          type="button"
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 font-bold hover:bg-slate-100 hover:text-slate-800 rounded-xl transition-all group"
+                          onClick={() => {
+                            onInstall?.();
+                            setIsDropdownOpen(false);
+                          }}
+                        >
+                          <div className="w-8 h-8 flex items-center justify-center shrink-0">
+                            <FontAwesomeIcon
+                              icon={faDownload}
+                              className="text-slate-400 group-hover:text-slate-700 transition-colors text-lg"
+                            />
+                          </div>
+                          <span className="uppercase tracking-wider text-base">Install the app</span>
+                        </button>
+                      ) : null}
                       <button 
                         type="button"
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 font-bold hover:bg-slate-100 hover:text-slate-800 rounded-xl transition-all group"

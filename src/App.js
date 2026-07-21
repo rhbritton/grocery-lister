@@ -14,6 +14,9 @@ import ScrollToTop from './components/ScrollToTop';
 import ConnectionStatusBanner, { CONNECTION_BANNER_HEIGHT_PX } from './components/ConnectionStatusBanner';
 import StorePromoBanner from './components/StorePromoBanner';
 import PageLoader from './components/PageLoader';
+import IosInstallModal from './components/IosInstallModal';
+import { Capacitor } from '@capacitor/core';
+import { isIosDevice, usePwaInstallPrompt } from './hooks/usePwaInstallPrompt.js';
 
 import { useDispatch } from 'react-redux';
 
@@ -75,6 +78,18 @@ function App() {
   const [checkedCount, setCheckedCount] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
   const [lastRemoteUpdateAt, setLastRemoteUpdateAt] = useState(null);
+  const { isStandalone, handleInstallClick } = usePwaInstallPrompt();
+  const [iosInstallOpen, setIosInstallOpen] = useState(false);
+  // Only on the regular website — never inside the installed PWA / native app.
+  const showInstall = !Capacitor.isNativePlatform() && !isStandalone;
+
+  const onInstallMenuClick = useCallback(() => {
+    if (isIosDevice()) {
+      setIosInstallOpen(true);
+      return;
+    }
+    handleInstallClick();
+  }, [handleInstallClick]);
 
   const handleRemoteListUpdate = useCallback(() => {
     setLastRemoteUpdateAt(Date.now());
@@ -396,6 +411,7 @@ function App() {
       }
     >
         <StorePromoBanner />
+        <IosInstallModal isOpen={iosInstallOpen} onClose={() => setIosInstallOpen(false)} />
 
         <BrowserRouter>
 
@@ -418,6 +434,8 @@ function App() {
               lastRemoteUpdateAt={lastRemoteUpdateAt}
               setLastRemoteUpdateAt={setLastRemoteUpdateAt}
               connectionBannerActive={connectionBannerVisible}
+              showInstall={showInstall}
+              onInstall={onInstallMenuClick}
             />
             <Routes>
               {user && <Route path="/recipes" element={<Recipes user={user} setSpaceForFloatingButton={setSpaceForFloatingButton} />} />}
