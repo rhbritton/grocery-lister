@@ -1263,18 +1263,27 @@ a.store-coming-soon:focus {
   .hero-grid {
     grid-template-columns: 1fr 1fr;
     gap: 3rem;
-    align-items: start;
+    align-items: center;
   }
 
   .hero-copy {
     text-align: left;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 
   .hero-lead {
     margin-inline: 0;
   }
 
+  .signup-stack {
+    margin-inline: 0;
+    align-items: stretch;
+  }
+
   .fine-print {
+    margin-inline: 0;
     text-align: left;
   }
 
