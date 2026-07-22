@@ -465,7 +465,7 @@ const shareURL = async () => {
                   {isCooking ? 'Done cooking' : 'Cook mode'}
                 </button>
 
-                {owner && props.userId === owner ? (
+                {!isCooking && owner && props.userId === owner ? (
                   <NavLink
                     to={`/recipes/edit/${recipeId}`}
                     aria-label="Edit recipe"
