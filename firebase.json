@@ -6,8 +6,18 @@
     {
       "target": "app",
       "public": "build",
-      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "ignore": [
+        "firebase.json",
+        "**/node_modules/**",
+        "**/.git/**"
+      ],
       "rewrites": [{ "source": "**", "destination": "/index.html" }],
+      "headers": [
+        {
+          "source": "/.well-known/assetlinks.json",
+          "headers": [{ "key": "Content-Type", "value": "application/json" }]
+        }
+      ],
       "predeploy": ["npm run build"]
     },
     {

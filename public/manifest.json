@@ -1,21 +1,22 @@
 {
+  "id": "/?homescreen=2",
   "short_name": "GroceryLister",
   "name": "GroceryLister",
   "icons": [
     {
-      "src": "./images/logo192.png",
+      "src": "./images/icon-192.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any"
     },
     {
-      "src": "./images/logo512.png",
+      "src": "./images/icon-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any"
     },
     {
-      "src": "./images/logo512.png",
+      "src": "./images/icon-maskable-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "maskable"
@@ -25,12 +26,7 @@
   "display": "standalone",
   "theme_color": "#1976D2",
   "background_color": "#1976D2",
-  "related_applications": [
-    {
-      "platform": "webapp",
-      "url": "https://web.grocerylisterapp.com/manifest.json"
-    }
-  ],
+  "prefer_related_applications": false,
   "protocol_handlers": [
     {
       "protocol": "web+grocerylister",
