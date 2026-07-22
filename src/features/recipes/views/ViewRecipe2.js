@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useParams, NavLink } from 'react-router-dom';
 
@@ -9,12 +9,15 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faEdit,
   faBookmark,
-  faShareAlt, 
-  faCheckCircle, 
-  faCircle,
+  faShareAlt,
+  faCheckCircle,
+  faCheck,
   faListUl,
   faMortarPestle,
   faBook,
+  faChevronDown,
+  faChevronUp,
+  faUtensils,
 } from '@fortawesome/free-solid-svg-icons';
 
 import { fetchRecipeById } from '../slices/recipeSlice.ts';
@@ -45,7 +48,9 @@ const ViewRecipe = (props) => {
   const [name, setName] = useState('');
   const [ingredients, setIngredients] = useState([]);
   const [instructions, setInstructions] = useState('');
-  const [focusedColumn, setFocusedColumn] = useState('instructions');
+  const [isCooking, setIsCooking] = useState(false);
+  const [ingredientsPanelOpen, setIngredientsPanelOpen] = useState(false);
+  const [activeStep, setActiveStep] = useState(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -53,10 +58,29 @@ const ViewRecipe = (props) => {
   const [toastVisible, setToastVisible] = useState(false);
 
   const [checkedIngredients, setCheckedIngredients] = useState({});
-  
-    const toggleIngredient = (idx) => {
-      setCheckedIngredients(prev => ({ ...prev, [idx]: !prev[idx] }));
-    };
+  const scrollRef = useRef(null);
+  const stepRefs = useRef({});
+  const [cookProgressReady, setCookProgressReady] = useState(false);
+
+  const cookProgressKey = (id) => `gl.recipeCook.${id}`;
+
+  const toggleIngredient = (idx) => {
+    setCheckedIngredients((prev) => ({ ...prev, [idx]: !prev[idx] }));
+  };
+
+  const scrollStepIntoView = (idx) => {
+    requestAnimationFrame(() => {
+      stepRefs.current[idx]?.scrollIntoView?.({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    });
+  };
+
+  const selectStep = (idx) => {
+    setActiveStep(idx);
+    scrollStepIntoView(idx);
+  };
 
   
 
@@ -242,7 +266,144 @@ const shareURL = async () => {
   };
 
 
-  const steps = instructions.split(/\r?\n/).filter(line => line.trim() !== "");
+  const steps = instructions.split(/\r?\n/).filter((line) => line.trim() !== '');
+  const checkedIngredientCount = Object.values(checkedIngredients).filter(Boolean).length;
+
+  const enterCookingMode = () => {
+    setIsCooking(true);
+    setIngredientsPanelOpen(false);
+    setActiveStep((current) => {
+      const next = current == null && steps.length > 0 ? 0 : current;
+      if (next != null) {
+        scrollStepIntoView(next);
+      }
+      return next;
+    });
+  };
+
+  const exitCookingMode = () => {
+    setIsCooking(false);
+    setIngredientsPanelOpen(false);
+  };
+
+  // Restore cook progress (URL step wins, then localStorage) when opening a recipe.
+  useEffect(() => {
+    setCookProgressReady(false);
+    if (!recipeId) {
+      return;
+    }
+
+    let saved = null;
+    try {
+      const raw = localStorage.getItem(cookProgressKey(recipeId));
+      saved = raw ? JSON.parse(raw) : null;
+    } catch {
+      saved = null;
+    }
+
+    const stepParam = new URLSearchParams(window.location.search).get('step');
+    const fromUrl = stepParam != null ? Number.parseInt(stepParam, 10) - 1 : NaN;
+
+    if (Number.isFinite(fromUrl) && fromUrl >= 0) {
+      setActiveStep(fromUrl);
+    } else if (typeof saved?.activeStep === 'number' && saved.activeStep >= 0) {
+      setActiveStep(saved.activeStep);
+    } else {
+      setActiveStep(null);
+    }
+
+    if (saved?.checkedIngredients && typeof saved.checkedIngredients === 'object') {
+      setCheckedIngredients(saved.checkedIngredients);
+    } else {
+      setCheckedIngredients({});
+    }
+
+    setCookProgressReady(true);
+  }, [recipeId]);
+
+  // Clamp active step if instructions change length.
+  useEffect(() => {
+    if (activeStep == null) {
+      return;
+    }
+    if (steps.length === 0) {
+      setActiveStep(null);
+      return;
+    }
+    if (activeStep >= steps.length) {
+      setActiveStep(steps.length - 1);
+    }
+  }, [activeStep, steps.length]);
+
+  // Persist progress + keep ?step= in the URL for handoff/resume.
+  useEffect(() => {
+    if (!recipeId || !cookProgressReady) {
+      return;
+    }
+
+    try {
+      localStorage.setItem(
+        cookProgressKey(recipeId),
+        JSON.stringify({
+          activeStep,
+          checkedIngredients,
+        })
+      );
+    } catch {
+      // ignore quota / private mode
+    }
+
+    const url = new URL(window.location.href);
+    if (activeStep != null && activeStep >= 0) {
+      url.searchParams.set('step', String(activeStep + 1));
+    } else {
+      url.searchParams.delete('step');
+    }
+    const next = `${url.pathname}${url.search}${url.hash}`;
+    const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    if (next !== current) {
+      window.history.replaceState(null, '', next);
+    }
+  }, [recipeId, activeStep, checkedIngredients, cookProgressReady]);
+
+  const renderIngredientRow = (item, i, keyPrefix = '') => {
+    const checked = Boolean(checkedIngredients[i]);
+    return (
+      <button
+        key={`${keyPrefix}${i}`}
+        type="button"
+        onClick={() => toggleIngredient(i)}
+        aria-pressed={checked}
+        aria-label={checked ? `Uncheck ${item.name}` : `Check off ${item.name}`}
+        className={`group w-full flex items-start gap-2.5 text-left rounded-xl px-1.5 py-1.5 -mx-1.5 transition-colors
+          ${checked ? 'bg-slate-50' : 'hover:bg-blue-50/60'}
+          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2`}
+      >
+        <span
+          className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all shadow-sm
+            ${checked
+              ? 'bg-brand border-brand scale-105'
+              : 'bg-white border-slate-300 group-hover:border-brand/50'
+            }`}
+          aria-hidden="true"
+        >
+          {checked ? (
+            <FontAwesomeIcon icon={faCheck} className="text-white text-[9px]" />
+          ) : (
+            <span className="w-1 h-1 rounded-full bg-slate-200 group-hover:bg-blue-200 transition-colors" />
+          )}
+        </span>
+        <span className="min-w-0 pt-px">
+          <span
+            className={`block text-[15px] font-medium leading-snug transition-colors
+              ${checked ? 'text-slate-400 line-through' : 'text-slate-700'}`}
+          >
+            {item.amount ? `${item.amount} — ${item.name}` : item.name}
+          </span>
+        </span>
+      </button>
+    );
+  };
 
   // Pin the view below the app header so the page itself never scrolls.
   const shellClass = 'fixed inset-x-0 bottom-0 top-[var(--app-header-height)] z-0 overflow-hidden';
@@ -273,207 +434,260 @@ const shareURL = async () => {
   }
 
   return (
-        <main className={`${shellClass} px-3 sm:px-4 py-3 pb-4`}>
+        <main className={`${shellClass} px-3 sm:px-4 py-2 pb-3`}>
             <div className="max-w-xl mx-auto w-full h-full flex flex-col min-h-0">
 
             {/* Paper sheet: title + steps/ingredients */}
             <div className="flex flex-col flex-1 min-h-0 bg-white rounded-3xl shadow-[0_2px_8px_rgba(15,23,42,0.06),0_12px_40px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/70 overflow-hidden">
 
-            {/* Header Row: Title on Left, Actions on Right */}
-            <div className="flex justify-between items-start shrink-0 px-5 pt-5 pb-4 border-b border-slate-100 bg-gradient-to-b from-slate-50/80 to-white">
-
-                {/* Top Left: Recipe Name & Metadata */}
-                <div className="flex-1 pr-4">
-                    {/* Smaller Title: Changed from text-3xl font-black to text-2xl font-bold */}
-                    <h1 className="text-left text-2xl font-bold text-slate-800 leading-tight">
-                        {name}
-                    </h1>
-
-                    {/* Owner Section */}
-                    {/* <div className="flex items-center gap-1.5">
-                        <span className="text-base font-medium text-slate-400">By</span>
-                        <span className="text-base font-bold text-slate-700 hover:text-brand transition-colors cursor-pointer">
-                            Kaitlin Britton
-                        </span>
-                    </div> */}
-
-                    {/* Metadata Row: Time, Category, and Owner */}
-                    {/* <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mt-1.5 text-slate-500">
-
-                        <div className="flex items-center gap-1.5 text-brand">
-                            <FontAwesomeIcon icon={faClock} className="text-[10px]" />
-                            <span className="text-base font-bold uppercase tracking-wider">45 Mins</span>
-                        </div>
-
-                        <span className="text-slate-300 text-xs">•</span>
-
-                        <div className="flex items-center gap-1.5 text-brand">
-                            <FontAwesomeIcon icon={faTag} className="text-[10px]" />
-                            <span className="text-base font-bold uppercase tracking-wider">
-                                Dinner
-                            </span>
-                        </div>
-                    </div> */}
-                </div>
-
-                {/* Top Right: Action Buttons */}
-                <div className="flex gap-2 shrink-0">
-                
-                {/* EDIT BUTTON (Blue Theme) */}
-                {owner && props.userId === owner && (
-                    <NavLink 
-                    to={`/recipes/edit/${recipeId}`}
-                    aria-label="Edit recipe"
-                    className="w-14 h-14 flex items-center justify-center bg-blue-50/50 text-brand border border-blue-100/50 hover:bg-blue-100 hover:border-blue-200 rounded-xl transition-all active:scale-95"
-                    >
-                    <FontAwesomeIcon icon={faEdit} className="text-xl" aria-hidden="true" />
-                    </NavLink>
-                )}
-
-                {/* FAVORITE BUTTON (guests + logged-in viewers, not the owner) */}
-                {owner && props.userId !== owner && (
-                    <button 
-                        type="button"
-                        onClick={handleFavoriteToggle}
-                        disabled={Boolean(props.userId) && isFavoriteLoading}
-                        aria-label={isFavorite ? 'Remove from favorites' : 'Save to favorites'}
-                        aria-pressed={isFavorite}
-                        className={`w-14 h-14 flex items-center justify-center transition-all duration-300 rounded-xl border
-                            ${isFavorite 
-                            ? 'bg-amber-500 border-amber-500 text-white shadow-lg shadow-amber-200 scale-105' 
-                            : 'bg-amber-50/50 text-amber-500 border-amber-100/50 hover:bg-amber-100 hover:border-amber-200 active:scale-95'
-                            }`}
-                    >
-                        <FontAwesomeIcon 
-                            icon={faBookmark} 
-                            className={`transition-all duration-300 text-xl ${isFavorite ? 'scale-110' : 'scale-100'}`} 
-                        />
-                    </button>
-                )}
-
-                {/* SHARE BUTTON */}
-                <button 
-                    type="button"
-                    onClick={shareURL}
-                    aria-label={isShared ? 'Link copied' : 'Share recipe'}
-                    className={`w-14 h-14 flex flex-col items-center justify-center transition-all duration-300 rounded-xl border
-                        ${isShared 
-                        ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-200 scale-105' 
-                        : 'bg-emerald-50/50 text-emerald-600 border-emerald-100/50 hover:bg-emerald-100 hover:border-emerald-200 active:scale-95'
-                        }`}
-                >
-                    <FontAwesomeIcon 
-                        icon={isShared ? faCheckCircle : faShareAlt} 
-                        className={`transition-all duration-300 text-xl ${isShared ? 'scale-110' : 'scale-100'}`} 
-                    />
-                    <span className={`text-[9px] font-black uppercase tracking-tighter mt-1 transition-all duration-300 overflow-hidden
-                        ${isShared ? 'opacity-100 max-h-4' : 'opacity-0 max-h-0'}`}>
-                        Copied
-                    </span>
-                </button>
-                </div>
+            {/* Compact title */}
+            <div className="shrink-0 px-4 pt-3 pb-2 bg-gradient-to-b from-slate-50/80 to-white">
+              <h1 className="text-left text-2xl font-bold text-slate-800 leading-snug">
+                {name}
+              </h1>
             </div>
 
-            {/* Steps + ingredients fill the rest of the sheet */}
-            <div className="flex flex-1 min-h-0 relative">
-
-                {/* INSTRUCTIONS PANEL (Left) */}
-                <section 
-                    onClick={() => setFocusedColumn('instructions')}
-                    className={`relative transition-all duration-500 ease-in-out border-r border-slate-100 overflow-y-auto scrollbar-hide
-                        ${focusedColumn === 'instructions' 
-                        ? 'w-[70%] bg-white z-10 shadow-[4px_0_15px_rgba(0,0,0,0.05)]' 
-                        : 'w-[30%] bg-slate-50 cursor-pointer'}`
-                    }
+            {/* Cook + action buttons */}
+            <div className={`shrink-0 px-4 ${isCooking && steps.length > 0 && activeStep != null ? 'pb-2' : 'pb-3'} border-b border-slate-100 bg-gradient-to-b from-white to-slate-50/50`}>
+              <div className="flex items-stretch gap-2">
+                <button
+                  type="button"
+                  onClick={isCooking ? exitCookingMode : enterCookingMode}
+                  aria-label={isCooking ? 'Exit cooking mode' : 'Enter cook mode'}
+                  aria-pressed={isCooking}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border font-bold uppercase tracking-widest text-xs transition-all active:scale-[0.99]
+                    ${isCooking
+                      ? 'bg-brand border-brand text-white shadow-md shadow-blue-200'
+                      : 'bg-blue-50/80 text-brand border-blue-100 hover:bg-blue-100 hover:border-blue-200'
+                    }`}
                 >
-                    {/* FIXED HEADER: Solid background prevents text overlap */}
-                    <div className={`sticky top-0 z-30 transition-all duration-500 border-b border-transparent
-                            ${focusedColumn === 'instructions' ? 'bg-white border-slate-100' : 'bg-slate-50'}`}
-                    >
+                  <FontAwesomeIcon icon={faUtensils} className="text-sm" aria-hidden="true" />
+                  {isCooking ? 'Done cooking' : 'Cook mode'}
+                </button>
 
-                        <div className={`h-1 transition-colors duration-500 ${focusedColumn === 'instructions' ? 'bg-brand' : 'bg-transparent'}`} />
-                        
-                        <div className="px-5 py-4">
-                            <div className={`flex items-center gap-2 transition-all duration-500 ${focusedColumn === 'instructions' ? 'scale-100' : 'scale-90 opacity-60'}`}>
-                                <FontAwesomeIcon icon={faMortarPestle} className={focusedColumn === 'instructions' ? 'text-brand' : 'text-slate-400'} />
-                                <h2 className={`text-base font-bold uppercase tracking-widest transition-colors ${focusedColumn === 'instructions' ? 'text-brand' : 'text-slate-400'}`}>
-                                    Steps
-                                </h2>
-                            </div>
-                        </div>
+                {owner && props.userId === owner ? (
+                  <NavLink
+                    to={`/recipes/edit/${recipeId}`}
+                    aria-label="Edit recipe"
+                    className="w-10 h-10 shrink-0 flex items-center justify-center bg-blue-50/50 text-brand border border-blue-100/50 hover:bg-blue-100 hover:border-blue-200 rounded-xl transition-all active:scale-95"
+                  >
+                    <FontAwesomeIcon icon={faEdit} className="text-base" aria-hidden="true" />
+                  </NavLink>
+                ) : null}
 
-                        {/* GRADIENT FADE: Signals scrolling availability */}
-                        <div className="absolute bottom-[-20px] left-0 right-0 h-5 bg-gradient-to-b from-inherit to-transparent pointer-events-none" />
-                    </div>
+                {owner && props.userId !== owner ? (
+                  <button
+                    type="button"
+                    onClick={handleFavoriteToggle}
+                    disabled={Boolean(props.userId) && isFavoriteLoading}
+                    aria-label={isFavorite ? 'Remove from favorites' : 'Save to favorites'}
+                    aria-pressed={isFavorite}
+                    className={`w-10 h-10 shrink-0 flex items-center justify-center transition-all duration-300 rounded-xl border
+                      ${isFavorite
+                        ? 'bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-200'
+                        : 'bg-amber-50/50 text-amber-500 border-amber-100/50 hover:bg-amber-100 hover:border-amber-200 active:scale-95'
+                      }`}
+                  >
+                    <FontAwesomeIcon
+                      icon={faBookmark}
+                      className={`text-base transition-all duration-300 ${isFavorite ? 'scale-110' : ''}`}
+                    />
+                  </button>
+                ) : null}
 
-                    {/* Content Area */}
-                    <div className="px-5 pb-10">
-                        <div className={`space-y-6 text-left transition-all duration-500 ${focusedColumn !== 'instructions' ? 'opacity-30 grayscale-[0.8]' : 'opacity-100'}`}>
-                            {steps.length > 0 ? (
-                                steps.map((step, i) => (
-                                <div key={i} className="flex gap-3">
-                                    <span className={`text-[14px] font-black h-5 w-5 rounded-full flex items-center justify-center shrink-0 mt-[0.25em] transition-colors
-                                        ${focusedColumn === 'instructions' ? 'bg-blue-50 text-brand' : 'bg-slate-200 text-slate-400'}`}>
-                                    {i + 1}
-                                    </span>
-                                    <p className="text-base leading-relaxed text-slate-700 font-medium">{step}</p>
-                                </div>
-                                ))
-                            ) : (
-                                /* This is the empty state */
-                                <div className="flex flex-col items-center justify-center py-4 text-center">
-                                <p className="text-sm italic text-slate-400">Instructions haven't been added yet.</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </section>
-
-                {/* INGREDIENTS PANEL (Right) */}
-                <section 
-                    onClick={() => setFocusedColumn('ingredients')}
-                    className={`relative transition-all duration-500 ease-in-out overflow-y-auto scrollbar-hide
-                        ${focusedColumn === 'ingredients' 
-                            ? 'w-[70%] bg-white z-10 shadow-[-4px_0_15px_rgba(0,0,0,0.05)]' 
-                            : 'w-[30%] bg-slate-50 cursor-pointer'}`}
+                <button
+                  type="button"
+                  onClick={shareURL}
+                  aria-label={isShared ? 'Link copied' : 'Share recipe'}
+                  className={`w-10 h-10 shrink-0 flex items-center justify-center transition-all duration-300 rounded-xl border
+                    ${isShared
+                      ? 'bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-200'
+                      : 'bg-emerald-50/50 text-emerald-600 border-emerald-100/50 hover:bg-emerald-100 hover:border-emerald-200 active:scale-95'
+                    }`}
                 >
-                    {/* FIXED HEADER */}
-                    <div className={`sticky top-0 z-30 transition-all duration-500 border-b border-transparent
-                        ${focusedColumn === 'ingredients' ? 'bg-white border-slate-100' : 'bg-slate-50'}`}
+                  <FontAwesomeIcon
+                    icon={isShared ? faCheckCircle : faShareAlt}
+                    className={`text-base transition-all duration-300 ${isShared ? 'scale-110' : ''}`}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {isCooking && steps.length > 0 && activeStep != null ? (
+              <div className="shrink-0 px-4 py-2 border-b border-slate-100 bg-white flex items-center justify-between gap-2">
+                <p className="text-sm font-bold uppercase tracking-widest text-brand tabular-nums">
+                  Step {activeStep + 1} of {steps.length}
+                </p>
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    type="button"
+                    disabled={activeStep <= 0}
+                    onClick={() => selectStep(activeStep - 1)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide border border-slate-200 text-slate-600 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50"
+                  >
+                    Prev
+                  </button>
+                  <button
+                    type="button"
+                    disabled={activeStep >= steps.length - 1}
+                    onClick={() => selectStep(activeStep + 1)}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide border border-brand/30 bg-blue-50 text-brand disabled:opacity-40 disabled:cursor-not-allowed hover:bg-blue-100"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
+            {/* Body: view = full vertical; cook = sticky ingredients + steps */}
+            <div className="relative flex flex-1 min-h-0 flex-col">
+
+              {isCooking ? (
+                <div className="absolute top-0 left-0 right-0 z-40 flex flex-col max-h-[70%]">
+                  <button
+                    type="button"
+                    onClick={() => setIngredientsPanelOpen((open) => !open)}
+                    aria-expanded={ingredientsPanelOpen}
+                    aria-controls="sticky-ingredients-panel"
+                    className="shrink-0 bg-white border-b border-slate-100 shadow-[0_4px_12px_rgba(15,23,42,0.08)] text-left"
+                  >
+                    <div className="h-1 bg-brand" />
+                    <div className="px-5 py-3 flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FontAwesomeIcon icon={faListUl} className="text-brand shrink-0" />
+                        <span className="text-base font-bold uppercase tracking-widest text-brand truncate">
+                          Ingredients
+                        </span>
+                        {ingredients.length > 0 ? (
+                          <span className="text-sm font-semibold text-slate-400 tabular-nums">
+                            {checkedIngredientCount}/{ingredients.length}
+                          </span>
+                        ) : null}
+                      </div>
+                      <FontAwesomeIcon
+                        icon={ingredientsPanelOpen ? faChevronUp : faChevronDown}
+                        className="text-brand shrink-0"
+                        aria-hidden="true"
+                      />
+                    </div>
+                  </button>
+
+                  {ingredientsPanelOpen ? (
+                    <div
+                      id="sticky-ingredients-panel"
+                      className="overflow-y-auto scrollbar-hide bg-white border-b border-slate-100 shadow-[0_12px_28px_rgba(15,23,42,0.12)]"
                     >
+                      <div className="px-5 py-4 space-y-1">
+                        {ingredients.length > 0 ? (
+                          ingredients.map((item, i) => renderIngredientRow(item, i, 'cook-'))
+                        ) : (
+                          <p className="text-sm italic text-slate-400 text-center py-2">
+                            No ingredients listed yet.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
 
-                        <div className={`h-1 transition-colors duration-500 ${focusedColumn === 'ingredients' ? 'bg-brand' : 'bg-transparent'}`} />
-
-                        <div className="px-5 py-4">
-                            <div className={`flex items-center gap-2 transition-all duration-500 ${focusedColumn === 'ingredients' ? 'scale-100' : 'scale-90 opacity-60'}`}>
-                                <FontAwesomeIcon icon={faListUl} className={focusedColumn === 'ingredients' ? 'text-brand' : 'text-slate-400'} />
-                                <h2 className={`text-base font-bold uppercase tracking-widest transition-colors ${focusedColumn === 'ingredients' ? 'text-brand' : 'text-slate-400'}`}>
-                                    Ingredients
-                                </h2>
-                            </div>
+              <div
+                ref={scrollRef}
+                className={`flex-1 min-h-0 overflow-y-auto scrollbar-hide ${isCooking ? 'pt-14' : ''}`}
+              >
+                {!isCooking ? (
+                  <section className="bg-white">
+                    <div className="border-b border-slate-100">
+                      <div className="h-1 bg-brand" />
+                      <div className="px-5 py-4">
+                        <div className="flex items-center gap-2">
+                          <FontAwesomeIcon icon={faListUl} className="text-brand" />
+                          <h2 className="text-base font-bold uppercase tracking-widest text-brand">
+                            Ingredients
+                          </h2>
                         </div>
-
-                        {/* GRADIENT FADE */}
-                        <div className="absolute bottom-[-20px] left-0 right-0 h-5 bg-gradient-to-b from-inherit to-transparent pointer-events-none" />
+                      </div>
                     </div>
 
-                    {/* Content Area */}
-                    <div className="px-5 pb-10">
-                        <div className={`space-y-5 transition-all duration-500 ${focusedColumn !== 'ingredients' ? 'opacity-30 grayscale-[0.8]' : 'opacity-100'}`}>
-                            {ingredients.map((item, i) => (
-                                <div key={i} onClick={(e) => { if (focusedColumn !== 'ingredients') return; e.stopPropagation(); toggleIngredient(i); }}
-                                    className={`flex items-start gap-3 transition-all ${focusedColumn === 'ingredients' ? 'cursor-pointer group' : 'cursor-default pointer-events-none'}`}
-                                >
-                                    <div className="mt-[0.25em] shrink-0">
-                                        <FontAwesomeIcon icon={checkedIngredients[i] ? faCheckCircle : faCircle} 
-                                            className={checkedIngredients[i] && focusedColumn === 'ingredients' ? 'text-brand' : 'text-slate-200'} />
-                                    </div>
-                                    <p className="text-base text-slate-700 font-medium text-left leading-tight">{item.amount} - {item.name}</p>
-                                </div>
-                            ))}
-                        </div>
+                    <div className="px-5 pt-2 pb-8">
+                      <div className="space-y-1">
+                        {ingredients.length > 0 ? (
+                          ingredients.map((item, i) => renderIngredientRow(item, i))
+                        ) : (
+                          <div className="flex flex-col items-center justify-center py-4 text-center">
+                            <p className="text-sm italic text-slate-400">No ingredients listed yet.</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
+                  </section>
+                ) : null}
+
+                <section className={`bg-white ${!isCooking ? 'border-t border-slate-100' : ''}`}>
+                  {!isCooking ? (
+                    <div className="border-b border-slate-100">
+                      <div className="h-1 bg-brand" />
+                      <div className="px-5 py-4">
+                        <div className="flex items-center gap-2">
+                          <FontAwesomeIcon icon={faMortarPestle} className="text-brand" />
+                          <h2 className="text-base font-bold uppercase tracking-widest text-brand">
+                            Steps
+                          </h2>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div className="px-5 pt-4 pb-10">
+                    <div className="space-y-3 text-left">
+                      {steps.length > 0 ? (
+                        steps.map((step, i) => {
+                          const isActive = activeStep === i;
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              ref={(el) => {
+                                stepRefs.current[i] = el;
+                              }}
+                              onClick={() => selectStep(i)}
+                              aria-current={isActive ? 'step' : undefined}
+                              aria-label={`Step ${i + 1}${isActive ? ', current step' : ''}`}
+                              className={`w-full flex gap-3 text-left rounded-2xl px-3 py-3 transition-all border
+                                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2
+                                ${isActive
+                                  ? 'bg-blue-50 border-brand/40 shadow-sm ring-1 ring-brand/20'
+                                  : isCooking && activeStep != null
+                                    ? 'bg-white border-transparent opacity-45 hover:opacity-80'
+                                    : 'bg-white border-transparent hover:bg-slate-50'
+                                }`}
+                            >
+                              <span
+                                className={`text-[14px] font-black h-6 w-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 transition-colors
+                                  ${isActive ? 'bg-brand text-white' : 'bg-blue-50 text-brand'}`}
+                              >
+                                {i + 1}
+                              </span>
+                              <span
+                                className={`text-base leading-relaxed font-medium
+                                  ${isActive ? 'text-slate-800' : 'text-slate-700'}`}
+                              >
+                                {step}
+                              </span>
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-4 text-center">
+                          <p className="text-sm italic text-slate-400">
+                            Instructions haven&apos;t been added yet.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </section>
+              </div>
             </div>
 
             </div>
