@@ -5,19 +5,14 @@
 window.GROCERYLISTER_CONFIG = {
   siteName: 'GroceryLister',
   webAppUrl: 'https://web.grocerylisterapp.com',
-  appStoreUrl: 'https://apps.apple.com/app/id0000000000',
-  playStoreUrl: 'https://play.google.com/store/apps/details?id=com.rhbritton.grocerylister',
   supportEmail: 'support@grocerylisterapp.com',
-  // Legal — shown on Privacy Policy and Terms (update address before App Store submission)
+  // Legal — shown on Privacy Policy and Terms
   legalOperator: 'Ryan Britton',
   legalAddressLine1: '',
   legalAddressLine2: '',
   legalCountry: 'United States',
   governingLawRegion: '',
   governingLawCountry: 'United States',
-  // Set to true when each store listing is live (switches badge text to "Download on the" / "Get it on")
-  appStoreLive: false,
-  playStoreLive: false,
   // Hero carousel: ms between auto-advances (4.5s default)
   carouselIntervalMs: 4500,
   carouselSlides: [

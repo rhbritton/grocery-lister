@@ -25,8 +25,13 @@ export function createReactSelectStyles({
   const labelSize = multiValueLabelSize ?? fontSize;
 
   const styles = {
+    container: (base) => ({
+      ...base,
+      width: '100%',
+    }),
     control: (base, state) => ({
       ...base,
+      width: '100%',
       fontWeight: 'bold',
       backgroundColor: '#f8fafc',
       borderRadius: '0.75rem',

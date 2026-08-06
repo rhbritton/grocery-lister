@@ -23,7 +23,8 @@ function IosInstallModal({ isOpen, onClose }) {
     <ModalShell
       titleId="ios-install-modal-title"
       onClose={onClose}
-      panelClassName="w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+      panelClassName="bg-white rounded-3xl shadow-2xl overflow-hidden"
+      maxWidth="32rem"
     >
       <div className="bg-brand px-6 py-5 text-white text-center">
         <FontAwesomeIcon icon={faMobileScreen} className="text-2xl mb-2" aria-hidden="true" />

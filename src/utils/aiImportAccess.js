@@ -1,18 +1,20 @@
-/** Comma-separated allowlist, e.g. REACT_APP_AI_IMPORT_EMAILS=you@gmail.com,partner@gmail.com */
-function getAllowedEmails() {
-  const raw = process.env.REACT_APP_AI_IMPORT_EMAILS || '';
-  return raw
-    .split(',')
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean);
+/** AI recipe import (shared Gemini) is available to any signed-in user. */
+export function canUseAiRecipeImport(user) {
+  return Boolean(user?.uid);
 }
 
-export function canUseAiRecipeImport(user) {
-  const email = user?.email?.trim().toLowerCase();
-  if (!email) return false;
+/** Soft-launch allowlist for personal Gemini key (BYOK) in Account / import modal. */
+export const PERSONAL_GEMINI_KEY_ALLOWED_EMAILS = [
+  'ryanhbritton@gmail.com',
+  'ryanhbritton2@gmail.com',
+  'kmholian15@gmail.com',
+];
 
-  const allowed = getAllowedEmails();
-  if (allowed.length === 0) return false;
-
-  return allowed.includes(email);
+/** Personal Gemini API key UI + client-side BYOK path — allowlisted emails only. */
+export function canUsePersonalGeminiKey(user) {
+  const email = String(user?.email || '')
+    .trim()
+    .toLowerCase();
+  if (!user?.uid || !email) return false;
+  return PERSONAL_GEMINI_KEY_ALLOWED_EMAILS.map((e) => e.toLowerCase()).includes(email);
 }

@@ -1,36 +1,32 @@
-import { canUseAiRecipeImport } from './aiImportAccess';
+import {
+  canUseAiRecipeImport,
+  canUsePersonalGeminiKey,
+  PERSONAL_GEMINI_KEY_ALLOWED_EMAILS,
+} from './aiImportAccess';
 
 describe('aiImportAccess', () => {
-  const originalEnv = process.env;
-
-  afterEach(() => {
-    process.env = originalEnv;
+  it('allows AI import for any signed-in user', () => {
+    expect(canUseAiRecipeImport({ uid: '1', email: 'anyone@gmail.com' })).toBe(true);
+    expect(canUseAiRecipeImport({ uid: '2' })).toBe(true);
   });
 
-  it('allows listed emails when env is set', () => {
-    process.env = {
-      ...originalEnv,
-      REACT_APP_AI_IMPORT_EMAILS: 'you@gmail.com, Partner@Example.com ',
-    };
-
-    expect(canUseAiRecipeImport({ email: 'you@gmail.com' })).toBe(true);
-    expect(canUseAiRecipeImport({ email: 'partner@example.com' })).toBe(true);
-    expect(canUseAiRecipeImport({ email: 'other@gmail.com' })).toBe(false);
-  });
-
-  it('denies everyone when env is empty', () => {
-    process.env = { ...originalEnv, REACT_APP_AI_IMPORT_EMAILS: '' };
-
-    expect(canUseAiRecipeImport({ email: 'you@gmail.com' })).toBe(false);
-  });
-
-  it('denies when user has no email', () => {
-    process.env = {
-      ...originalEnv,
-      REACT_APP_AI_IMPORT_EMAILS: 'you@gmail.com',
-    };
-
+  it('denies AI import for signed-out users', () => {
     expect(canUseAiRecipeImport(null)).toBe(false);
+    expect(canUseAiRecipeImport(undefined)).toBe(false);
     expect(canUseAiRecipeImport({})).toBe(false);
+  });
+
+  it('allows personal Gemini key only for allowlisted emails', () => {
+    expect(
+      canUsePersonalGeminiKey({ uid: '1', email: 'ryanhbritton@gmail.com' })
+    ).toBe(true);
+    expect(canUsePersonalGeminiKey({ uid: '2', email: 'KMHolian15@gmail.com' })).toBe(true);
+    expect(PERSONAL_GEMINI_KEY_ALLOWED_EMAILS.length).toBe(3);
+  });
+
+  it('denies personal Gemini key for other signed-in users', () => {
+    expect(canUsePersonalGeminiKey({ uid: '1', email: 'stranger@gmail.com' })).toBe(false);
+    expect(canUsePersonalGeminiKey({ uid: '1' })).toBe(false);
+    expect(canUsePersonalGeminiKey(null)).toBe(false);
   });
 });

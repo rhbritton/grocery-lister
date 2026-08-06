@@ -41,7 +41,7 @@
       <div class="container page-card">
         <p class="page-eyebrow">Legal</p>
         <h1>Privacy Policy</h1>
-        <p class="legal-meta">Last updated: June 1, 2026</p>
+        <p class="legal-meta">Last updated: August 6, 2026</p>
         <p class="page-lead">
           GroceryLister helps you manage recipes and grocery lists. This policy explains what information we collect, how we use it, and the choices you have.
         </p>
@@ -62,6 +62,12 @@
               <strong>Content you create</strong> — Recipes, grocery lists, ingredients, check-off status, favorites, and other data you save in the app.
             </li>
             <li>
+              <strong>AI import inputs</strong> — If you use AI recipe import, we process the link content, photo, or text you submit so we can return a structured recipe. Shared imports are sent to Google’s Gemini API using GroceryLister’s server key.
+            </li>
+            <li>
+              <strong>Billing information</strong> — If you subscribe to GroceryLister Plus, payment card details are collected and processed by Stripe. We store billing-related identifiers on your account (such as Stripe customer and subscription IDs, plan status, and shared AI import usage counts) so we can unlock and manage Plus access. We do not store full card numbers on our servers.
+            </li>
+            <li>
               <strong>Device and local storage</strong> — When you are signed in, the app may store a copy of your recipes and lists in your browser or on your device so the app works offline and can sync when you reconnect.
             </li>
             <li>
@@ -78,6 +84,8 @@
           <ul>
             <li>Provide, sync, and back up your recipes and grocery lists across devices</li>
             <li>Enable shared recipe and grocery list links that you choose to send</li>
+            <li>Process AI recipe imports you request, and enforce free shared-import limits</li>
+            <li>Process Plus subscriptions and restore or revoke paid AI import access</li>
             <li>Queue and apply changes made while you are offline</li>
             <li>Maintain, secure, troubleshoot, and improve the service</li>
             <li>Respond to support requests and account deletion requests</li>
@@ -106,10 +114,16 @@
         <section class="page-section">
           <h2>Service providers</h2>
           <p>
-            GroceryLister uses Google Firebase and Google Cloud services for authentication, hosting, and database storage. Google processes data on our behalf according to its own policies. Learn more at
-            <a href="https://firebase.google.com/support/privacy" rel="noopener noreferrer">Firebase Privacy and Security</a>
+            GroceryLister uses Google Firebase and Google Cloud services for authentication, hosting, database storage, and Cloud Functions. Shared AI recipe imports use Google’s Gemini API. Google processes data on our behalf according to its own policies. Learn more at
+            <a href="https://firebase.google.com/support/privacy" rel="noopener noreferrer">Firebase Privacy and Security</a>,
+            <a href="https://policies.google.com/privacy" rel="noopener noreferrer">Google Privacy Policy</a>,
             and
-            <a href="https://policies.google.com/privacy" rel="noopener noreferrer">Google Privacy Policy</a>.
+            <a href="https://ai.google.dev/gemini-api/terms" rel="noopener noreferrer">Gemini API terms</a>.
+          </p>
+          <p>
+            Paid subscriptions are processed by
+            <a href="https://stripe.com/privacy" rel="noopener noreferrer">Stripe</a>.
+            Stripe receives the information needed to complete checkout, manage your subscription, and send receipts. Stripe acts as an independent payment processor under its own privacy policy.
           </p>
         </section>
 
@@ -121,7 +135,7 @@
 
           <h3>Delete in the app</h3>
           <ol>
-            <li>Open <strong>GroceryLister</strong> (web app or Android app) and sign in with <strong>Google</strong>.</li>
+            <li>Open <strong>GroceryLister</strong> in your browser (or the installed PWA) and sign in with <strong>Google</strong>.</li>
             <li>Open <strong>Account</strong> from the app menu.</li>
             <li>Under <strong>Danger zone</strong>, choose <strong>Delete account…</strong> and confirm.</li>
             <li>If asked, sign in with Google again to verify it is you. Your account and cloud data are then removed.</li>
@@ -143,6 +157,8 @@
             <li>Recipes you created</li>
             <li>Grocery lists you created and their items</li>
             <li>Your recipe favorites</li>
+            <li>AI import usage and plan fields tied to your account</li>
+            <li>Stripe customer / subscription identifiers we stored for billing (cancel any active Plus subscription in Account before deleting if you want billing to stop immediately)</li>
           </ul>
           <p>
             <strong>Shared links you sent</strong> — Recipe and grocery list links you previously shared will stop working for others once your content is removed.
@@ -173,6 +189,7 @@
           <ul>
             <li>You can stop using the service and sign out at any time.</li>
             <li>You control whether and with whom you share recipe or grocery list links.</li>
+            <li>You can manage or cancel Plus billing in Account, or simply not use AI import.</li>
             <li>You can delete your account and associated data — see <a href="#delete-account">Delete your GroceryLister account</a> above.</li>
           </ul>
         </section>
@@ -243,8 +260,7 @@
           <div class="footer-col">
             <h4>Product</h4>
             <a data-web-app href="#">Web app</a>
-            <a data-app-store href="#" rel="noopener noreferrer" hidden>App Store</a>
-            <a data-play-store href="#" rel="noopener noreferrer" hidden>Google Play</a>
+            <a href="./support.html#install">Install on your phone</a>
           </div>
           <div class="footer-col">
             <h4>Support</h4>

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta
       name="description"
-      content="GroceryLister turns recipes into aisle-sorted grocery lists for easy meal planning. Share by link, shop offline when signed in, and sync when you're back online."
+      content="GroceryLister is a progressive web app for recipe-powered grocery lists. Import recipes with AI, share by link, shop offline when signed in, and upgrade to Plus for unlimited shared AI imports."
     />
     <title>GroceryLister — Recipe-powered grocery lists</title>
     <link rel="stylesheet" href="./css/styles.css" />
@@ -121,14 +121,93 @@
         </div>
       </section>
 
+      <section class="section section-muted">
+        <div class="container">
+          <p class="eyebrow">AI recipe import</p>
+          <h2 class="section-heading">
+            Turn a link, photo, or pasted text into a structured recipe — then drop it into your next grocery list.
+          </h2>
+          <div class="feature-row">
+            <article class="feature-block">
+              <h3>Link, photo, or text.</h3>
+              <p>Import from a recipe URL, a photo of a card or cookbook page, or text you paste. Review ingredients and steps before you save.</p>
+            </article>
+            <article class="feature-block">
+              <h3>Free shared imports, then Plus.</h3>
+              <p>Signed-in accounts get 10 free shared AI imports. GroceryLister Plus is $4.99/month for unlimited shared imports.</p>
+            </article>
+            <article class="feature-block">
+              <h3>Core features stay free.</h3>
+              <p>Recipes, aisle-sorted lists, sharing, and offline shopping when signed in do not require Plus. Upgrade only if you want more shared AI imports.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="pricing">
+        <div class="container">
+          <h2 class="section-title center">Simple pricing</h2>
+          <div class="pricing-row">
+            <article class="pricing-tier">
+              <h3>Free</h3>
+              <p class="pricing-amount">$0</p>
+              <ul>
+                <li>Recipes &amp; grocery lists</li>
+                <li>Aisle sorting &amp; sharing</li>
+                <li>Offline shopping when signed in</li>
+                <li>10 shared AI recipe imports</li>
+                <li>Upgrade to Plus anytime for unlimited shared imports</li>
+              </ul>
+            </article>
+            <article class="pricing-tier pricing-tier-featured">
+              <h3>Plus</h3>
+              <p class="pricing-amount">$4.99<span>/mo</span></p>
+              <ul>
+                <li>Everything in Free</li>
+                <li>Unlimited shared AI recipe imports</li>
+                <li>Manage or cancel anytime in Account</li>
+              </ul>
+              <a class="btn btn-primary btn-block" data-web-app href="#">Upgrade in the web app</a>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container">
+          <p class="eyebrow">Works on your phone</p>
+          <h2 class="section-heading">
+            GroceryLister is a progressive web app — use it in the browser, or install it to your home screen like an app.
+          </h2>
+          <div class="feature-row">
+            <article class="feature-block">
+              <h3>No App Store required.</h3>
+              <p>Open the web app on your phone or computer. There is no separate App Store or Google Play download.</p>
+            </article>
+            <article class="feature-block">
+              <h3>Add to Home Screen.</h3>
+              <p>On iPhone (Safari) or Android (Chrome), install GroceryLister from the browser so it opens full-screen from your home screen.</p>
+            </article>
+            <article class="feature-block">
+              <h3>Same account everywhere.</h3>
+              <p>Sign in with Google. Your recipes and lists sync across devices when you’re online.</p>
+            </article>
+          </div>
+          <div class="section-cta">
+            <a class="btn btn-primary" data-web-app href="#">Open the web app</a>
+          </div>
+        </div>
+      </section>
+
       <section class="section section-muted ready">
         <div class="container center">
           <h2 class="section-title">Ready to simplify your shopping?</h2>
           <ul class="checklist">
             <li>Recipe-powered meal planning</li>
             <li>Ingredients grouped by aisle</li>
+            <li>AI import from link, photo, or text</li>
             <li>Share recipes &amp; lists by link (shared lists active 7 days)</li>
-            <li>Guests can open shared links without signing in</li>
+            <li>Install as a PWA on your phone’s home screen</li>
             <li>Offline shopping when signed in — syncs when reconnected</li>
           </ul>
           <a class="btn btn-primary btn-lg" data-web-app href="#">Get started free</a>
@@ -150,8 +229,7 @@
           <div class="footer-col">
             <h4>Product</h4>
             <a data-web-app href="#">Web app</a>
-            <a data-app-store href="#" rel="noopener noreferrer" hidden>App Store</a>
-            <a data-play-store href="#" rel="noopener noreferrer" hidden>Google Play</a>
+            <a href="./support.html#install">Install on your phone</a>
           </div>
           <div class="footer-col">
             <h4>Support</h4>

@@ -189,9 +189,9 @@ const AddRecipe = (props) => {
   };
 
   return (
-    <main className="page-main pb-bar-clear space-y-6">
+    <main className="page-main pb-bar-clear space-y-6 min-w-0 overflow-x-hidden">
 
-        <div className="mb-4">
+        <div className="mb-4 min-w-0">
             <label htmlFor="recipeName" className="block font-medium text-gray-700">
                 Prefill With Recipe:
             </label>
@@ -291,10 +291,10 @@ const AddRecipe = (props) => {
         </section>
 
         {/* Ingredients Section (Dynamic List) */}
-        <section className="bg-white rounded-3xl shadow-md border border-slate-200 overflow-visible">
+        <section className="bg-white rounded-3xl shadow-md border border-slate-200 overflow-hidden">
             <div className="h-1 bg-brand rounded-t-3xl" />
 
-            <div className="p-6">
+            <div className="p-6 min-w-0">
                 {/* Section Header - Simple & Clean */}
                 <div className="flex items-center gap-2 mb-6">
                     <FontAwesomeIcon icon={faListUl} className="text-brand" />
@@ -304,7 +304,7 @@ const AddRecipe = (props) => {
                 </div>
 
                 {/* Ingredients List */}
-                <div className="flex flex-col">
+                <div className="flex flex-col min-w-0">
                     {ingredients.map((ingredient, index) => (
                         <EditIngredient 
                             key={index}
@@ -382,6 +382,8 @@ const AddRecipe = (props) => {
 
         {aiImportOpen ? (
           <RecipeAiImportModal
+            userId={userId}
+            user={user}
             onClose={() => setAiImportOpen(false)}
             onImport={handleAiImport}
           />

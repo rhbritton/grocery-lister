@@ -1,6 +1,16 @@
 import React, { useEffect, useRef } from 'react';
 
-function ModalShell({ onClose, titleId, children, panelClassName = 'w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200', overlayClassName = '' }) {
+function ModalShell({
+  onClose,
+  titleId,
+  children,
+  panelClassName = 'bg-white rounded-3xl shadow-2xl overflow-hidden',
+  overlayClassName = '',
+  /** `sheet` = bottom sheet on phones, centered on sm+; `center` = always centered */
+  placement = 'center',
+  /** Cap width on large screens (default 24rem / max-w-sm). */
+  maxWidth = '24rem',
+}) {
   const dialogRef = useRef(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
@@ -26,9 +36,15 @@ function ModalShell({ onClose, titleId, children, panelClassName = 'w-full max-w
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const isSheet = placement === 'sheet';
+
   return (
     <div
-      className={`fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[10050] p-4 animate-in fade-in duration-200 ${overlayClassName}`}
+      className={`fixed inset-0 z-[10050] flex bg-slate-900/60 backdrop-blur-sm ${
+        isSheet
+          ? 'items-end justify-center sm:items-center p-0 sm:p-4'
+          : 'items-center justify-center p-4'
+      } ${overlayClassName}`}
       onClick={() => onCloseRef.current()}
       role="presentation"
     >
@@ -37,7 +53,8 @@ function ModalShell({ onClose, titleId, children, panelClassName = 'w-full max-w
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className={panelClassName}
+        className={`box-border min-w-0 w-full ${panelClassName}`}
+        style={{ maxWidth }}
         onClick={(event) => event.stopPropagation()}
       >
         {children}

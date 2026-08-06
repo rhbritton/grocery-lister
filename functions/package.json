@@ -1,0 +1,19 @@
+{
+  "name": "grocery-lister-functions",
+  "description": "Cloud Functions for GroceryLister",
+  "engines": {
+    "node": "22"
+  },
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.2",
+    "firebase-functions": "^6.3.0",
+    "stripe": "^22.3.2"
+  },
+  "private": true
+}

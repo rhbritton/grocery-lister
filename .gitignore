@@ -27,6 +27,11 @@ firebase.js
 
 .env
 
+# local one-line secret upload files (never commit)
+secrets-tmp.txt
+*-secret.tmp
+whsec.tmp
+
 keystore.properties
 *.jks
 *.keystore

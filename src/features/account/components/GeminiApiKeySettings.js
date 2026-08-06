@@ -102,12 +102,12 @@ function GeminiApiKeySettings({ userId }) {
     <section className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
       <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/60">
         <h2 className="text-label font-black uppercase tracking-widest text-slate-500">
-          Recipe import (Gemini)
+          Gemini key (backup)
         </h2>
       </div>
       <div className="px-6 py-5 space-y-4">
         <p className="text-sm text-slate-600 leading-relaxed">
-          Add your own{' '}
+          Optional backup for recipe AI import when the shared importer is unavailable. Add your{' '}
           <a
             href="https://aistudio.google.com/apikey"
             target="_blank"
@@ -116,8 +116,7 @@ function GeminiApiKeySettings({ userId }) {
           >
             Google AI Studio
           </a>{' '}
-          API key to import recipes from photos or text. Your key stays on this device and billing
-          goes to your Google account.
+          API key. It stays on this device; billing goes to your Google account.
         </p>
         <p className="text-sm text-slate-500 leading-relaxed">
           Paste a key, test the connection, then save. If a new key fails, open the key in Google

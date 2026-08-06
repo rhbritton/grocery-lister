@@ -1,5 +1,5 @@
 import {
-  RECIPE_AI_IMPORT_PROMPT,
+  getRecipeAiImportPrompt,
   parseRecipeImportJson,
 } from '../utils/recipeAiImport.js';
 
@@ -160,7 +160,11 @@ export function looksLikeUrlFetchFailure(rawText) {
   return false;
 }
 
-function buildGenerateContentBody({ userParts, mode = 'structured' }) {
+function buildGenerateContentBody({
+  userParts,
+  mode = 'structured',
+  systemInstruction = getRecipeAiImportPrompt(),
+}) {
   const body = {
     contents: [
       {
@@ -173,7 +177,7 @@ function buildGenerateContentBody({ userParts, mode = 'structured' }) {
   if (mode === 'url-import') {
     // Same flow as manual Gemini: full recipe prompt + URL context, JSON in the reply.
     body.systemInstruction = {
-      parts: [{ text: RECIPE_AI_IMPORT_PROMPT }],
+      parts: [{ text: systemInstruction }],
     };
     body.tools = [{ urlContext: {} }];
     return body;
@@ -181,7 +185,7 @@ function buildGenerateContentBody({ userParts, mode = 'structured' }) {
 
   if (mode === 'structured') {
     body.systemInstruction = {
-      parts: [{ text: RECIPE_AI_IMPORT_PROMPT }],
+      parts: [{ text: systemInstruction }],
     };
     body.generationConfig = {
       responseMimeType: 'application/json',
@@ -214,7 +218,7 @@ export function getGeminiImportErrorMessage(error) {
     if (/limit:\s*0|free_tier.*limit|free_tier/i.test(message)) {
       return 'Gemini free tier is not active for this key yet. In Google AI Studio, open your project → Set up billing (you can stay on free limits). Then retry Test connection.';
     }
-    return 'Gemini rate limit hit (429). Wait a few minutes, then retry. If this keeps happening, enable billing in AI Studio (free limits still apply) or use Manual import below.';
+    return 'Gemini rate limit hit (429). Wait a few minutes, then retry. If this keeps happening, enable billing in AI Studio (free limits still apply) or try photo / text instead.';
   }
 
   if (/limit:\s*0|free.?tier.*limit|free_tier/i.test(message)) {
@@ -248,7 +252,7 @@ export function getGeminiImportErrorMessage(error) {
   ) {
     return message.includes('Gemini API could not fetch')
       ? message
-      : 'Gemini could not extract a recipe from that URL. Try Manual import below.';
+      : 'Gemini could not extract a recipe from that URL. Try pasting the recipe text or a photo.';
   }
 
   if (/tool use with a response mime type.*application\/json.*unsupported/i.test(message)) {
@@ -369,13 +373,14 @@ async function callGeminiGenerateContent({
   modelName,
   userParts,
   mode = 'structured',
+  systemInstruction = getRecipeAiImportPrompt(),
 }) {
   const response = await fetch(
     `${GEMINI_API_BASE}/models/${encodeURIComponent(modelName)}:generateContent?key=${encodeURIComponent(apiKey)}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(buildGenerateContentBody({ userParts, mode })),
+      body: JSON.stringify(buildGenerateContentBody({ userParts, mode, systemInstruction })),
     }
   );
 
@@ -447,12 +452,13 @@ function createGeminiImportError(message, debug = {}) {
   return error;
 }
 
-async function extractRecipeFromUrl(apiKey, url, modelName) {
+async function extractRecipeFromUrl(apiKey, url, modelName, systemInstruction) {
   const responseBody = await callGeminiGenerateContent({
     apiKey,
     modelName,
     userParts: [{ text: buildUrlDirectUserMessage(url) }],
     mode: 'url-import',
+    systemInstruction,
   });
 
   const rawText = getResponseText(responseBody);
@@ -474,7 +480,8 @@ async function extractRecipeFromUrl(apiKey, url, modelName) {
     return await extractRecipeFromContent(
       apiKey,
       [{ text: buildUrlStructuredUserMessage(url, rawText) }],
-      modelName
+      modelName,
+      systemInstruction
     );
   } catch (error) {
     throw createGeminiImportError(error.message, {
@@ -486,12 +493,13 @@ async function extractRecipeFromUrl(apiKey, url, modelName) {
   }
 }
 
-async function extractRecipeFromContent(apiKey, userParts, modelName) {
+async function extractRecipeFromContent(apiKey, userParts, modelName, systemInstruction) {
   const responseBody = await callGeminiGenerateContent({
     apiKey,
     modelName,
     userParts,
     mode: 'structured',
+    systemInstruction,
   });
 
   return parseRecipeFromResponseBody(responseBody);
@@ -501,11 +509,13 @@ export async function extractRecipeWithGemini({
   apiKey,
   sourceInput = '',
   imageFile = null,
+  simplify = false,
 }) {
   if (!apiKey?.trim()) {
     throw new Error('Add your Gemini API key in Account settings first.');
   }
 
+  const systemInstruction = getRecipeAiImportPrompt({ simplify });
   const source = resolveRecipeSourceInput(sourceInput);
   const image = imageFile ? await readImageFile(imageFile) : null;
 
@@ -516,7 +526,7 @@ export async function extractRecipeWithGemini({
   if (source.type === 'url') {
     return generateWithModelFallback(
       apiKey,
-      (modelName) => extractRecipeFromUrl(apiKey, source.url, modelName),
+      (modelName) => extractRecipeFromUrl(apiKey, source.url, modelName, systemInstruction),
       getGeminiUrlModelCandidates()
     );
   }
@@ -533,6 +543,6 @@ export async function extractRecipeWithGemini({
   }
 
   return generateWithModelFallback(apiKey, (modelName) =>
-    extractRecipeFromContent(apiKey, userParts, modelName)
+    extractRecipeFromContent(apiKey, userParts, modelName, systemInstruction)
   );
 }

@@ -35,4 +35,4 @@ const db = initializeFirestore(app, {
 const appId = firebaseConfig.appId;
 const projectId = firebaseConfig.projectId;
 
-export { auth, db, appId, projectId };
+export { app, auth, db, appId, projectId };

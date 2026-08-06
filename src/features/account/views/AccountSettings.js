@@ -6,6 +6,9 @@ import { faUserCircle } from '@fortawesome/free-solid-svg-icons';
 import DeleteAccountModal from '../../../components/DeleteAccountModal.js';
 import BottomNav from '../../../components/BottomNav.js';
 import { getDeleteAccountErrorMessage } from '../../../services/accountDeletion.js';
+import { canUseAiRecipeImport, canUsePersonalGeminiKey } from '../../../utils/aiImportAccess.js';
+import GeminiApiKeySettings from '../components/GeminiApiKeySettings.js';
+import AiImportBillingSettings from '../components/AiImportBillingSettings.js';
 
 function AccountSettings({
   user,
@@ -17,6 +20,8 @@ function AccountSettings({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const showAiImportSettings = canUseAiRecipeImport(user);
+  const showPersonalGeminiKey = canUsePersonalGeminiKey(user);
 
   const handleConfirmDelete = async () => {
     setIsDeleting(true);
@@ -62,6 +67,13 @@ function AccountSettings({
               </div>
             </div>
           </section>
+
+          {showAiImportSettings && user?.uid ? (
+            <>
+              <AiImportBillingSettings user={user} />
+              {showPersonalGeminiKey ? <GeminiApiKeySettings userId={user.uid} /> : null}
+            </>
+          ) : null}
 
           <section className="bg-white rounded-3xl shadow-sm border border-red-100 overflow-hidden">
             <div className="px-6 py-5 border-b border-red-100 bg-red-50/40">

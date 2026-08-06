@@ -38,6 +38,24 @@ Return ONLY a valid JSON object matching the schema below. Do not include markdo
 
 After this message, I will send the recipe URL or image.`;
 
+export const RECIPE_AI_IMPORT_SIMPLIFY_ADDENDUM = `
+
+### Extra mode: Simplify (when enabled)
+Apply these on top of the rules above — prioritize brevity:
+1. Write each instruction step as 1 short sentence (about 8–14 words when possible). Prefer "Heat oil in a pan." over long compound sentences.
+2. Break multi-action sentences into separate steps. If one original paragraph does chop → cook → season, output three steps separated by "\\n\\n".
+3. One clear action per step. Move prep details into their own earlier steps when helpful (e.g. "Dice the onion." then "Add onion to the pan.").
+4. Keep every essential ingredient and cooking fact — do not drop ingredients, quantities, times, temperatures, or techniques needed to make the dish correctly.
+5. Cut filler, tips, stories, garnish notes, and "meanwhile" asides unless required for the result.
+6. Prefer everyday wording over fancy chef language when the meaning stays the same.`;
+
+export function getRecipeAiImportPrompt({ simplify = false } = {}) {
+  if (!simplify) {
+    return RECIPE_AI_IMPORT_PROMPT;
+  }
+  return `${RECIPE_AI_IMPORT_PROMPT}${RECIPE_AI_IMPORT_SIMPLIFY_ADDENDUM}`;
+}
+
 export function stripJsonFences(text) {
   const trimmed = String(text || '').trim();
   const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
