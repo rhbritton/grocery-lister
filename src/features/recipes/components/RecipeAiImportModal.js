@@ -7,17 +7,9 @@ import { getGeminiApiKey } from '../../../services/geminiApiKeyStorage.js';
 import {
   extractRecipeWithGemini,
   getGeminiImportErrorMessage,
+  MAX_AI_IMPORT_IMAGE_BYTES,
 } from '../services/geminiRecipeImport.js';
-import {
-  fetchAiImportUsage,
-  importRecipeWithAiViaServer,
-  startAiImportCheckout,
-} from '../services/recipeAiImportApi.js';
 import { fetchPageTextWithJina, normalizeHttpUrl } from '../services/jinaReader.js';
-import {
-  formatAiImportRemaining,
-  hasSharedAiImportCredits,
-} from '../utils/aiImportQuota.js';
 import { canUsePersonalGeminiKey } from '../../../utils/aiImportAccess.js';
 
 const IMPORT_MODES = [
@@ -26,8 +18,12 @@ const IMPORT_MODES = [
   { id: 'text', label: 'Text' },
 ];
 
+const AI_STUDIO_KEY_URL = 'https://aistudio.google.com/apikey';
+
 function isClientValidationError(message) {
-  return /valid website link|photo to import|paste recipe text/i.test(String(message || ''));
+  return /valid website link|photo to import|paste recipe text|too large|smaller photo/i.test(
+    String(message || '')
+  );
 }
 
 function RecipeAiImportModal({ onClose, onImport, userId, user = null }) {
@@ -41,38 +37,10 @@ function RecipeAiImportModal({ onClose, onImport, userId, user = null }) {
   const [isImporting, setIsImporting] = useState(false);
   const [importStatus, setImportStatus] = useState('');
   const [simplify, setSimplify] = useState(false);
-  const [usage, setUsage] = useState(null);
-  const [usageLoading, setUsageLoading] = useState(true);
-  const [isStartingCheckout, setIsStartingCheckout] = useState(false);
 
   const allowPersonalKey = canUsePersonalGeminiKey(user);
   const hasApiKey = allowPersonalKey && Boolean(getGeminiApiKey(userId));
-  const sharedCreditsLeft = hasSharedAiImportCredits(usage);
-  const canUseSharedImport = sharedCreditsLeft;
-  const canPrimaryImport = hasApiKey || canUseSharedImport;
-  const remainingLabel = formatAiImportRemaining(usage);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    (async () => {
-      setUsageLoading(true);
-      try {
-        const nextUsage = await fetchAiImportUsage();
-        if (!cancelled) setUsage(nextUsage);
-      } catch (loadError) {
-        if (!cancelled) {
-          console.error('[AI import] Usage load failed', loadError);
-        }
-      } finally {
-        if (!cancelled) setUsageLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const canImport = hasApiKey;
 
   useEffect(() => {
     if (!imageFile) {
@@ -116,87 +84,33 @@ function RecipeAiImportModal({ onClose, onImport, userId, user = null }) {
     return { sourceInput: trimmed, imageForImport: null };
   };
 
-  const importWithPersonalKey = async (sourceInput, imageForImport) => {
-    const apiKey = getGeminiApiKey(userId);
-    if (!apiKey) {
-      throw new Error('Add your Gemini API key in Account settings first.');
-    }
-
-    setImportStatus('Extracting with your key…');
-    return extractRecipeWithGemini({
-      apiKey,
-      sourceInput,
-      imageFile: imageForImport,
-      simplify,
-    });
-  };
-
-  const handleUpgrade = async () => {
-    setError('');
-    setIsStartingCheckout(true);
-    try {
-      const url = await startAiImportCheckout();
-      window.location.assign(url);
-    } catch (checkoutError) {
-      setError(String(checkoutError?.message || 'Could not start upgrade.'));
-      setIsStartingCheckout(false);
-    }
-  };
-
-  const handleImport = async ({ preferPersonalKey = false } = {}) => {
+  const handleImport = async () => {
     setError('');
     setImportStatus('');
     setIsImporting(true);
 
     try {
-      const { sourceInput, imageForImport } = await prepareSource();
-      const personalKey = allowPersonalKey ? getGeminiApiKey(userId) : null;
-      const usePersonalFirst = allowPersonalKey && (preferPersonalKey || Boolean(personalKey));
-
-      if (usePersonalFirst) {
-        try {
-          const recipe = await importWithPersonalKey(sourceInput, imageForImport);
-          applyRecipe(recipe);
-          return;
-        } catch (personalError) {
-          console.error('[AI import] Personal Gemini key failed', {
-            mode: importMode,
-            preferPersonalKey,
-            message: personalError?.message || null,
-            error: personalError,
-          });
-          if (preferPersonalKey) {
-            throw personalError;
-          }
-          if (!canUseSharedImport) {
-            throw new Error(
-              "You've used all free shared AI imports. Upgrade for unlimited shared imports, or fix your personal Gemini key."
-            );
-          }
-          setImportStatus('Your key failed — trying shared import…');
-        }
+      if (!canImport) {
+        throw new Error('Add a Gemini API key in Account before importing.');
       }
 
-      if (!canUseSharedImport) {
-        throw new Error(
-          allowPersonalKey
-            ? "You've used all free shared AI imports. Upgrade for unlimited, or add a personal Gemini key in Account."
-            : "You've used all free shared AI imports. Upgrade to Plus for unlimited shared imports."
-        );
+      const { sourceInput, imageForImport } = await prepareSource();
+      const apiKey = getGeminiApiKey(userId);
+      if (!apiKey) {
+        throw new Error('Add a Gemini API key in Account before importing.');
       }
 
       setImportStatus('Extracting recipe…');
-      const { recipe, usage: nextUsage } = await importRecipeWithAiViaServer({
-        sourceText: sourceInput,
+      const recipe = await extractRecipeWithGemini({
+        apiKey,
+        sourceInput,
         imageFile: imageForImport,
         simplify,
       });
-      if (nextUsage) setUsage(nextUsage);
       applyRecipe(recipe);
     } catch (importError) {
       console.error('[AI import] Import failed', {
         mode: importMode,
-        preferPersonalKey,
         message: importError?.message || null,
         error: importError,
       });
@@ -204,15 +118,13 @@ function RecipeAiImportModal({ onClose, onImport, userId, user = null }) {
       const rawMessage = String(importError?.message || '');
       if (
         isClientValidationError(rawMessage) ||
-        /jina|could not read that page|rate limit|did not return enough content|page reader/i.test(
+        /jina|could not read that page|rate limit|did not return enough content|page reader|Gemini API key/i.test(
           rawMessage
         )
       ) {
         setError(rawMessage);
-      } else if (preferPersonalKey) {
-        setError(getGeminiImportErrorMessage(importError));
       } else {
-        setError(rawMessage || 'Could not import recipe. Try again.');
+        setError(getGeminiImportErrorMessage(importError));
       }
     } finally {
       setIsImporting(false);
@@ -228,41 +140,75 @@ function RecipeAiImportModal({ onClose, onImport, userId, user = null }) {
       maxWidth="28rem"
       panelClassName="bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col min-h-0 max-h-[min(88dvh,920px)]"
       overlayClassName="!z-[10002]"
+      skipInitialFocus
     >
       <div className="bg-brand px-4 pt-4 pb-3 sm:px-6 sm:py-4 shrink-0">
         <h2 id="recipe-ai-import-title" className="text-white font-black text-lg tracking-tight">
           Import with AI
         </h2>
         <p className="text-blue-100 text-sm mt-0.5">
-          Link, photo, or text
-          <span className="text-blue-50/90">
-            {' · '}
-            {usageLoading
-              ? 'Checking free imports…'
-              : remainingLabel || 'Shared import quota unavailable'}
-          </span>
+          Link, photo, or text — uses your Gemini key
         </p>
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 sm:py-5 space-y-4">
-        {!usageLoading && !sharedCreditsLeft ? (
-          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-            <p className="font-bold">You’ve used all 10 free shared AI imports.</p>
-            <p className="mt-1 text-amber-900/90">
-              {allowPersonalKey
-                ? 'Upgrade for unlimited shared imports, or use your own Gemini key (unlimited, billed to you).'
-                : 'Upgrade to Plus for unlimited shared AI imports.'}
+        {hasApiKey ? (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
+            <p className="font-bold">Gemini key ready on this device.</p>
+            <p className="mt-1 text-emerald-900/90">
+              Imports use your key and are billed to your Google account. Manage it in{' '}
+              <Link
+                to="/account"
+                className="font-bold text-emerald-800 underline underline-offset-2"
+                onClick={onClose}
+              >
+                Account
+              </Link>
+              .
             </p>
-            <button
-              type="button"
-              onClick={handleUpgrade}
-              disabled={isStartingCheckout || isImporting}
-              className="mt-3 w-full py-2.5 rounded-xl font-bold text-sm text-white bg-brand hover:bg-brand-dark disabled:opacity-50"
-            >
-              {isStartingCheckout ? 'Opening checkout…' : 'Upgrade for unlimited'}
-            </button>
           </div>
-        ) : null}
+        ) : (
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            <p className="font-bold">Add a Gemini API key to import</p>
+            <p className="mt-1 text-amber-900/90">
+              GroceryLister does not use a shared AI key. Create a free Google Gemini key, save it
+              on this device, then come back here.
+            </p>
+            <ol className="mt-3 space-y-2 list-decimal list-inside text-amber-950">
+              <li>
+                Open{' '}
+                <a
+                  href={AI_STUDIO_KEY_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-bold text-brand underline underline-offset-2"
+                >
+                  Google AI Studio
+                </a>{' '}
+                and create an API key.
+              </li>
+              <li>
+                In this app, open{' '}
+                <Link
+                  to="/account"
+                  className="font-bold text-brand underline underline-offset-2"
+                  onClick={onClose}
+                >
+                  Account
+                </Link>
+                .
+              </li>
+              <li>Paste the key, tap <strong>Test connection</strong>, then <strong>Save</strong>.</li>
+            </ol>
+            <Link
+              to="/account"
+              onClick={onClose}
+              className="mt-3 flex w-full items-center justify-center py-2.5 rounded-xl font-bold text-sm text-white bg-brand hover:bg-brand-dark"
+            >
+              Add key in Account
+            </Link>
+          </div>
+        )}
 
         <div
           className="flex rounded-2xl bg-slate-100 p-1 gap-1"
@@ -328,6 +274,14 @@ function RecipeAiImportModal({ onClose, onImport, userId, user = null }) {
               className="sr-only"
               onChange={(event) => {
                 const file = event.target.files?.[0] || null;
+                if (file && file.size > MAX_AI_IMPORT_IMAGE_BYTES) {
+                  setImageFile(null);
+                  setError(
+                    'Photo is too large (max 4 MB). Try a smaller image or crop the recipe card.'
+                  );
+                  event.target.value = '';
+                  return;
+                }
                 setImageFile(file);
                 if (error) setError('');
               }}
@@ -364,7 +318,7 @@ function RecipeAiImportModal({ onClose, onImport, userId, user = null }) {
                     <FontAwesomeIcon icon={faUpload} className="text-xl" aria-hidden="true" />
                   </span>
                   <span className="text-sm font-bold text-slate-800">Upload recipe photo</span>
-                  <span className="text-xs text-slate-500">JPG, PNG, or HEIC from your camera roll</span>
+                  <span className="text-xs text-slate-500">JPG or PNG · max 4 MB</span>
                 </div>
               )}
             </button>
@@ -416,66 +370,32 @@ function RecipeAiImportModal({ onClose, onImport, userId, user = null }) {
             {importStatus}
           </p>
         ) : null}
-
-        {allowPersonalKey ? (
-          <details className="rounded-2xl border border-slate-200 bg-slate-50/80 group">
-            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-bold text-slate-600 flex items-center justify-between gap-2">
-              <span>Use your own Gemini key</span>
-              <span className="text-xs font-semibold uppercase tracking-widest text-slate-400 group-open:hidden">
-                Show
-              </span>
-              <span className="text-xs font-semibold uppercase tracking-widest text-slate-400 hidden group-open:inline">
-                Hide
-              </span>
-            </summary>
-            <div className="px-4 pb-4 space-y-3 border-t border-slate-200/80">
-              <p className="text-sm text-slate-500 pt-3 leading-relaxed">
-                Unlimited — does not use your free shared imports. Save a key in{' '}
-                <Link
-                  to="/account"
-                  className="font-bold text-brand underline underline-offset-2"
-                  onClick={onClose}
-                >
-                  Account
-                </Link>
-                . Billing goes to your Google account.
-              </p>
-              {hasApiKey ? (
-                <button
-                  type="button"
-                  className="w-full py-3 rounded-2xl font-bold text-sm text-brand bg-white border border-blue-100 hover:bg-blue-50 transition-colors disabled:opacity-50"
-                  onClick={() => handleImport({ preferPersonalKey: true })}
-                  disabled={isImporting}
-                >
-                  Import with your key only
-                </button>
-              ) : (
-                <p className="text-sm text-slate-500">
-                  No personal key on this device yet — add one in Account first.
-                </p>
-              )}
-            </div>
-          </details>
-        ) : null}
       </div>
 
-      <div className="shrink-0 border-t border-slate-100 bg-white px-4 py-3 sm:px-6 sm:py-4 flex gap-3">
-        <button
-          type="button"
-          className="flex-1 py-3 rounded-2xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors disabled:opacity-50"
-          onClick={onClose}
-          disabled={isImporting}
-        >
-          Cancel
-        </button>
-        <button
-          type="button"
-          className="flex-1 py-3 rounded-2xl font-bold text-white bg-brand hover:bg-brand-dark transition-colors disabled:opacity-50"
-          onClick={() => handleImport()}
-          disabled={isImporting || usageLoading || !canPrimaryImport}
-        >
-          {isImporting ? importStatus || 'Importing…' : 'Import'}
-        </button>
+      <div className="shrink-0 border-t border-slate-100 bg-white px-4 py-3 sm:px-6 sm:py-4 space-y-2">
+        {!hasApiKey ? (
+          <p className="text-xs text-center text-slate-500">
+            Import stays disabled until a Gemini key is saved in Account.
+          </p>
+        ) : null}
+        <div className="flex gap-3">
+          <button
+            type="button"
+            className="flex-1 py-3 rounded-2xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors disabled:opacity-50"
+            onClick={onClose}
+            disabled={isImporting}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="flex-1 py-3 rounded-2xl font-bold text-white bg-brand hover:bg-brand-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleImport}
+            disabled={isImporting || !canImport}
+          >
+            {isImporting ? importStatus || 'Importing…' : 'Import'}
+          </button>
+        </div>
       </div>
     </ModalShell>
   );

@@ -21,6 +21,7 @@
 html {
   font-size: 16px;
   -webkit-text-size-adjust: 100%;
+  caret-color: transparent;
 }
 
 body {
@@ -30,6 +31,10 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  caret-color: transparent;
+  cursor: default;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 code {
@@ -46,6 +51,21 @@ textarea,
 select {
   border-color: #999;
   font-size: 1rem;
+}
+
+input[type='text'],
+input[type='url'],
+input[type='email'],
+input[type='password'],
+input[type='search'],
+input[type='number'],
+input[type='tel'],
+input:not([type]),
+textarea {
+  cursor: text;
+  caret-color: currentColor;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 input:focus,

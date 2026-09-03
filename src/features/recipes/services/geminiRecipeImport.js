@@ -8,6 +8,7 @@ export const DEFAULT_GEMINI_MODEL =
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
+/** Current Flash models only — do not include retired IDs (e.g. gemini-2.0-flash). */
 export function getGeminiModelCandidates() {
   return [
     ...new Set(
@@ -15,8 +16,7 @@ export function getGeminiModelCandidates() {
         process.env.REACT_APP_GEMINI_MODEL,
         DEFAULT_GEMINI_MODEL,
         'gemini-2.5-flash',
-        'gemini-1.5-flash',
-        'gemini-2.0-flash',
+        'gemini-2.5-flash-lite',
       ].filter(Boolean)
     ),
   ];
@@ -34,6 +34,8 @@ export function getGeminiUrlModelCandidates() {
 
 const MAX_SOURCE_TEXT_LENGTH = 20_000;
 const MIN_URL_FETCH_TEXT_LENGTH = 40;
+/** ~4MB binary — matches Cloud Function MAX_IMAGE_BASE64_LENGTH (~5.5M chars). */
+export const MAX_AI_IMPORT_IMAGE_BYTES = 4 * 1024 * 1024;
 
 const RECIPE_JSON_SCHEMA = {
   type: 'OBJECT',
@@ -82,6 +84,11 @@ export function readImageFile(file) {
 
     if (!file.type?.startsWith('image/')) {
       reject(new Error('Please choose an image file.'));
+      return;
+    }
+
+    if (file.size > MAX_AI_IMPORT_IMAGE_BYTES) {
+      reject(new Error('Photo is too large (max 4 MB). Try a smaller image or crop the recipe card.'));
       return;
     }
 
@@ -263,8 +270,11 @@ export function getGeminiImportErrorMessage(error) {
     return 'Network error talking to Gemini. Check your connection.';
   }
 
-  if (/not found|404/i.test(message) || status === 404) {
-    return 'Gemini model unavailable. Set REACT_APP_GEMINI_MODEL=gemini-2.5-flash in .env and restart the app.';
+  if (/not found|404|no longer available|update your code to use a newer model/i.test(message) || status === 404) {
+    return (
+      `Gemini model unavailable (${DEFAULT_GEMINI_MODEL}). ` +
+      'In AI Studio, confirm the Generative Language API is enabled and billing is set up for this key’s project, then try again.'
+    );
   }
 
   if (/blocked|safety/i.test(message)) {
@@ -292,20 +302,21 @@ function keyRestrictionHelpMessage() {
 }
 
 async function generateWithModelFallback(apiKey, buildRequest, modelCandidates = getGeminiModelCandidates()) {
-  let lastError;
+  let firstError;
 
   for (const modelName of modelCandidates) {
     try {
       return await buildRequest(modelName);
     } catch (error) {
-      lastError = error;
+      if (!firstError) firstError = error;
       if (shouldAbortModelFallback(error) || !isModelUnavailableError(error)) {
         throw error;
       }
     }
   }
 
-  throw lastError || new Error('No Gemini models available for this key.');
+  // Prefer the primary model’s error so we don’t surface a retired fallback ID.
+  throw firstError || new Error('No Gemini models available for this key.');
 }
 
 function shouldAbortModelFallback(error) {
@@ -335,7 +346,7 @@ function isModelUnavailableError(error) {
     return true;
   }
 
-  return /models\/[^\s]+ is not found|model is not found|not found for API version|not supported for generatecontent/i.test(
+  return /models\/[^\s`]+ is not found|model is not found|not found for API version|not supported for generatecontent|no longer available|update your code to use a newer model/i.test(
     message
   );
 }

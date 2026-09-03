@@ -62,10 +62,7 @@
               <strong>Content you create</strong> — Recipes, grocery lists, ingredients, check-off status, favorites, and other data you save in the app.
             </li>
             <li>
-              <strong>AI import inputs</strong> — If you use AI recipe import, we process the link content, photo, or text you submit so we can return a structured recipe. Shared imports are sent to Google’s Gemini API using GroceryLister’s server key.
-            </li>
-            <li>
-              <strong>Billing information</strong> — If you subscribe to GroceryLister Plus, payment card details are collected and processed by Stripe. We store billing-related identifiers on your account (such as Stripe customer and subscription IDs, plan status, and shared AI import usage counts) so we can unlock and manage Plus access. We do not store full card numbers on our servers.
+              <strong>AI import inputs</strong> — If you use AI recipe import, we process the link content, photo, or text you submit so we can return a structured recipe. Imports are sent to Google&apos;s Gemini API using the API key you save on your device.
             </li>
             <li>
               <strong>Device and local storage</strong> — When you are signed in, the app may store a copy of your recipes and lists in your browser or on your device so the app works offline and can sync when you reconnect.
@@ -84,8 +81,7 @@
           <ul>
             <li>Provide, sync, and back up your recipes and grocery lists across devices</li>
             <li>Enable shared recipe and grocery list links that you choose to send</li>
-            <li>Process AI recipe imports you request, and enforce free shared-import limits</li>
-            <li>Process Plus subscriptions and restore or revoke paid AI import access</li>
+            <li>Process AI recipe imports you request using the Gemini API key you provide</li>
             <li>Queue and apply changes made while you are offline</li>
             <li>Maintain, secure, troubleshoot, and improve the service</li>
             <li>Respond to support requests and account deletion requests</li>
@@ -120,11 +116,6 @@
             and
             <a href="https://ai.google.dev/gemini-api/terms" rel="noopener noreferrer">Gemini API terms</a>.
           </p>
-          <p>
-            Paid subscriptions are processed by
-            <a href="https://stripe.com/privacy" rel="noopener noreferrer">Stripe</a>.
-            Stripe receives the information needed to complete checkout, manage your subscription, and send receipts. Stripe acts as an independent payment processor under its own privacy policy.
-          </p>
         </section>
 
         <section class="page-section" id="delete-account">
@@ -157,8 +148,6 @@
             <li>Recipes you created</li>
             <li>Grocery lists you created and their items</li>
             <li>Your recipe favorites</li>
-            <li>AI import usage and plan fields tied to your account</li>
-            <li>Stripe customer / subscription identifiers we stored for billing (cancel any active Plus subscription in Account before deleting if you want billing to stop immediately)</li>
           </ul>
           <p>
             <strong>Shared links you sent</strong> — Recipe and grocery list links you previously shared will stop working for others once your content is removed.
@@ -189,7 +178,7 @@
           <ul>
             <li>You can stop using the service and sign out at any time.</li>
             <li>You control whether and with whom you share recipe or grocery list links.</li>
-            <li>You can manage or cancel Plus billing in Account, or simply not use AI import.</li>
+            <li>You can simply not use AI import if you prefer not to share recipe content with our AI provider.</li>
             <li>You can delete your account and associated data — see <a href="#delete-account">Delete your GroceryLister account</a> above.</li>
           </ul>
         </section>

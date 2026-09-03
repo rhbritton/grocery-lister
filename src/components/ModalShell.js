@@ -10,6 +10,8 @@ function ModalShell({
   placement = 'center',
   /** Cap width on large screens (default 24rem / max-w-sm). */
   maxWidth = '24rem',
+  /** Skip focusing the first field so a caret does not appear until the user taps an input. */
+  skipInitialFocus = false,
 }) {
   const dialogRef = useRef(null);
   const onCloseRef = useRef(onClose);
@@ -31,10 +33,12 @@ function ModalShell({
       dialogRef.current?.querySelector(
         'button, select, [href], [tabindex]:not([tabindex="-1"])'
       );
-    firstFocusable?.focus();
+    if (!skipInitialFocus) {
+      firstFocusable?.focus();
+    }
 
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [skipInitialFocus]);
 
   const isSheet = placement === 'sheet';
 

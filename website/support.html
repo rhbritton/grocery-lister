@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta
       name="description"
-      content="Get help with GroceryLister — the PWA for AI recipe import, Plus billing, shared lists, accounts, and offline sync."
+      content="Get help with GroceryLister — the PWA for AI recipe import, shared lists, accounts, and offline sync."
     />
     <title>Help & Support — GroceryLister</title>
     <link rel="stylesheet" href="./css/styles.css" />
@@ -127,23 +127,16 @@
             <article class="faq-item">
               <h3>What is AI recipe import?</h3>
               <p>
-                On <strong>Add recipe</strong>, signed-in users can import from a recipe link, a photo, or pasted text. GroceryLister turns that into a structured recipe you can review and save. Shared imports use GroceryLister’s AI capacity; each free account includes <strong>10</strong> shared imports. After that, upgrade to Plus for unlimited shared imports.
+                On <strong>Add recipe</strong>, signed-in users can import from a recipe link, a photo, or pasted text after adding a Gemini API key in Account. GroceryLister turns that into a structured recipe you can review and save. Recipe photos are limited to about <strong>4 MB</strong>.
               </p>
             </article>
 
             <article class="faq-item">
-              <h3>What is GroceryLister Plus?</h3>
+              <h3>How do I set up AI import?</h3>
               <p>
-                Plus is <strong>$4.99/month</strong> and unlocks unlimited shared AI recipe imports. Core recipes, lists, sharing, and offline shopping stay free. Upgrade or manage billing from <strong>Account</strong> in the web app (payments are handled by Stripe). If you cancel, Plus continues until the end of the current billing period.
-              </p>
-            </article>
-
-            <article class="faq-item">
-              <h3>How do I cancel Plus or update my card?</h3>
-              <p>
-                Open <strong>Account</strong>, then <strong>Manage billing</strong>. That opens the Stripe customer portal where you can update payment details or cancel. You can also email
-                <a data-support-email href="#">support@grocerylisterapp.com</a>
-                if you need help.
+                Open <strong>Account</strong> in the web app. Under <strong>Gemini API key</strong>, follow the steps: create a free key at
+                <a href="https://aistudio.google.com/apikey" rel="noopener noreferrer">Google AI Studio</a>,
+                paste it, tap <strong>Test connection</strong>, then <strong>Save key</strong>. Imports use your key and are billed to your Google account.
               </p>
             </article>
 
@@ -151,7 +144,7 @@
               <h3>How do I delete my account?</h3>
               <p>
                 In the web app, open <strong>Account</strong> from the header menu. At the bottom, under Danger zone, choose <strong>Delete account</strong>.
-                Confirm in the dialog — you may need to sign in with Google again. This permanently removes your recipes, lists, and favorites. Cancel Plus in Manage billing first if you do not want further charges.
+                Confirm in the dialog — you may need to sign in with Google again. This permanently removes your recipes, lists, and favorites.
               </p>
               <p>
                 You can also email

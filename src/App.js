@@ -303,12 +303,9 @@ function App() {
   // }
 
   const LoginScreen = ({ onGoogleLogin }) => {
-    const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const location = useLocation();
-    const billing = searchParams.get('billing');
-    const returnToAccount =
-      location.pathname.startsWith('/account') || Boolean(billing);
+    const returnToAccount = location.pathname.startsWith('/account');
 
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4 font-sans">
@@ -329,29 +326,16 @@ function App() {
             GroceryLister
           </h1>
 
-          {billing === 'success' ? (
-            <p className="text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-2xl px-4 py-3 mb-8 text-sm font-medium leading-relaxed">
-              Payment received. Sign in to see your Plus plan and unlimited shared AI imports.
-            </p>
-          ) : (
-            <p className="text-slate-500 mb-10 font-medium leading-relaxed">
-              Your personal grocery list and recipe manager. Please sign in to get started!
-            </p>
-          )}
+          <p className="text-slate-500 mb-10 font-medium leading-relaxed">
+            Your personal grocery list and recipe manager. Please sign in to get started!
+          </p>
 
           <button
             type="button"
             onClick={() => {
               Promise.resolve(onGoogleLogin())
                 .then(() => {
-                  navigate(
-                    returnToAccount
-                      ? billing
-                        ? `/account?billing=${encodeURIComponent(billing)}`
-                        : '/account'
-                      : '/recipes',
-                    { replace: true }
-                  );
+                  navigate(returnToAccount ? '/account' : '/recipes', { replace: true });
                 })
                 .catch(() => {});
             }}

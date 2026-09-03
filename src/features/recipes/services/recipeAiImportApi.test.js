@@ -6,7 +6,7 @@ describe('getCallableErrorMessage', () => {
       'Sign in to import recipes.'
     );
     expect(getCallableErrorMessage({ code: 'functions/resource-exhausted' })).toMatch(
-      /free AI imports|Upgrade/i
+      /free shared AI imports|Gemini key/i
     );
   });
 

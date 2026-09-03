@@ -35,7 +35,7 @@ service cloud.firestore {
     match /artifacts/{appId}/users/{userId}/profiles/{profileId} {
       allow read: if isSignedIn() && request.auth.uid == userId;
 
-      // Clients may update profile identity fields, but not billing / AI quota fields
+      // Clients may update profile identity fields, but not AI quota fields
       // (those are written by Cloud Functions with the Admin SDK).
       allow create: if isSignedIn()
         && request.auth.uid == userId
@@ -43,9 +43,7 @@ service cloud.firestore {
           'aiImportUsed',
           'aiImportLimit',
           'aiImportPlan',
-          'aiImportUpdatedAt',
-          'stripeCustomerId',
-          'stripeSubscriptionId'
+          'aiImportUpdatedAt'
         ]);
 
       allow update: if isSignedIn()
@@ -54,9 +52,7 @@ service cloud.firestore {
           'aiImportUsed',
           'aiImportLimit',
           'aiImportPlan',
-          'aiImportUpdatedAt',
-          'stripeCustomerId',
-          'stripeSubscriptionId'
+          'aiImportUpdatedAt'
         ]);
 
       allow delete: if isSignedIn() && request.auth.uid == userId;

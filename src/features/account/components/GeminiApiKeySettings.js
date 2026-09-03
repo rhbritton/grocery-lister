@@ -11,6 +11,8 @@ import {
   testGeminiApiKey,
 } from '../../recipes/services/geminiRecipeImport.js';
 
+const AI_STUDIO_KEY_URL = 'https://aistudio.google.com/apikey';
+
 function GeminiApiKeySettings({ userId }) {
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [isConfigured, setIsConfigured] = useState(false);
@@ -51,7 +53,7 @@ function GeminiApiKeySettings({ userId }) {
       setIsConfigured(true);
       setApiKeyInput('');
       setVerifiedKey(null);
-      setStatus('Gemini API key saved on this device.');
+      setStatus('Gemini API key saved on this device. You can import recipes with AI now.');
     } catch (saveError) {
       setError(saveError.message || 'Could not save API key.');
     } finally {
@@ -73,7 +75,7 @@ function GeminiApiKeySettings({ userId }) {
       await testGeminiApiKey(key);
       if (trimmedInput) {
         setVerifiedKey(trimmedInput);
-        setStatus('Connection works — you can save this key.');
+        setStatus('Connection works — tap Save key to finish.');
       } else {
         setStatus('Saved Gemini key still works.');
       }
@@ -95,42 +97,53 @@ function GeminiApiKeySettings({ userId }) {
     setVerifiedKey(null);
     setIsConfigured(false);
     setError('');
-    setStatus('Gemini API key removed from this device.');
+    setStatus('Gemini API key removed from this device. AI import will stay disabled until you add a key again.');
   };
 
   return (
     <section className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
       <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/60">
         <h2 className="text-label font-black uppercase tracking-widest text-slate-500">
-          Gemini key (backup)
+          Gemini API key
         </h2>
       </div>
       <div className="px-6 py-5 space-y-4">
         <p className="text-sm text-slate-600 leading-relaxed">
-          Optional backup for recipe AI import when the shared importer is unavailable. Add your{' '}
-          <a
-            href="https://aistudio.google.com/apikey"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-brand font-semibold underline underline-offset-2"
-          >
-            Google AI Studio
-          </a>{' '}
-          API key. It stays on this device; billing goes to your Google account.
+          AI recipe import needs your own Gemini API key. It stays on this device. Google bills usage
+          to your Google account (the free Gemini quota is enough for typical recipe imports).
         </p>
+        <ol className="text-sm text-slate-600 leading-relaxed space-y-2 list-decimal list-inside">
+          <li>
+            Create a free key at{' '}
+            <a
+              href={AI_STUDIO_KEY_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-brand font-semibold underline underline-offset-2"
+            >
+              Google AI Studio
+            </a>
+            .
+          </li>
+          <li>Paste it below and tap <strong>Test connection</strong>.</li>
+          <li>If the test succeeds, tap <strong>Save key</strong>.</li>
+        </ol>
         <p className="text-sm text-slate-500 leading-relaxed">
-          Paste a key, test the connection, then save. If a new key fails, open the key in Google
-          Cloud → Credentials and set <strong>Application restrictions</strong> to{' '}
-          <strong>None</strong> for local testing (or allow{' '}
-          <code className="text-xs">http://localhost:3000/*</code>). Also use{' '}
-          <strong>Set up billing</strong> in AI Studio if quota errors appear.
+          If a new key fails locally, open the key in Google Cloud → Credentials and set{' '}
+          <strong>Application restrictions</strong> to <strong>None</strong> (or allow{' '}
+          <code className="text-xs">http://localhost:3000/*</code>). Import uses{' '}
+          <code className="text-xs">gemini-2.5-flash</code>.
         </p>
 
         {isConfigured ? (
           <p className="text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-xl px-3 py-2">
-            Gemini key saved on this device.
+            Gemini key saved on this device. AI import is ready.
           </p>
-        ) : null}
+        ) : (
+          <p className="text-sm font-medium text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+            No Gemini key on this device yet — AI import is disabled until you save one.
+          </p>
+        )}
 
         <div>
           <label

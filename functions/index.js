@@ -8,11 +8,6 @@ const {
   buildUsage,
   FREE_AI_IMPORT_LIMIT,
 } = require('./aiImportQuota');
-const {
-  createAiImportCheckoutSession,
-  createBillingPortalSession,
-  stripeWebhook,
-} = require('./stripeBilling');
 
 initializeApp();
 
@@ -114,10 +109,10 @@ async function readUsageForUid(uid) {
 }
 
 function assertHasSharedCredits(usage) {
-  if (usage.limit != null && (usage.remaining ?? 0) <= 0) {
+  if ((usage.remaining ?? 0) <= 0) {
     throw new HttpsError(
       'resource-exhausted',
-      `You've used all ${usage.limit || FREE_AI_IMPORT_LIMIT} free AI imports. Upgrade for unlimited shared imports, or use your own Gemini key in Account.`
+      `You've used all ${usage.limit || FREE_AI_IMPORT_LIMIT} free shared AI imports. Add your own Gemini key in Account for unlimited imports.`
     );
   }
 }
@@ -133,23 +128,20 @@ async function incrementSharedImportUsage(uid) {
     assertHasSharedCredits(usage);
 
     const nextUsed = usage.used + 1;
-    tx.set(
-      ref,
-      {
-        uid,
-        aiImportUsed: nextUsed,
-        aiImportPlan: usage.plan,
-        aiImportLimit: usage.limit,
-        aiImportUpdatedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    );
+    const patch = {
+      uid,
+      aiImportUsed: nextUsed,
+      aiImportPlan: 'free',
+      aiImportLimit: usage.limit,
+      aiImportUpdatedAt: FieldValue.serverTimestamp(),
+    };
+
+    tx.set(ref, patch, { merge: true });
 
     return buildUsage({
       ...data,
+      ...patch,
       aiImportUsed: nextUsed,
-      aiImportPlan: usage.plan,
-      aiImportLimit: usage.limit,
     });
   });
 }
@@ -439,6 +431,3 @@ exports.importRecipeWithAi = onCall(
   }
 );
 
-exports.createAiImportCheckoutSession = createAiImportCheckoutSession;
-exports.createBillingPortalSession = createBillingPortalSession;
-exports.stripeWebhook = stripeWebhook;

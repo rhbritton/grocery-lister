@@ -33,7 +33,7 @@ export function getCallableErrorMessage(error, { fallback } = {}) {
   if (code === 'functions/resource-exhausted') {
     return (
       stripCallableCodePrefix(rawMessage) ||
-      "You've used all free AI imports. Upgrade for unlimited shared imports, or use your own Gemini key in Account."
+      "You've used all free shared AI imports. Add your own Gemini key in Account for unlimited imports."
     );
   }
   if (code === 'functions/failed-precondition') {

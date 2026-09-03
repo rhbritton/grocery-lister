@@ -49,7 +49,7 @@ describe('geminiRecipeImport helpers', () => {
   it('maps free tier limit 0 to billing guidance', () => {
     expect(
       getGeminiImportErrorMessage(
-        new Error('429 Quota exceeded, limit: 0, model: gemini-2.0-flash, free_tier')
+        new Error('429 Quota exceeded, limit: 0, model: gemini-2.5-flash, free_tier')
       )
     ).toMatch(/free tier is not active|Set up billing/i);
   });
@@ -157,6 +157,30 @@ describe('geminiRecipeImport helpers', () => {
     ).rejects.toThrow(/Gemini API could not fetch that URL/i);
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('uses current flash models only (no retired 2.0 / 1.5 ids)', () => {
+    const { getGeminiModelCandidates } = require('./geminiRecipeImport');
+    const models = getGeminiModelCandidates();
+    expect(models[0]).toBe('gemini-2.5-flash');
+    expect(models).toContain('gemini-2.5-flash-lite');
+    expect(models).not.toContain('gemini-2.0-flash');
+    expect(models).not.toContain('gemini-1.5-flash');
+  });
+
+  it('maps retired-model errors without telling users to edit .env', () => {
+    expect(
+      getGeminiImportErrorMessage(
+        new Error(
+          'This model `models/gemini-2.0-flash` is no longer available. Please update your code to use a newer model.'
+        )
+      )
+    ).toMatch(/gemini-2\.5-flash|AI Studio|billing/i);
+    expect(
+      getGeminiImportErrorMessage(
+        new Error('This model `models/gemini-2.0-flash` is no longer available.')
+      )
+    ).not.toMatch(/REACT_APP_GEMINI_MODEL|\.env/i);
   });
 
   it('uses url-context-capable models only', () => {

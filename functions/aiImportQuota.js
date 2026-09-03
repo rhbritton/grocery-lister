@@ -20,25 +20,17 @@ function profilePath(uid) {
   return `artifacts/${projectId}/users/${uid}/profiles/${uid}`;
 }
 
-function isPaidPlan(plan) {
-  // 'pro' kept for existing Stripe subscribers written before Plus rename
-  return plan === 'plus' || plan === 'pro';
-}
-
 function buildUsage(data = {}) {
-  const plan = isPaidPlan(data.aiImportPlan) ? 'plus' : 'free';
   const used = Math.max(0, Number(data.aiImportUsed) || 0);
-  const unlimited = plan === 'plus' || data.aiImportLimit === null;
-  // Free tier always uses the current product limit (ignore stale stored values).
-  const limit = unlimited ? null : FREE_AI_IMPORT_LIMIT;
-  const remaining = limit == null ? null : Math.max(0, limit - used);
+  const limit = FREE_AI_IMPORT_LIMIT;
+  const remaining = Math.max(0, limit - used);
 
   return {
     used,
     limit,
     remaining,
-    plan,
-    unlimited: limit == null,
+    plan: 'free',
+    unlimited: false,
   };
 }
 
