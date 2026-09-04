@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta
       name="description"
-      content="GroceryLister is a progressive web app for recipe-powered grocery lists. Import recipes with AI, share by link, and shop offline when signed in."
+      content="GroceryLister is a free progressive web app for recipe-powered grocery lists. Import recipes with AI using your Gemini key, share by link, and shop offline when signed in."
     />
     <title>GroceryLister — Recipe-powered grocery lists</title>
     <link rel="stylesheet" href="./css/styles.css" />
@@ -121,7 +121,7 @@
         </div>
       </section>
 
-      <section class="section section-muted">
+      <section class="section section-muted" id="ai-import">
         <div class="container">
           <p class="eyebrow">AI recipe import</p>
           <h2 class="section-heading">
@@ -134,30 +134,15 @@
             </article>
             <article class="feature-block">
               <h3>Bring your own Gemini key.</h3>
-              <p>AI import uses your own free Google Gemini API key. Create a key in Google AI Studio, save it in Account, then import from a link, photo, or pasted text.</p>
+              <p>
+                AI import needs a free
+                <a href="https://aistudio.google.com/apikey" rel="noopener noreferrer">Google AI Studio</a>
+                API key. Save it in Account, then import. The key stays on your device; Google bills usage to your Google account.
+              </p>
             </article>
             <article class="feature-block">
-              <h3>Core features stay free.</h3>
-              <p>Recipes, aisle-sorted lists, sharing, and offline shopping when signed in are always free. A Gemini key is only needed for AI import.</p>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section class="section" id="pricing">
-        <div class="container">
-          <h2 class="section-title center">Free to use</h2>
-          <div class="pricing-row">
-            <article class="pricing-tier pricing-tier-featured">
-              <h3>Free</h3>
-              <p class="pricing-amount">$0</p>
-              <ul>
-                <li>Recipes &amp; grocery lists</li>
-                <li>Aisle sorting &amp; sharing</li>
-                <li>Offline shopping when signed in</li>
-                <li>AI recipe import with your Gemini API key</li>
-              </ul>
-              <a class="btn btn-primary btn-block" data-web-app href="#">Open the web app</a>
+              <h3>Optional — the rest of the app does not need it.</h3>
+              <p>Recipes, aisle-sorted lists, sharing, and offline shopping work without a Gemini key. Add a key only if you want AI import.</p>
             </article>
           </div>
         </div>
@@ -195,7 +180,7 @@
           <ul class="checklist">
             <li>Recipe-powered meal planning</li>
             <li>Ingredients grouped by aisle</li>
-            <li>AI import from link, photo, or text</li>
+            <li>AI import from link, photo, or text (your Gemini key)</li>
             <li>Share recipes &amp; lists by link (shared lists active 7 days)</li>
             <li>Install as a PWA on your phone’s home screen</li>
             <li>Offline shopping when signed in — syncs when reconnected</li>
