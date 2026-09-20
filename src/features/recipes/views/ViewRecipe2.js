@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { useParams, NavLink } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
 
 import { getDoc, doc } from 'firebase/firestore';
 import { db } from '../../../auth/firebaseConfig';
@@ -8,6 +9,8 @@ import { db } from '../../../auth/firebaseConfig';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
   faEdit,
+  faEllipsisVertical,
+  faCopy,
   faBookmark,
   faShareAlt,
   faCheckCircle,
@@ -37,12 +40,14 @@ import {
   peekPendingAuthIntent,
 } from '../../../utils/pendingAuthIntent.js';
 import { getSignInErrorMessage } from '../../../auth/signIn.js';
+import { cloneRecipeDraft } from '../utils/duplicateRecipe.js';
 
 import '../styles/ViewRecipe.css';
 
 const ViewRecipe = (props) => {
   const { recipeId } = useParams();
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const [owner, setOwner] = useState('');
   const [name, setName] = useState('');
@@ -466,13 +471,45 @@ const shareURL = async () => {
                 </button>
 
                 {!isCooking && owner && props.userId === owner ? (
-                  <NavLink
-                    to={`/recipes/edit/${recipeId}`}
-                    aria-label="Edit recipe"
-                    className="w-10 h-10 shrink-0 flex items-center justify-center bg-blue-50/50 text-brand border border-blue-100/50 hover:bg-blue-100 hover:border-blue-200 rounded-xl transition-all active:scale-95"
-                  >
-                    <FontAwesomeIcon icon={faEdit} className="text-base" aria-hidden="true" />
-                  </NavLink>
+                  <Menu>
+                    <MenuButton
+                      type="button"
+                      aria-label="Recipe actions"
+                      className="w-10 h-10 shrink-0 flex items-center justify-center bg-blue-50/50 text-brand border border-blue-100/50 hover:bg-blue-100 hover:border-blue-200 rounded-xl transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    >
+                      <FontAwesomeIcon icon={faEllipsisVertical} className="text-base" aria-hidden="true" />
+                    </MenuButton>
+                    <MenuItems
+                      anchor="bottom end"
+                      className="z-[80] w-48 origin-top-right rounded-2xl bg-white py-1 shadow-lg ring-1 ring-slate-200 focus:outline-none"
+                    >
+                      <MenuItem>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/recipes/edit/${recipeId}`)}
+                          className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-slate-700 data-[focus]:bg-slate-50"
+                        >
+                          <FontAwesomeIcon icon={faEdit} className="w-4 text-brand" aria-hidden="true" />
+                          Edit
+                        </button>
+                      </MenuItem>
+                      <MenuItem>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const draft = cloneRecipeDraft({ name, ingredients, instructions });
+                            navigate(`/recipes/add?duplicate=${encodeURIComponent(recipeId)}`, {
+                              state: { duplicateFrom: draft },
+                            });
+                          }}
+                          className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-slate-700 data-[focus]:bg-slate-50"
+                        >
+                          <FontAwesomeIcon icon={faCopy} className="w-4 text-brand" aria-hidden="true" />
+                          Duplicate
+                        </button>
+                      </MenuItem>
+                    </MenuItems>
+                  </Menu>
                 ) : null}
 
                 {owner && props.userId !== owner ? (

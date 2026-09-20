@@ -1,21 +1,37 @@
 import React from 'react';
 import { useLinkClickHandler, useNavigate } from 'react-router-dom';
+import { Menu, MenuButton, MenuItem, MenuItems } from '@headlessui/react';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { 
+import {
+    faEllipsisVertical,
     faEdit,
     faTrashAlt,
+    faCopy,
     faBookmark,
-    faBook
 } from '@fortawesome/free-solid-svg-icons';
 
 import RecipeItemIngredients from './RecipeItemIngredients';
+import { cloneRecipeDraft } from '../utils/duplicateRecipe.js';
 
 import '../styles/RecipeItem.css';
 
 function RecipeItem(props) {
     const navigate = useNavigate();
     const handleClick = useLinkClickHandler(`/recipes/view/${props.recipe.fbid}`);
+    const isFavorite = Boolean(props.recipe.favorited);
+
+    const stopCardClick = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+    };
+
+    const goToDuplicate = () => {
+        const draft = cloneRecipeDraft(props.recipe);
+        navigate(`/recipes/add?duplicate=${encodeURIComponent(props.recipe.fbid)}`, {
+            state: { duplicateFrom: draft },
+        });
+    };
 
   return (
     <div onClick={handleClick} className="bg-white rounded-2xl border border-slate-100 p-4 flex items-center shadow-md active:shadow-sm transition-all duration-100 cursor-pointer group">
@@ -26,74 +42,71 @@ function RecipeItem(props) {
           {props.recipe.name}
         </h3>
         <div className="flex items-center flex-wrap gap-x-2 gap-y-1 mt-1.5 w-full">
-           {/* <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider 
-             ${props.recipe.favorited 
-               ? 'text-amber-700 bg-amber-50' 
-               : 'text-blue-600 bg-blue-50'
-             }`}
-           >
-              {props.recipe.category}
-           </span> */}
-
             <div className="text-sm text-slate-500 font-medium truncate w-full mb-1">
                 <RecipeItemIngredients ingredients={props.recipe.ingredients} />
             </div>
-           
-           {/* <span className="text-xs font-medium text-slate-400 flex items-center gap-1">
-              <span>• {props.recipe.prepTime}</span>
-              
-              {props.recipe.favorited && props.recipe.savedName && (
-                <span className="flex items-center gap-1">
-                  <span className="opacity-60">•</span>
-                  <span>By <span className="text-slate-600 font-semibold">{props.recipe.savedName}</span></span>
-                </span>
-              )}
-           </span> */}
         </div>
       </div>
     
-      {/* Action Icons - Hidden if Saved */}
-      <div className="flex items-center gap-1 ml-2 shrink-0">
-        {!props.recipe.favorited && (
-          <>
-            {props.recipe.favorited || <button type="button" onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    navigate('/recipes/edit/'+props.recipe.fbid);
-                }} aria-label={`Edit ${props.recipe.name}`} className="w-12 h-12 flex items-center justify-center text-slate-400 hover:text-brand hover:bg-blue-50 rounded-full transition-all active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
-              <FontAwesomeIcon icon={faEdit} className="text-xl" aria-hidden="true" />
-            </button>}
-            {props.recipe.favorited || <button type="button" onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    props.setDeleteModalID(props.recipe.fbid);
-                }} aria-label={`Delete ${props.recipe.name}`} className="w-12 h-12 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400">
-              <FontAwesomeIcon icon={faTrashAlt} className="text-xl" aria-hidden="true" />
-            </button>}
-          </>
-        )}
-        {props.recipe.favorited && (
-          <>
-            {/* Left Icon Block */}
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 transition-colors duration-300 
-              ${props.recipe.favorited 
-                ? 'bg-amber-50' 
-                : 'bg-blue-50'
-              }`}
-            >
-              <FontAwesomeIcon 
-                icon={props.recipe.favorited ? faBookmark : faBook} 
-                className={`text-lg transition-colors duration-300 
-                  ${props.recipe.favorited 
-                    ? 'text-amber-600' 
-                    : 'text-brand'
-                  }`} 
+      <div className="flex items-center gap-1 ml-2 shrink-0" onClick={stopCardClick}>
+        {isFavorite ? (
+            <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 bg-amber-50">
+              <FontAwesomeIcon
+                icon={faBookmark}
+                className="text-lg text-amber-600"
+                aria-hidden="true"
               />
             </div>
-          </>
-        )}
+        ) : null}
+
+        <Menu>
+          <MenuButton
+            type="button"
+            aria-label={`More actions for ${props.recipe.name}`}
+            className="w-12 h-12 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-full transition-all active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          >
+            <FontAwesomeIcon icon={faEllipsisVertical} className="text-xl" aria-hidden="true" />
+          </MenuButton>
+          <MenuItems
+            anchor="bottom end"
+            className="z-[80] w-48 origin-top-right rounded-2xl bg-white py-1 shadow-lg ring-1 ring-slate-200 focus:outline-none"
+          >
+            {!isFavorite ? (
+              <MenuItem>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/recipes/edit/${props.recipe.fbid}`)}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-slate-700 data-[focus]:bg-slate-50"
+                >
+                  <FontAwesomeIcon icon={faEdit} className="w-4 text-brand" aria-hidden="true" />
+                  Edit
+                </button>
+              </MenuItem>
+            ) : null}
+            <MenuItem>
+              <button
+                type="button"
+                onClick={goToDuplicate}
+                className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-slate-700 data-[focus]:bg-slate-50"
+              >
+                <FontAwesomeIcon icon={faCopy} className="w-4 text-brand" aria-hidden="true" />
+                Duplicate
+              </button>
+            </MenuItem>
+            {!isFavorite ? (
+              <MenuItem>
+                <button
+                  type="button"
+                  onClick={() => props.setDeleteModalID(props.recipe.fbid)}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-bold text-red-600 data-[focus]:bg-red-50"
+                >
+                  <FontAwesomeIcon icon={faTrashAlt} className="w-4" aria-hidden="true" />
+                  Delete
+                </button>
+              </MenuItem>
+            ) : null}
+          </MenuItems>
+        </Menu>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import Select from 'react-select';
 
 import EditIngredient from '../components/EditIngredient2';
@@ -25,20 +25,25 @@ import {
 import { canUseAiRecipeImport } from '../../../utils/aiImportAccess.js';
 import RecipeAiImportModal from '../components/RecipeAiImportModal.js';
 import { applyWalmartUrlToIngredient } from '../utils/walmartProduct.js';
+import { cloneRecipeDraft, findRecipeByDuplicateId } from '../utils/duplicateRecipe.js';
 
 const AddRecipe = (props) => {
   const { user } = props;
   const userId = user.uid;
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const dispatch = useDispatch();
   const [name, setName] = useState('');
   const [ingredients, setIngredients] = useState([{ amount: '1', name: '', type: '' }]);
   const [instructions, setInstructions] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [aiImportOpen, setAiImportOpen] = useState(false);
+  const duplicateAppliedRef = useRef(false);
 
   const showAiImport = canUseAiRecipeImport(user);
+  const { allRecipes, allRecipesSorted } = useSelector((state) => state.recipes);
 
   const handleAddIngredient = () => {
     setIngredients([...ingredients, { amount: '1', name: '', type: '' }]);
@@ -105,12 +110,43 @@ const AddRecipe = (props) => {
     setInstructions(recipe.instructions);
   };
 
+  const applyDraft = (draft) => {
+    if (!draft) return;
+    setName(draft.name || '');
+    setIngredients(
+      Array.isArray(draft.ingredients) && draft.ingredients.length
+        ? draft.ingredients.map((ingredient) => ({ ...ingredient }))
+        : [{ amount: '1', name: '', type: '' }]
+    );
+    setInstructions(draft.instructions || '');
+  };
+
+  useEffect(() => {
+    if (duplicateAppliedRef.current) return;
+
+    const fromState = location.state?.duplicateFrom;
+    if (fromState) {
+      duplicateAppliedRef.current = true;
+      applyDraft(fromState);
+      navigate('/recipes/add', { replace: true, state: {} });
+      return;
+    }
+
+    const duplicateId = searchParams.get('duplicate');
+    if (!duplicateId) return;
+
+    const recipe = findRecipeByDuplicateId(allRecipesSorted, duplicateId)
+      || findRecipeByDuplicateId(allRecipes, duplicateId);
+    if (!recipe) return;
+
+    duplicateAppliedRef.current = true;
+    applyDraft(cloneRecipeDraft(recipe));
+    navigate('/recipes/add', { replace: true, state: {} });
+  }, [allRecipes, allRecipesSorted, location.state, navigate, searchParams]);
+
   const isSaveDisabled = name.trim() === '' || ingredients.length === 0 || ingredients.some(ingredient => ingredient.amount === "" || ingredient.name.trim() === "") || isSaving;
 
   let options = [{ value: 'reset', label: '--- Clear All ---' }];
-
-  
-  const { allRecipes, allRecipesSorted } = useSelector(state => state.recipes);
 
   const getRecipeById = (id) => {
     let recipe;
