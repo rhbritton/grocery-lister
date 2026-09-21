@@ -41,6 +41,12 @@ function RecipeItem(props) {
         <h3 className="text-lg font-bold text-slate-800 truncate leading-tight w-full">
           {props.recipe.name}
         </h3>
+        {isFavorite ? (
+          <p className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold uppercase tracking-widest text-amber-700/70">
+            <FontAwesomeIcon icon={faBookmark} className="text-[10px]" aria-hidden="true" />
+            Saved
+          </p>
+        ) : null}
         <div className="flex items-center flex-wrap gap-x-2 gap-y-1 mt-1.5 w-full">
             <div className="text-sm text-slate-500 font-medium truncate w-full mb-1">
                 <RecipeItemIngredients ingredients={props.recipe.ingredients} />
@@ -49,16 +55,6 @@ function RecipeItem(props) {
       </div>
     
       <div className="flex items-center gap-1 ml-2 shrink-0" onClick={stopCardClick}>
-        {isFavorite ? (
-            <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 bg-amber-50">
-              <FontAwesomeIcon
-                icon={faBookmark}
-                className="text-lg text-amber-600"
-                aria-hidden="true"
-              />
-            </div>
-        ) : null}
-
         <Menu>
           <MenuButton
             type="button"
